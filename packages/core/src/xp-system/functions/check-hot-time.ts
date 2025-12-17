@@ -16,14 +16,20 @@ export interface HotTimeResult {
  * @param currentTime - 현재 시간 "HH:mm" format (주입)
  */
 export function checkHotTime(configs: HotTimeConfig[], currentTime: string): HotTimeResult {
-  const [currentHour, currentMinute] = currentTime.split(':').map(Number);
+  const currentParts = currentTime.split(':').map(Number);
+  const currentHour = currentParts[0] ?? 0;
+  const currentMinute = currentParts[1] ?? 0;
   const currentMinutes = currentHour * 60 + currentMinute;
 
   for (const config of configs) {
     if (!config.enabled) continue;
 
-    const [startHour, startMinute] = config.startTime.split(':').map(Number);
-    const [endHour, endMinute] = config.endTime.split(':').map(Number);
+    const startParts = config.startTime.split(':').map(Number);
+    const endParts = config.endTime.split(':').map(Number);
+    const startHour = startParts[0] ?? 0;
+    const startMinute = startParts[1] ?? 0;
+    const endHour = endParts[0] ?? 0;
+    const endMinute = endParts[1] ?? 0;
 
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;

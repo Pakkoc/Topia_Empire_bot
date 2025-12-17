@@ -1,5 +1,5 @@
 import type { Pool, RowDataPacket } from 'mysql2/promise';
-import type { XpSettingsRepositoryPort, XpSettings, RepositoryError } from '@topia/core';
+import type { XpSettingsRepositoryPort, XpSettings, RepositoryError, LevelReward, LevelChannel, HotTimeConfig } from '@topia/core';
 import { Result } from '@topia/core';
 
 interface XpSettingsRow extends RowDataPacket {
@@ -23,6 +23,28 @@ interface XpSettingsRow extends RowDataPacket {
 
 interface ExclusionRow extends RowDataPacket {
   target_id: string;
+}
+
+interface HotTimeRow extends RowDataPacket {
+  start_time: string;
+  end_time: string;
+  multiplier: number;
+  enabled: number;
+}
+
+interface LevelRewardRow extends RowDataPacket {
+  id: number;
+  guild_id: string;
+  level: number;
+  role_id: string;
+  remove_on_higher_level: number;
+}
+
+interface LevelChannelRow extends RowDataPacket {
+  id: number;
+  guild_id: string;
+  level: number;
+  channel_id: string;
 }
 
 function toXpSettings(row: XpSettingsRow): XpSettings {
@@ -56,11 +78,12 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
         [guildId]
       );
 
-      if (rows.length === 0) {
+      const firstRow = rows[0];
+      if (!firstRow) {
         return Result.ok(null);
       }
 
-      return Result.ok(toXpSettings(rows[0]));
+      return Result.ok(toXpSettings(firstRow));
     } catch (error) {
       return Result.err({
         type: 'QUERY_ERROR',
@@ -147,6 +170,78 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
       );
 
       return Result.ok(rows.map(r => r.target_id));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async getHotTimes(guildId: string, type: 'text' | 'voice' | 'all'): Promise<Result<HotTimeConfig[], RepositoryError>> {
+    try {
+      const [rows] = await this.pool.execute<HotTimeRow[]>(
+        `SELECT start_time, end_time, multiplier, enabled
+         FROM xp_hot_times
+         WHERE guild_id = ? AND (type = ? OR type = 'all')`,
+        [guildId, type]
+      );
+
+      return Result.ok(rows.map(r => ({
+        startTime: r.start_time,
+        endTime: r.end_time,
+        multiplier: Number(r.multiplier),
+        enabled: Boolean(r.enabled),
+      })));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async getLevelRewards(guildId: string): Promise<Result<LevelReward[], RepositoryError>> {
+    try {
+      const [rows] = await this.pool.execute<LevelRewardRow[]>(
+        `SELECT id, guild_id, level, role_id, remove_on_higher_level
+         FROM xp_level_rewards
+         WHERE guild_id = ?
+         ORDER BY level`,
+        [guildId]
+      );
+
+      return Result.ok(rows.map(r => ({
+        id: r.id,
+        guildId: r.guild_id,
+        level: r.level,
+        roleId: r.role_id,
+        removeOnHigherLevel: Boolean(r.remove_on_higher_level),
+      })));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async getLevelChannels(guildId: string): Promise<Result<LevelChannel[], RepositoryError>> {
+    try {
+      const [rows] = await this.pool.execute<LevelChannelRow[]>(
+        `SELECT id, guild_id, level, channel_id
+         FROM xp_level_channels
+         WHERE guild_id = ?
+         ORDER BY level`,
+        [guildId]
+      );
+
+      return Result.ok(rows.map(r => ({
+        id: r.id,
+        guildId: r.guild_id,
+        level: r.level,
+        channelId: r.channel_id,
+      })));
     } catch (error) {
       return Result.err({
         type: 'QUERY_ERROR',

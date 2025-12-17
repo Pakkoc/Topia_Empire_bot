@@ -14,9 +14,11 @@
     "@topia/infra": "*",
     "@topia/shared": "*",
     "discord.js": "^14",
-    "dotenv": "^16"
+    "dotenv": "^16",
+    "express": "^5.2.1"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^20",
     "tsx": "^4",
     "typescript": "^5"

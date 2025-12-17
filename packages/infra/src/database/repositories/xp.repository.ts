@@ -40,11 +40,12 @@ export class XpRepository implements XpRepositoryPort {
         [guildId, userId]
       );
 
-      if (rows.length === 0) {
+      const firstRow = rows[0];
+      if (!firstRow) {
         return Result.ok(null);
       }
 
-      return Result.ok(toUserXp(rows[0]));
+      return Result.ok(toUserXp(firstRow));
     } catch (error) {
       return Result.err({
         type: 'QUERY_ERROR',
@@ -115,11 +116,12 @@ export class XpRepository implements XpRepositoryPort {
         [guildId, guildId, userId]
       );
 
-      if (rows.length === 0) {
+      const firstRow = rows[0];
+      if (!firstRow) {
         return Result.ok(null);
       }
 
-      return Result.ok(rows[0].rank as number);
+      return Result.ok(firstRow['rank'] as number);
     } catch (error) {
       return Result.err({
         type: 'QUERY_ERROR',

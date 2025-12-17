@@ -1,0 +1,97 @@
+import { z } from "zod";
+
+// XP Settings
+export const xpSettingsSchema = z.object({
+  guildId: z.string(),
+  enabled: z.boolean(),
+  textXpEnabled: z.boolean(),
+  textXpMin: z.number().min(0).max(1000),
+  textXpMax: z.number().min(0).max(1000),
+  textCooldownSeconds: z.number().min(0).max(3600),
+  textMaxPerCooldown: z.number().min(1).max(100),
+  voiceXpEnabled: z.boolean(),
+  voiceXpMin: z.number().min(0).max(1000),
+  voiceXpMax: z.number().min(0).max(1000),
+  voiceCooldownSeconds: z.number().min(0).max(3600),
+  voiceMaxPerCooldown: z.number().min(1).max(100),
+  levelUpChannelId: z.string().nullable(),
+  levelUpMessage: z.string().nullable(),
+});
+
+export type XpSettings = z.infer<typeof xpSettingsSchema>;
+
+export const updateXpSettingsSchema = xpSettingsSchema.partial().omit({ guildId: true });
+export type UpdateXpSettings = z.infer<typeof updateXpSettingsSchema>;
+
+// XP Hot Time
+export const xpHotTimeSchema = z.object({
+  id: z.number(),
+  guildId: z.string(),
+  type: z.enum(["text", "voice", "all"]),
+  startTime: z.string(), // HH:mm format
+  endTime: z.string(), // HH:mm format
+  multiplier: z.number().min(1).max(10),
+  enabled: z.boolean(),
+});
+
+export type XpHotTime = z.infer<typeof xpHotTimeSchema>;
+
+export const createXpHotTimeSchema = xpHotTimeSchema.omit({ id: true, guildId: true });
+export type CreateXpHotTime = z.infer<typeof createXpHotTimeSchema>;
+
+// XP Exclusion
+export const xpExclusionSchema = z.object({
+  id: z.number(),
+  guildId: z.string(),
+  targetType: z.enum(["channel", "role"]),
+  targetId: z.string(),
+});
+
+export type XpExclusion = z.infer<typeof xpExclusionSchema>;
+
+export const createXpExclusionSchema = xpExclusionSchema.omit({ id: true, guildId: true });
+export type CreateXpExclusion = z.infer<typeof createXpExclusionSchema>;
+
+// Level Reward
+export const levelRewardSchema = z.object({
+  id: z.number(),
+  guildId: z.string(),
+  level: z.number().min(1).max(999),
+  roleId: z.string(),
+  removeOnHigherLevel: z.boolean(),
+});
+
+export type LevelReward = z.infer<typeof levelRewardSchema>;
+
+export const createLevelRewardSchema = levelRewardSchema.omit({ id: true, guildId: true });
+export type CreateLevelReward = z.infer<typeof createLevelRewardSchema>;
+
+// Level Unlock Channel
+export const levelUnlockChannelSchema = z.object({
+  id: z.number(),
+  guildId: z.string(),
+  level: z.number().min(1).max(999),
+  channelId: z.string(),
+});
+
+export type LevelUnlockChannel = z.infer<typeof levelUnlockChannelSchema>;
+
+export const createLevelUnlockChannelSchema = levelUnlockChannelSchema.omit({ id: true, guildId: true });
+export type CreateLevelUnlockChannel = z.infer<typeof createLevelUnlockChannelSchema>;
+
+// Default values (ProBot reference)
+export const DEFAULT_XP_SETTINGS: Omit<XpSettings, "guildId"> = {
+  enabled: true,
+  textXpEnabled: true,
+  textXpMin: 15,
+  textXpMax: 25,
+  textCooldownSeconds: 60,
+  textMaxPerCooldown: 1,
+  voiceXpEnabled: true,
+  voiceXpMin: 10,
+  voiceXpMax: 20,
+  voiceCooldownSeconds: 60,
+  voiceMaxPerCooldown: 1,
+  levelUpChannelId: null,
+  levelUpMessage: null,
+};
