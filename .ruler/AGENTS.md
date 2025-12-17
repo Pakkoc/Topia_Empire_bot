@@ -22,7 +22,7 @@ use following libraries for specific functionalities:
 8. `zod`: For schema validation and data integrity.
 9. `shadcn-ui`: For pre-built accessible UI components.
 10. `tailwindcss`: For utility-first CSS styling.
-11. `prisma`: For database ORM (MySQL).
+11. `mysql2`: For MySQL database driver.
 12. `react-hook-form`: For form validation and state management.
 13. `next-auth`: For authentication (Discord OAuth2).
 14. `ioredis`: For Redis Pub/Sub.
@@ -37,7 +37,7 @@ use following libraries for specific functionalities:
 - src/constants: Common constants
 - src/hooks: Common hooks
 - src/lib: utility functions
-- src/lib/prisma: Prisma client
+- src/lib/db: MySQL connection pool
 - src/lib/redis: Redis client
 - src/remote: http client
 - src/features/[featureName]/components/\*: Components for specific feature
@@ -46,13 +46,11 @@ use following libraries for specific functionalities:
 - src/features/[featureName]/api/\*: Express route handlers
 - src/features/[featureName]/service/\*: Business logic
 - src/features/[featureName]/schema/\*: Zod schemas
-- prisma/schema.prisma: Prisma schema file
-- prisma/migrations: Prisma migrations
 
 ## Backend Layer (Express + Next.js)
 
 - Next.js Pages Router의 API Routes에서 Express를 사용한다.
-- Prisma를 통해 MySQL 데이터베이스에 접근한다.
+- mysql2를 통해 MySQL 데이터베이스에 직접 SQL로 접근한다.
 - Redis Pub/Sub을 통해 실시간 설정 동기화를 처리한다.
 - 프론트엔드 레이어는 전부 Client Component (`"use client"`) 로 유지하고, 서버 상태는 `@tanstack/react-query` 로만 관리한다.
 
@@ -139,12 +137,11 @@ use following libraries for specific functionalities:
   $ npx shadcn@latest add dialog
   ```
 
-## Prisma (MySQL)
+## MySQL (mysql2)
 
-- if you need to add new table, please create migration.
-- store schema in `prisma/schema.prisma`
-- run `npx prisma migrate dev` for development
-- run `npx prisma generate` to generate client
+- 직접 SQL 쿼리를 작성하여 데이터베이스에 접근
+- connection pool은 `src/lib/db`에서 관리
+- 테이블 생성 시 SQL 파일을 `sql/` 폴더에 저장
 
 ## Package Manager
 
