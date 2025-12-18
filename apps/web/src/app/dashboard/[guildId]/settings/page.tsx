@@ -45,7 +45,7 @@ export default function GuildSettingsPage() {
   useEffect(() => {
     if (xpSettings) {
       form.reset({
-        enabled: xpSettings.enabled,
+        enabled: Boolean(xpSettings.enabled),
       });
     }
   }, [xpSettings, form]);
