@@ -12,7 +12,8 @@ export type SettingType =
   | 'xp-hottime'
   | 'xp-reward'
   | 'xp-notification'
-  | 'xp-level-requirement';
+  | 'xp-level-requirement'
+  | 'xp-level-channel';
 
 export type SettingAction = '추가' | '수정' | '삭제' | '변경';
 

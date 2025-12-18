@@ -232,6 +232,7 @@ async function main() {
       'xp-reward': '레벨 보상',
       'xp-notification': '레벨업 알림',
       'xp-level-requirement': '레벨 설정',
+      'xp-level-channel': '해금 채널',
     };
 
     const typeLabel = typeLabels[type] || type;

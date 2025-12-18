@@ -3,6 +3,7 @@ export * from "./use-xp-settings";
 export * from "./use-xp-exclusions";
 export * from "./use-xp-hot-times";
 export * from "./use-level-rewards";
+export * from "./use-level-channels";
 export * from "./use-members";
 export * from "./use-channels";
 export * from "./use-roles";
