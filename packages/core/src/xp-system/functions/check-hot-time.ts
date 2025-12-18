@@ -51,10 +51,20 @@ export function checkHotTime(configs: HotTimeConfig[], currentTime: string): Hot
 }
 
 /**
- * Date를 "HH:mm" 형식으로 변환
+ * Date를 한국 시간(KST) 기준 "HH:mm" 형식으로 변환
  */
 export function formatTimeForHotTime(date: Date): string {
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
+  const koreaTime = date.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  // "HH:MM" 또는 "HH시 MM분" 형식을 "HH:mm"으로 정규화
+  const match = koreaTime.match(/(\d{2}):?(\d{2})/);
+  if (match) {
+    return `${match[1]}:${match[2]}`;
+  }
+  // fallback
+  return koreaTime.replace(/[^0-9:]/g, '');
 }
