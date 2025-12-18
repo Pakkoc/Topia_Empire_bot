@@ -169,7 +169,7 @@ export default function NotificationSettingsPage() {
                             const selectedChannel = channels?.find(ch => ch.id === field.value);
                             if (selectedChannel) {
                               return (
-                                <span className="flex items-center gap-2 whitespace-nowrap">
+                                <span className="!inline-flex items-center gap-2">
                                   {selectedChannel.type === 2 ? (
                                     <Icon icon="solar:volume-loud-linear" className="h-4 w-4 shrink-0 text-green-400" />
                                   ) : selectedChannel.type === 5 ? (
@@ -177,7 +177,7 @@ export default function NotificationSettingsPage() {
                                   ) : (
                                     <Icon icon="solar:hashtag-linear" className="h-4 w-4 shrink-0 text-slate-400" />
                                   )}
-                                  <span className="truncate">{selectedChannel.name}</span>
+                                  {selectedChannel.name}
                                 </span>
                               );
                             }
