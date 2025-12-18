@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useXpSettings, useUpdateXpSettings, useTextChannels } from "@/hooks/queries";
+import { useXpSettings, useUpdateXpSettings, useChannels } from "@/hooks/queries";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,8 +53,15 @@ export default function NotificationSettingsPage() {
   const { setHasUnsavedChanges } = useUnsavedChanges();
 
   const { data: settings, isLoading } = useXpSettings(guildId);
-  const { data: channels, isLoading: channelsLoading } = useTextChannels(guildId);
+  const { data: allChannels, isLoading: channelsLoading } = useChannels(guildId, null);
   const updateSettings = useUpdateXpSettings(guildId);
+
+  // 메시지 전송 가능한 채널만 필터링 (텍스트, 공지, 음성 채널의 텍스트)
+  const channels = allChannels?.filter(ch =>
+    ch.type === 0 ||  // GUILD_TEXT
+    ch.type === 5 ||  // GUILD_ANNOUNCEMENT
+    ch.type === 2     // GUILD_VOICE (텍스트 인 보이스)
+  );
 
   const form = useForm<NotificationFormValues>({
     resolver: zodResolver(notificationFormSchema),
@@ -167,19 +174,16 @@ export default function NotificationSettingsPage() {
                           </SelectItem>
                         ) : channels && channels.length > 0 ? (
                           <>
-                            {/* 현재 설정된 채널이 목록에 없는 경우 표시 */}
-                            {field.value && field.value !== "__none__" && !channels.find(ch => ch.id === field.value) && (
-                              <SelectItem value={field.value}>
-                                <span className="flex items-center gap-2">
-                                  <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-amber-400" />
-                                  <span className="text-amber-400">알 수 없는 채널 ({field.value})</span>
-                                </span>
-                              </SelectItem>
-                            )}
                             {channels.map((channel) => (
                               <SelectItem key={channel.id} value={channel.id}>
                                 <span className="flex items-center gap-2">
-                                  <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-slate-400" />
+                                  {channel.type === 2 ? (
+                                    <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
+                                  ) : channel.type === 5 ? (
+                                    <Icon icon="solar:megaphone-linear" className="h-4 w-4 text-amber-400" />
+                                  ) : (
+                                    <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-slate-400" />
+                                  )}
                                   {channel.name}
                                 </span>
                               </SelectItem>
