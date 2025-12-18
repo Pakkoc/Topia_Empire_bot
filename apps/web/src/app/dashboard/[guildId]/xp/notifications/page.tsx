@@ -80,11 +80,12 @@ export default function NotificationSettingsPage() {
   useEffect(() => {
     if (settings) {
       form.reset({
-        levelUpChannelId: settings.levelUpChannelId ?? "",
+        levelUpChannelId: settings.levelUpChannelId,
         levelUpMessage: settings.levelUpMessage ?? defaultMessage,
       });
     }
-  }, [settings, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
 
   const onSubmit = async (data: NotificationFormValues) => {
     try {
