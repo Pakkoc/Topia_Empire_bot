@@ -214,6 +214,35 @@ async function main() {
   const app = express();
   app.use(express.json());
 
+  // 채널 잠금 엔드포인트 (해금 채널 등록 시 @everyone 권한 제거)
+  app.post('/api/channels/lock', async (req, res) => {
+    const { guildId, channelId } = req.body;
+
+    if (!guildId || !channelId) {
+      return res.status(400).json({ error: 'guildId and channelId are required' });
+    }
+
+    try {
+      const guild = await client.guilds.fetch(guildId);
+      const channel = await guild.channels.fetch(channelId);
+
+      if (!channel || !('permissionOverwrites' in channel)) {
+        return res.status(404).json({ error: 'Channel not found or not a text channel' });
+      }
+
+      // @everyone 역할에 ViewChannel 권한 거부
+      await channel.permissionOverwrites.edit(guild.roles.everyone, {
+        ViewChannel: false,
+      });
+
+      console.log(`[LEVEL CHANNEL] Locked channel ${channel.name} (${channelId}) in guild ${guildId}`);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('[LEVEL CHANNEL] Failed to lock channel:', error);
+      return res.status(500).json({ error: 'Failed to lock channel' });
+    }
+  });
+
   // 설정 변경 알림 엔드포인트 (범용)
   app.post('/api/notify/settings-changed', (req, res) => {
     const { guildId, type, action, details } = req.body;

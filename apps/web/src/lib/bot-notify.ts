@@ -56,3 +56,28 @@ export async function notifyBotSettingsChanged({
     console.error('[BOT NOTIFY] Failed to connect to bot:', error);
   }
 }
+
+/**
+ * 봇에 채널 잠금 요청을 보냅니다.
+ * 해금 채널 등록 시 @everyone의 ViewChannel 권한을 거부합니다.
+ */
+export async function lockChannel(guildId: string, channelId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${BOT_API_URL}/api/channels/lock`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ guildId, channelId }),
+    });
+
+    if (!response.ok) {
+      console.error(`[BOT] Failed to lock channel: ${response.status}`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('[BOT] Failed to connect to bot for channel lock:', error);
+    return false;
+  }
+}

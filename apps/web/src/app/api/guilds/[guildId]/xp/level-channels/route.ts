@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { notifyBotSettingsChanged } from "@/lib/bot-notify";
+import { notifyBotSettingsChanged, lockChannel } from "@/lib/bot-notify";
 import { createLevelUnlockChannelSchema } from "@/types/xp";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
@@ -94,6 +94,9 @@ export async function POST(
       level: validatedData.level,
       channelId: validatedData.channelId,
     };
+
+    // 채널 잠금 (봇이 @everyone ViewChannel 권한 거부)
+    await lockChannel(guildId, validatedData.channelId);
 
     await notifyBotSettingsChanged({
       guildId,
