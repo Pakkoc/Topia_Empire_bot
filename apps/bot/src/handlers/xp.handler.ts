@@ -57,6 +57,8 @@ export function createXpHandler(container: Container, client: Client) {
             result.data.levelUpMessage
           );
         }
+      } else if (result.data.reason) {
+        console.log(`[XP BLOCKED] ${userId} in channel ${channelId} - reason: ${result.data.reason}`);
       }
     },
 
@@ -227,6 +229,8 @@ export function createXpHandler(container: Container, client: Client) {
             result.data.levelUpMessage
           );
         }
+      } else if (result.data.reason) {
+        console.log(`[VOICE XP BLOCKED] ${userId} in channel ${channelId} - reason: ${result.data.reason}`);
       }
     },
   };
