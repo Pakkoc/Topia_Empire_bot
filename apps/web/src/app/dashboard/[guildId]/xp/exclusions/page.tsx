@@ -9,7 +9,7 @@ import {
   useXpExclusions,
   useCreateXpExclusion,
   useDeleteXpExclusion,
-  useTextChannels,
+  useChannels,
   useRoles,
 } from "@/hooks/queries";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Hash, Shield, Loader2 } from "lucide-react";
+import { Plus, Trash2, Hash, Shield, Loader2, Volume2 } from "lucide-react";
 
 const exclusionFormSchema = z.object({
   targetType: z.enum(["channel", "role"]),
@@ -47,8 +47,29 @@ export default function XpExclusionsPage() {
   const [isAdding, setIsAdding] = useState(false);
 
   const { data: exclusions, isLoading } = useXpExclusions(guildId);
-  const { data: channels, isLoading: channelsLoading } = useTextChannels(guildId);
+  const { data: channels, isLoading: channelsLoading } = useChannels(guildId, null); // 모든 채널 (텍스트 + 음성)
   const { data: roles, isLoading: rolesLoading } = useRoles(guildId);
+
+  // 채널 타입 상수
+  const CHANNEL_TYPE_TEXT = 0;
+  const CHANNEL_TYPE_VOICE = 2;
+  const CHANNEL_TYPE_ANNOUNCEMENT = 5;
+  const CHANNEL_TYPE_STAGE_VOICE = 13;
+  const CHANNEL_TYPE_FORUM = 15;
+
+  // 텍스트/음성 채널만 필터링 (카테고리 제외)
+  const filteredChannels = channels?.filter(
+    (ch) =>
+      ch.type === CHANNEL_TYPE_TEXT ||
+      ch.type === CHANNEL_TYPE_VOICE ||
+      ch.type === CHANNEL_TYPE_ANNOUNCEMENT ||
+      ch.type === CHANNEL_TYPE_STAGE_VOICE ||
+      ch.type === CHANNEL_TYPE_FORUM
+  );
+
+  // 채널이 음성 채널인지 확인
+  const isVoiceChannel = (type: number) =>
+    type === CHANNEL_TYPE_VOICE || type === CHANNEL_TYPE_STAGE_VOICE;
   const createExclusion = useCreateXpExclusion(guildId);
   const deleteExclusion = useDeleteXpExclusion(guildId);
 
@@ -99,10 +120,13 @@ export default function XpExclusionsPage() {
   const channelExclusions = exclusions?.filter((e) => e.targetType === "channel") ?? [];
   const roleExclusions = exclusions?.filter((e) => e.targetType === "role") ?? [];
 
-  // Helper to get channel/role name by ID
+  // Helper to get channel by ID
+  const getChannel = (id: string) => {
+    return channels?.find((c) => c.id === id);
+  };
+
   const getChannelName = (id: string) => {
-    const channel = channels?.find((c) => c.id === id);
-    return channel?.name ?? id;
+    return getChannel(id)?.name ?? id;
   };
 
   const getRoleName = (id: string) => {
@@ -222,11 +246,15 @@ export default function XpExclusionsPage() {
                                   <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
                                   로딩 중...
                                 </SelectItem>
-                              ) : channels && channels.length > 0 ? (
-                                channels.map((channel) => (
+                              ) : filteredChannels && filteredChannels.length > 0 ? (
+                                filteredChannels.map((channel) => (
                                   <SelectItem key={channel.id} value={channel.id}>
                                     <span className="flex items-center gap-2">
-                                      <Hash className="h-4 w-4 text-slate-400" />
+                                      {isVoiceChannel(channel.type) ? (
+                                        <Volume2 className="h-4 w-4 text-green-400" />
+                                      ) : (
+                                        <Hash className="h-4 w-4 text-slate-400" />
+                                      )}
                                       {channel.name}
                                     </span>
                                   </SelectItem>
@@ -310,27 +338,40 @@ export default function XpExclusionsPage() {
           <CardContent>
             {channelExclusions.length > 0 ? (
               <div className="space-y-2">
-                {channelExclusions.map((exclusion) => (
-                  <div
-                    key={exclusion.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-700 p-3"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Hash className="h-4 w-4 text-slate-400" />
-                      <span className="text-slate-300">
-                        {getChannelName(exclusion.targetId)}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(exclusion.id)}
-                      className="text-red-400 hover:text-red-300"
+                {channelExclusions.map((exclusion) => {
+                  const channel = getChannel(exclusion.targetId);
+                  const isVoice = channel ? isVoiceChannel(channel.type) : false;
+                  return (
+                    <div
+                      key={exclusion.id}
+                      className="flex items-center justify-between rounded-lg border border-slate-700 p-3"
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2">
+                        {isVoice ? (
+                          <Volume2 className="h-4 w-4 text-green-400" />
+                        ) : (
+                          <Hash className="h-4 w-4 text-slate-400" />
+                        )}
+                        <span className="text-slate-300">
+                          {getChannelName(exclusion.targetId)}
+                        </span>
+                        {isVoice && (
+                          <Badge variant="outline" className="text-xs text-green-400 border-green-400/30">
+                            음성
+                          </Badge>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(exclusion.id)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="py-6 text-center">
