@@ -6,8 +6,6 @@ import { cn } from "@/lib/utils";
 import {
   BarChart3,
   Home,
-  MessageSquare,
-  Mic2,
   Settings,
   Shield,
   Sparkles,
@@ -29,8 +27,7 @@ const navigation = [
     name: "XP 시스템",
     icon: Zap,
     children: [
-      { name: "텍스트 XP", href: "/xp/text", icon: MessageSquare },
-      { name: "음성 XP", href: "/xp/voice", icon: Mic2 },
+      { name: "XP 설정", href: "/xp/settings", icon: Settings },
       { name: "레벨 설정", href: "/xp/levels", icon: TrendingUp },
       { name: "XP 핫타임", href: "/xp/hottime", icon: Sparkles },
       { name: "XP 차단", href: "/xp/exclusions", icon: Shield },
