@@ -2,12 +2,9 @@
 
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   useXpExclusions,
-  useCreateXpExclusion,
+  useCreateXpExclusionBulk,
   useDeleteXpExclusion,
   useChannels,
   useRoles,
@@ -21,41 +18,36 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Hash, Shield, Loader2, Volume2 } from "lucide-react";
+import { Plus, Trash2, Hash, Shield, Volume2 } from "lucide-react";
 
-const exclusionFormSchema = z.object({
-  targetType: z.enum(["channel", "role"]),
-  targetId: z.string().min(1, "선택해주세요"),
-});
+// 채널 타입 상수
+const CHANNEL_TYPE_TEXT = 0;
+const CHANNEL_TYPE_VOICE = 2;
+const CHANNEL_TYPE_ANNOUNCEMENT = 5;
+const CHANNEL_TYPE_STAGE_VOICE = 13;
+const CHANNEL_TYPE_FORUM = 15;
 
-type ExclusionFormValues = z.infer<typeof exclusionFormSchema>;
+// 채널이 음성 채널인지 확인
+const isVoiceChannel = (type: number) =>
+  type === CHANNEL_TYPE_VOICE || type === CHANNEL_TYPE_STAGE_VOICE;
 
 export default function XpExclusionsPage() {
   const params = useParams();
   const guildId = params["guildId"] as string;
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
+  const [targetType, setTargetType] = useState<"channel" | "role">("channel");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const { data: exclusions, isLoading } = useXpExclusions(guildId);
-  const { data: channels, isLoading: channelsLoading } = useChannels(guildId, null); // 모든 채널 (텍스트 + 음성)
+  const { data: channels, isLoading: channelsLoading } = useChannels(guildId, null);
   const { data: roles, isLoading: rolesLoading } = useRoles(guildId);
 
-  // 채널 타입 상수
-  const CHANNEL_TYPE_TEXT = 0;
-  const CHANNEL_TYPE_VOICE = 2;
-  const CHANNEL_TYPE_ANNOUNCEMENT = 5;
-  const CHANNEL_TYPE_STAGE_VOICE = 13;
-  const CHANNEL_TYPE_FORUM = 15;
+  const createExclusionBulk = useCreateXpExclusionBulk(guildId);
+  const deleteExclusion = useDeleteXpExclusion(guildId);
 
   // 텍스트/음성 채널만 필터링 (카테고리 제외)
   const filteredChannels = channels?.filter(
@@ -67,35 +59,61 @@ export default function XpExclusionsPage() {
       ch.type === CHANNEL_TYPE_FORUM
   );
 
-  // 채널이 음성 채널인지 확인
-  const isVoiceChannel = (type: number) =>
-    type === CHANNEL_TYPE_VOICE || type === CHANNEL_TYPE_STAGE_VOICE;
-  const createExclusion = useCreateXpExclusion(guildId);
-  const deleteExclusion = useDeleteXpExclusion(guildId);
+  // 이미 추가된 항목 제외
+  const existingChannelIds = new Set(
+    exclusions?.filter((e) => e.targetType === "channel").map((e) => e.targetId) ?? []
+  );
+  const existingRoleIds = new Set(
+    exclusions?.filter((e) => e.targetType === "role").map((e) => e.targetId) ?? []
+  );
 
-  const form = useForm<ExclusionFormValues>({
-    resolver: zodResolver(exclusionFormSchema),
-    defaultValues: {
-      targetType: "channel",
-      targetId: "",
-    },
-  });
+  // 채널 옵션 (이미 추가된 것 제외)
+  const channelOptions: MultiSelectOption[] = (filteredChannels ?? [])
+    .filter((ch) => !existingChannelIds.has(ch.id))
+    .map((ch) => ({
+      value: ch.id,
+      label: ch.name,
+      icon: isVoiceChannel(ch.type) ? (
+        <Volume2 className="h-4 w-4 text-green-400" />
+      ) : (
+        <Hash className="h-4 w-4 text-slate-400" />
+      ),
+    }));
 
-  const targetType = form.watch("targetType");
+  // 역할 옵션 (이미 추가된 것 제외)
+  const roleOptions: MultiSelectOption[] = (roles ?? [])
+    .filter((r) => !existingRoleIds.has(r.id))
+    .map((r) => ({
+      value: r.id,
+      label: r.name,
+      color: r.color === 0 ? "#99aab5" : `#${r.color.toString(16).padStart(6, "0")}`,
+    }));
 
-  const onSubmit = async (data: ExclusionFormValues) => {
-    try {
-      await createExclusion.mutateAsync(data);
+  const handleSubmit = async () => {
+    if (selectedIds.length === 0) {
       toast({
-        title: "제외 항목 추가 완료",
-        description: "새로운 제외 항목이 추가되었습니다.",
+        title: "선택 필요",
+        description: "최소 하나 이상 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createExclusionBulk.mutateAsync({
+        targetType,
+        targetIds: selectedIds,
+      });
+      toast({
+        title: "차단 추가 완료",
+        description: `${selectedIds.length}개의 ${targetType === "channel" ? "채널" : "역할"}이 차단되었습니다.`,
       });
       setIsAdding(false);
-      form.reset();
+      setSelectedIds([]);
     } catch {
       toast({
         title: "추가 실패",
-        description: "이미 존재하는 항목이거나 오류가 발생했습니다.",
+        description: "일부 항목이 이미 존재하거나 오류가 발생했습니다.",
         variant: "destructive",
       });
     }
@@ -120,19 +138,9 @@ export default function XpExclusionsPage() {
   const channelExclusions = exclusions?.filter((e) => e.targetType === "channel") ?? [];
   const roleExclusions = exclusions?.filter((e) => e.targetType === "role") ?? [];
 
-  // Helper to get channel by ID
-  const getChannel = (id: string) => {
-    return channels?.find((c) => c.id === id);
-  };
-
-  const getChannelName = (id: string) => {
-    return getChannel(id)?.name ?? id;
-  };
-
-  const getRoleName = (id: string) => {
-    const role = roles?.find((r) => r.id === id);
-    return role?.name ?? id;
-  };
+  const getChannel = (id: string) => channels?.find((c) => c.id === id);
+  const getChannelName = (id: string) => getChannel(id)?.name ?? id;
+  const getRoleName = (id: string) => roles?.find((r) => r.id === id)?.name ?? id;
 
   if (isLoading) {
     return (
@@ -174,152 +182,81 @@ export default function XpExclusionsPage() {
         </Button>
       </div>
 
-      {/* Add New Exclusion Form */}
+      {/* Add New Exclusion Form - Multi Select */}
       {isAdding && (
         <Card className="border-indigo-500/50 bg-slate-800/50">
           <CardHeader>
             <CardTitle className="text-white">새 차단 항목 추가</CardTitle>
             <CardDescription>
-              차단할 채널 또는 역할을 선택하세요.
+              차단할 채널 또는 역할을 여러 개 선택할 수 있습니다.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="targetType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white">유형</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            form.setValue("targetId", "");
-                          }}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="border-slate-700 bg-slate-900">
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="channel">채널</SelectItem>
-                            <SelectItem value="role">역할</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white">유형</label>
+                <Select
+                  value={targetType}
+                  onValueChange={(value: "channel" | "role") => {
+                    setTargetType(value);
+                    setSelectedIds([]);
+                  }}
+                >
+                  <SelectTrigger className="border-slate-700 bg-slate-900">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="channel">채널</SelectItem>
+                    <SelectItem value="role">역할</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  <FormField
-                    control={form.control}
-                    name="targetId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white">
-                          {targetType === "channel" ? "채널" : "역할"}
-                        </FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="border-slate-700 bg-slate-900">
-                              <SelectValue
-                                placeholder={
-                                  targetType === "channel"
-                                    ? channelsLoading
-                                      ? "로딩 중..."
-                                      : "채널 선택"
-                                    : rolesLoading
-                                    ? "로딩 중..."
-                                    : "역할 선택"
-                                }
-                              />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {targetType === "channel" ? (
-                              channelsLoading ? (
-                                <SelectItem value="loading" disabled>
-                                  <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-                                  로딩 중...
-                                </SelectItem>
-                              ) : filteredChannels && filteredChannels.length > 0 ? (
-                                filteredChannels.map((channel) => (
-                                  <SelectItem key={channel.id} value={channel.id}>
-                                    <span className="flex items-center gap-2">
-                                      {isVoiceChannel(channel.type) ? (
-                                        <Volume2 className="h-4 w-4 text-green-400" />
-                                      ) : (
-                                        <Hash className="h-4 w-4 text-slate-400" />
-                                      )}
-                                      {channel.name}
-                                    </span>
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="none" disabled>
-                                  채널이 없습니다
-                                </SelectItem>
-                              )
-                            ) : rolesLoading ? (
-                              <SelectItem value="loading" disabled>
-                                <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-                                로딩 중...
-                              </SelectItem>
-                            ) : roles && roles.length > 0 ? (
-                              roles.map((role) => (
-                                <SelectItem key={role.id} value={role.id}>
-                                  <span className="flex items-center gap-2">
-                                    <span
-                                      className="h-3 w-3 rounded-full"
-                                      style={{
-                                        backgroundColor:
-                                          role.color === 0
-                                            ? "#99aab5"
-                                            : `#${role.color.toString(16).padStart(6, "0")}`,
-                                      }}
-                                    />
-                                    {role.name}
-                                  </span>
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="none" disabled>
-                                역할이 없습니다
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white">
+                  {targetType === "channel" ? "채널 선택" : "역할 선택"}
+                </label>
+                <MultiSelect
+                  options={targetType === "channel" ? channelOptions : roleOptions}
+                  selected={selectedIds}
+                  onChange={setSelectedIds}
+                  placeholder={
+                    targetType === "channel"
+                      ? channelsLoading
+                        ? "로딩 중..."
+                        : "채널을 선택하세요"
+                      : rolesLoading
+                      ? "로딩 중..."
+                      : "역할을 선택하세요"
+                  }
+                  isLoading={targetType === "channel" ? channelsLoading : rolesLoading}
+                />
+              </div>
+            </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setIsAdding(false);
-                      form.reset();
-                    }}
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createExclusion.isPending}
-                    className="bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    {createExclusion.isPending ? "추가 중..." : "추가"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAdding(false);
+                  setSelectedIds([]);
+                }}
+              >
+                취소
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={createExclusionBulk.isPending || selectedIds.length === 0}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                {createExclusionBulk.isPending
+                  ? "추가 중..."
+                  : selectedIds.length > 0
+                  ? `${selectedIds.length}개 추가`
+                  : "추가"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

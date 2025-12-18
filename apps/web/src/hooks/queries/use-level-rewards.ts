@@ -61,3 +61,27 @@ export function useDeleteLevelReward(guildId: string) {
     },
   });
 }
+
+// 다중 추가
+export interface CreateLevelRewardBulk {
+  level: number;
+  roleIds: string[];
+  removeOnHigherLevel: boolean;
+}
+
+export function useCreateLevelRewardBulk(guildId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: CreateLevelRewardBulk) => {
+      const response = await apiClient.post<{ created: number; skipped: number }>(
+        `/api/guilds/${guildId}/xp/rewards/bulk`,
+        data
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["level-rewards", guildId] });
+    },
+  });
+}

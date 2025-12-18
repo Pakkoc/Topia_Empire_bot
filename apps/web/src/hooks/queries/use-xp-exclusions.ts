@@ -44,3 +44,26 @@ export function useDeleteXpExclusion(guildId: string) {
     },
   });
 }
+
+// 다중 추가
+export interface CreateXpExclusionBulk {
+  targetType: "channel" | "role";
+  targetIds: string[];
+}
+
+export function useCreateXpExclusionBulk(guildId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: CreateXpExclusionBulk) => {
+      const response = await apiClient.post<{ created: number; skipped: number }>(
+        `/api/guilds/${guildId}/xp/exclusions/bulk`,
+        data
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["xp-exclusions", guildId] });
+    },
+  });
+}
