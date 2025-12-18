@@ -158,3 +158,28 @@ type Result<T, E> =
 - 직접 SQL 쿼리 작성
 - connection pool은 `packages/infra/src/database/pool.ts`
 - 테이블 생성 시 `sql/schema/` 폴더에 SQL 파일 저장
+
+## 웹-봇 연동 (설정 변경 알림)
+
+웹에서 설정 변경 시 봇에 실시간 알림을 보내야 합니다.
+
+### 사용법
+
+1. `@/lib/bot-notify.ts`의 `notifyBotSettingsChanged` 함수 사용
+2. POST/PATCH/DELETE 성공 후 호출
+
+```typescript
+import { notifyBotSettingsChanged } from "@/lib/bot-notify";
+
+await notifyBotSettingsChanged({
+  guildId,
+  type: 'feature-name',  // 기능 타입
+  action: '추가',        // '추가' | '수정' | '삭제' | '변경'
+  details: '상세 내용',  // 선택사항
+});
+```
+
+### 새 타입 추가 시
+
+1. `apps/web/src/lib/bot-notify.ts`의 `SettingType`에 타입 추가
+2. `apps/bot/src/index.ts`의 `typeLabels`에 한글 라벨 추가
