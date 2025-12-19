@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChanges } from "@/contexts/unsaved-changes-context";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Icon } from "@iconify/react";
 
 const notificationFormSchema = z.object({
@@ -63,37 +63,23 @@ export default function NotificationSettingsPage() {
     ch.type === 2     // GUILD_VOICE (텍스트 인 보이스)
   );
 
+  // settings에서 channelId를 문자열로 변환 (API에서 숫자로 반환될 수 있음)
+  const formValues: NotificationFormValues = {
+    levelUpChannelId: settings?.levelUpChannelId ? String(settings.levelUpChannelId) : null,
+    levelUpMessage: settings?.levelUpMessage ?? defaultMessage,
+  };
+
   const form = useForm<NotificationFormValues>({
     resolver: zodResolver(notificationFormSchema),
-    defaultValues: {
-      levelUpChannelId: null,
-      levelUpMessage: null,
-    },
+    defaultValues: formValues,
+    values: settings ? formValues : undefined, // 외부 데이터와 자동 동기화
   });
 
   const isDirty = form.formState.isDirty;
-  const lastSettingsId = useRef<string | null>(null);
 
   useEffect(() => {
     setHasUnsavedChanges(isDirty);
   }, [isDirty, setHasUnsavedChanges]);
-
-  useEffect(() => {
-    // settings와 channels 데이터가 모두 있을 때만 form.reset 호출
-    if (settings && channels) {
-      // levelUpChannelId를 문자열로 변환 (API에서 숫자로 반환될 수 있음)
-      const channelId = settings.levelUpChannelId ? String(settings.levelUpChannelId) : null;
-      const currentSettingsKey = `${channelId}-${settings.levelUpMessage}`;
-      if (lastSettingsId.current !== currentSettingsKey) {
-        lastSettingsId.current = currentSettingsKey;
-        form.reset({
-          levelUpChannelId: channelId,
-          levelUpMessage: settings.levelUpMessage ?? defaultMessage,
-        });
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings, channels]);
 
   const onSubmit = async (data: NotificationFormValues) => {
     try {
@@ -101,9 +87,6 @@ export default function NotificationSettingsPage() {
         levelUpChannelId: data.levelUpChannelId || null,
         levelUpMessage: data.levelUpMessage || null,
       });
-      // 저장 후 lastSettingsId 업데이트 (useEffect에서 중복 리셋 방지)
-      lastSettingsId.current = `${data.levelUpChannelId}-${data.levelUpMessage}`;
-      form.reset(data);
       toast({
         title: "설정 저장 완료",
         description: "알림 설정이 저장되었습니다.",
