@@ -40,7 +40,6 @@ export default function LevelRewardsPage() {
   const { setHasUnsavedChanges } = useUnsavedChanges();
 
   // Role Rewards State
-  const [isAddingReward, setIsAddingReward] = useState(false);
   const [rewardLevel, setRewardLevel] = useState(5);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
   const [removeOnHigherLevel, setRemoveOnHigherLevel] = useState(false);
@@ -86,7 +85,6 @@ export default function LevelRewardsPage() {
         title: "보상 추가 완료",
         description: `레벨 ${rewardLevel}에 ${selectedRoleIds.length}개의 역할이 추가되었습니다.`,
       });
-      setIsAddingReward(false);
       setSelectedRoleIds([]);
       setRewardLevel(5);
       setRemoveOnHigherLevel(false);
@@ -138,16 +136,15 @@ export default function LevelRewardsPage() {
   const sortedRewards = [...(rewards ?? [])].sort((a, b) => a.level - b.level);
 
   // Level Channels State
-  const [isAddingChannel, setIsAddingChannel] = useState(false);
   const [channelLevel, setChannelLevel] = useState(5);
   const [selectedChannelId, setSelectedChannelId] = useState("");
 
-  // 추가 폼이 열려 있고 값이 입력된 경우 unsaved changes로 표시
+  // 폼에 값이 입력된 경우 unsaved changes로 표시
   useEffect(() => {
-    const hasRewardFormData = isAddingReward && selectedRoleIds.length > 0;
-    const hasChannelFormData = isAddingChannel && selectedChannelId !== "";
+    const hasRewardFormData = selectedRoleIds.length > 0;
+    const hasChannelFormData = selectedChannelId !== "";
     setHasUnsavedChanges(hasRewardFormData || hasChannelFormData);
-  }, [isAddingReward, selectedRoleIds, isAddingChannel, selectedChannelId, setHasUnsavedChanges]);
+  }, [selectedRoleIds, selectedChannelId, setHasUnsavedChanges]);
 
   const { data: levelChannels, isLoading: channelsLoading } = useLevelChannels(guildId);
   const { data: channels, isLoading: allChannelsLoading } = useChannels(guildId);
@@ -185,7 +182,6 @@ export default function LevelRewardsPage() {
         title: "해금 채널 추가 완료",
         description: `레벨 ${channelLevel}에 채널이 추가되었습니다.`,
       });
-      setIsAddingChannel(false);
       setSelectedChannelId("");
       setChannelLevel(5);
     } catch {
@@ -269,100 +265,10 @@ export default function LevelRewardsPage() {
         </TabsList>
 
         {/* 역할 보상 탭 */}
-        <TabsContent value="roles" className="space-y-6 animate-fade-up">
-          <div className="flex justify-end">
-            <Button
-              onClick={() => setIsAddingReward(true)}
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white shadow-lg shadow-indigo-500/25"
-            >
-              <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
-              보상 추가
-            </Button>
-          </div>
-
-          {/* Add Reward Form */}
-          {isAddingReward && (
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-indigo-500/30 animate-fade-up">
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 rounded-2xl" />
-
-              <div className="relative space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">새 레벨 보상 추가</h3>
-                  <p className="text-sm text-white/50">레벨과 역할을 여러 개 선택할 수 있습니다.</p>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">레벨</label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="999"
-                      value={rewardLevel}
-                      onChange={(e) => setRewardLevel(parseInt(e.target.value) || 1)}
-                      className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">역할 선택</label>
-                    <MultiSelect
-                      options={roleOptions}
-                      selected={selectedRoleIds}
-                      onChange={setSelectedRoleIds}
-                      placeholder={rolesLoading ? "로딩 중..." : "역할을 선택하세요"}
-                      isLoading={rolesLoading}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3 rounded-xl border border-white/10 bg-white/5 p-4">
-                  <Switch
-                    checked={removeOnHigherLevel}
-                    onCheckedChange={setRemoveOnHigherLevel}
-                  />
-                  <div className="space-y-1 leading-none">
-                    <label className="text-sm font-medium text-white">
-                      상위 레벨 달성 시 역할 제거
-                    </label>
-                    <p className="text-sm text-white/40">
-                      다음 레벨 보상을 받으면 이 역할을 제거합니다.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setIsAddingReward(false);
-                      setSelectedRoleIds([]);
-                      setRewardLevel(5);
-                      setRemoveOnHigherLevel(false);
-                    }}
-                    className="border-white/10 hover:bg-white/5"
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    onClick={handleSubmitReward}
-                    disabled={createRewardBulk.isPending || selectedRoleIds.length === 0}
-                    className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white"
-                  >
-                    {createRewardBulk.isPending
-                      ? "추가 중..."
-                      : selectedRoleIds.length > 0
-                      ? `${selectedRoleIds.length}개 추가`
-                      : "추가"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Rewards List */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
+        <TabsContent value="roles" className="animate-fade-up">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Rewards List */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
@@ -451,99 +357,80 @@ export default function LevelRewardsPage() {
               )}
             </div>
           </div>
+
+            {/* Add Reward Form */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden h-fit">
+              <div className="p-6 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                    <Icon icon="solar:add-circle-bold" className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">보상 추가</h3>
+                    <p className="text-sm text-white/50">레벨과 역할을 선택하세요</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70">레벨</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="999"
+                    value={rewardLevel}
+                    onChange={(e) => setRewardLevel(parseInt(e.target.value) || 1)}
+                    className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70">역할 선택</label>
+                  <MultiSelect
+                    options={roleOptions}
+                    selected={selectedRoleIds}
+                    onChange={setSelectedRoleIds}
+                    placeholder={rolesLoading ? "로딩 중..." : "역할을 선택하세요"}
+                    isLoading={rolesLoading}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-3 rounded-xl border border-white/10 bg-white/5 p-4">
+                  <Switch
+                    checked={removeOnHigherLevel}
+                    onCheckedChange={setRemoveOnHigherLevel}
+                  />
+                  <div className="space-y-1 leading-none">
+                    <label className="text-sm font-medium text-white">
+                      상위 레벨 달성 시 역할 제거
+                    </label>
+                    <p className="text-sm text-white/40">
+                      다음 레벨 보상을 받으면 이 역할을 제거합니다.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleSubmitReward}
+                  disabled={createRewardBulk.isPending || selectedRoleIds.length === 0}
+                  className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white"
+                >
+                  {createRewardBulk.isPending
+                    ? "추가 중..."
+                    : selectedRoleIds.length > 0
+                    ? `${selectedRoleIds.length}개 추가`
+                    : "추가"}
+                </Button>
+              </div>
+            </div>
+          </div>
         </TabsContent>
 
         {/* 해금 채널 탭 */}
-        <TabsContent value="channels" className="space-y-6 animate-fade-up">
-          <div className="flex justify-end">
-            <Button
-              onClick={() => setIsAddingChannel(true)}
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white shadow-lg shadow-indigo-500/25"
-            >
-              <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
-              해금 채널 추가
-            </Button>
-          </div>
-
-          {/* Add Channel Form */}
-          {isAddingChannel && (
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-indigo-500/30 animate-fade-up">
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 rounded-2xl" />
-
-              <div className="relative space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">새 해금 채널 추가</h3>
-                  <p className="text-sm text-white/50">특정 레벨에 도달하면 접근 가능한 채널을 설정합니다.</p>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">레벨</label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="999"
-                      value={channelLevel}
-                      onChange={(e) => setChannelLevel(parseInt(e.target.value) || 1)}
-                      className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">채널 선택</label>
-                    <Select
-                      value={selectedChannelId}
-                      onValueChange={setSelectedChannelId}
-                    >
-                      <SelectTrigger className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
-                        <SelectValue placeholder={allChannelsLoading ? "로딩 중..." : "채널을 선택하세요"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableChannels.map((channel) => (
-                          <SelectItem key={channel.id} value={channel.id}>
-                            <div className="flex items-center gap-2">
-                              <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-white/40" />
-                              {channel.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                        {availableChannels.length === 0 && (
-                          <div className="px-2 py-4 text-center text-sm text-white/40">
-                            사용 가능한 채널이 없습니다.
-                          </div>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setIsAddingChannel(false);
-                      setSelectedChannelId("");
-                      setChannelLevel(5);
-                    }}
-                    className="border-white/10 hover:bg-white/5"
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    onClick={handleSubmitChannel}
-                    disabled={createLevelChannel.isPending || !selectedChannelId}
-                    className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white"
-                  >
-                    {createLevelChannel.isPending ? "추가 중..." : "추가"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Level Channels List */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
+        <TabsContent value="channels" className="animate-fade-up">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Level Channels List */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
@@ -610,6 +497,70 @@ export default function LevelRewardsPage() {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+
+            {/* Add Channel Form */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden h-fit">
+              <div className="p-6 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                    <Icon icon="solar:add-circle-bold" className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">해금 채널 추가</h3>
+                    <p className="text-sm text-white/50">레벨과 채널을 선택하세요</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70">레벨</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="999"
+                    value={channelLevel}
+                    onChange={(e) => setChannelLevel(parseInt(e.target.value) || 1)}
+                    className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70">채널 선택</label>
+                  <Select
+                    value={selectedChannelId}
+                    onValueChange={setSelectedChannelId}
+                  >
+                    <SelectTrigger className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
+                      <SelectValue placeholder={allChannelsLoading ? "로딩 중..." : "채널을 선택하세요"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableChannels.map((channel) => (
+                        <SelectItem key={channel.id} value={channel.id}>
+                          <div className="flex items-center gap-2">
+                            <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-white/40" />
+                            {channel.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                      {availableChannels.length === 0 && (
+                        <div className="px-2 py-4 text-center text-sm text-white/40">
+                          사용 가능한 채널이 없습니다.
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  onClick={handleSubmitChannel}
+                  disabled={createLevelChannel.isPending || !selectedChannelId}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white"
+                >
+                  {createLevelChannel.isPending ? "추가 중..." : "추가"}
+                </Button>
+              </div>
             </div>
           </div>
         </TabsContent>
