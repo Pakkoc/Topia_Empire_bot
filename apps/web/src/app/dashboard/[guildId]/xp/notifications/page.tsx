@@ -72,21 +72,24 @@ export default function NotificationSettingsPage() {
   });
 
   const isDirty = form.formState.isDirty;
-  const isInitialized = useRef(false);
+  const lastSettingsId = useRef<string | null>(null);
 
   useEffect(() => {
     setHasUnsavedChanges(isDirty);
   }, [isDirty, setHasUnsavedChanges]);
 
   useEffect(() => {
-    // settings와 channels가 모두 로드된 후에만 form.reset 호출 (최초 1회만)
-    // (Radix Select가 value와 일치하는 SelectItem이 없으면 값을 리셋하는 문제 방지)
-    if (settings && !channelsLoading && !isInitialized.current) {
-      isInitialized.current = true;
-      form.reset({
-        levelUpChannelId: settings.levelUpChannelId,
-        levelUpMessage: settings.levelUpMessage ?? defaultMessage,
-      });
+    // settings와 channels가 모두 로드된 후에만 form.reset 호출
+    // settings.levelUpChannelId가 변경되었을 때만 리셋 (중복 호출 방지)
+    if (settings && !channelsLoading) {
+      const currentSettingsKey = `${settings.levelUpChannelId}-${settings.levelUpMessage}`;
+      if (lastSettingsId.current !== currentSettingsKey) {
+        lastSettingsId.current = currentSettingsKey;
+        form.reset({
+          levelUpChannelId: settings.levelUpChannelId,
+          levelUpMessage: settings.levelUpMessage ?? defaultMessage,
+        });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings, channelsLoading]);
@@ -97,6 +100,8 @@ export default function NotificationSettingsPage() {
         levelUpChannelId: data.levelUpChannelId || null,
         levelUpMessage: data.levelUpMessage || null,
       });
+      // 저장 후 lastSettingsId 업데이트 (useEffect에서 중복 리셋 방지)
+      lastSettingsId.current = `${data.levelUpChannelId}-${data.levelUpMessage}`;
       form.reset(data);
       toast({
         title: "설정 저장 완료",
