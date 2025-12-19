@@ -423,7 +423,7 @@ export default function XpRulesPage() {
               value="multipliers"
               className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
             >
-              <Icon icon="solar:percent-linear" className="mr-2 h-4 w-4" />
+              <Icon icon="solar:chart-2-linear" className="mr-2 h-4 w-4" />
               배율
             </TabsTrigger>
             <TabsTrigger
@@ -544,7 +544,7 @@ export default function XpRulesPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-white/70 flex items-center gap-1">
-                              <Icon icon="solar:percent-linear" className="w-4 h-4" />
+                              <Icon icon="solar:chart-2-linear" className="w-4 h-4" />
                               배율
                             </FormLabel>
                             <FormControl>
@@ -737,7 +737,7 @@ export default function XpRulesPage() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-white/70 flex items-center gap-1">
-                      <Icon icon="solar:percent-linear" className="w-4 h-4" />
+                      <Icon icon="solar:chart-2-linear" className="w-4 h-4" />
                       배율
                     </label>
                     <Input
