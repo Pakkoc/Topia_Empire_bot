@@ -81,6 +81,9 @@ export default function XpRulesPage() {
   const { toast } = useToast();
   const { setHasUnsavedChanges } = useUnsavedChanges();
 
+  // Tab State
+  const [activeTab, setActiveTab] = useState("hottime");
+
   // Hot Time State
   const [isAddingHotTime, setIsAddingHotTime] = useState(false);
   const { data: hotTimes, isLoading: hotTimesLoading } = useXpHotTimes(guildId);
@@ -406,34 +409,33 @@ export default function XpRulesPage() {
         <p className="text-white/50 mt-1">XP 보너스 및 제한 규칙을 설정합니다.</p>
       </div>
 
-      <Tabs defaultValue="hottime" className="space-y-6">
-        <TabsList className="bg-white/5 border border-white/10 p-1 rounded-xl">
-          <TabsTrigger
-            value="hottime"
-            className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
-          >
-            <Icon icon="solar:stars-linear" className="mr-2 h-4 w-4" />
-            핫타임
-          </TabsTrigger>
-          <TabsTrigger
-            value="multipliers"
-            className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
-          >
-            <Icon icon="solar:percent-linear" className="mr-2 h-4 w-4" />
-            배율
-          </TabsTrigger>
-          <TabsTrigger
-            value="exclusions"
-            className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
-          >
-            <Icon icon="solar:shield-linear" className="mr-2 h-4 w-4" />
-            XP 차단
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="flex items-center justify-between">
+          <TabsList className="bg-white/5 border border-white/10 p-1 rounded-xl">
+            <TabsTrigger
+              value="hottime"
+              className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+            >
+              <Icon icon="solar:stars-linear" className="mr-2 h-4 w-4" />
+              핫타임
+            </TabsTrigger>
+            <TabsTrigger
+              value="multipliers"
+              className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+            >
+              <Icon icon="solar:percent-linear" className="mr-2 h-4 w-4" />
+              배율
+            </TabsTrigger>
+            <TabsTrigger
+              value="exclusions"
+              className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+            >
+              <Icon icon="solar:shield-linear" className="mr-2 h-4 w-4" />
+              XP 차단
+            </TabsTrigger>
+          </TabsList>
 
-        {/* 핫타임 탭 */}
-        <TabsContent value="hottime" className="space-y-6 animate-fade-up">
-          <div className="flex justify-end">
+          {activeTab === "hottime" && (
             <Button
               onClick={() => setIsAddingHotTime(true)}
               className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white shadow-lg shadow-indigo-500/25"
@@ -441,8 +443,31 @@ export default function XpRulesPage() {
               <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
               핫타임 추가
             </Button>
-          </div>
+          )}
 
+          {activeTab === "multipliers" && (
+            <Button
+              onClick={() => setIsAddingMultiplier(true)}
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white shadow-lg shadow-indigo-500/25"
+            >
+              <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
+              배율 추가
+            </Button>
+          )}
+
+          {activeTab === "exclusions" && (
+            <Button
+              onClick={() => setIsAddingExclusion(true)}
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white shadow-lg shadow-indigo-500/25"
+            >
+              <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
+              차단 추가
+            </Button>
+          )}
+        </div>
+
+        {/* 핫타임 탭 */}
+        <TabsContent value="hottime" className="space-y-6 animate-fade-up">
           {/* Add Hot Time Form */}
           {isAddingHotTime && (
             <div className="relative bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-indigo-500/30 animate-fade-up">
@@ -640,16 +665,6 @@ export default function XpRulesPage() {
               <strong className="text-amber-200">우선순위:</strong> 역할 배율이 채널 배율보다 우선됩니다.
               여러 역할을 가진 경우 가장 높은 배율이 적용됩니다.
             </p>
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              onClick={() => setIsAddingMultiplier(true)}
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white shadow-lg shadow-indigo-500/25"
-            >
-              <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
-              배율 추가
-            </Button>
           </div>
 
           {/* Add Multiplier Form */}
@@ -899,16 +914,6 @@ export default function XpRulesPage() {
 
         {/* XP 차단 탭 */}
         <TabsContent value="exclusions" className="space-y-6 animate-fade-up">
-          <div className="flex justify-end">
-            <Button
-              onClick={() => setIsAddingExclusion(true)}
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white shadow-lg shadow-indigo-500/25"
-            >
-              <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
-              차단 추가
-            </Button>
-          </div>
-
           {/* Add Exclusion Form */}
           {isAddingExclusion && (
             <div className="relative bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-indigo-500/30 animate-fade-up">
