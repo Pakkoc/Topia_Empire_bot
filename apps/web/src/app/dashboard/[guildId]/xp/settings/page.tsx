@@ -525,25 +525,8 @@ export default function XpSettingsPage() {
 
         {/* 레벨 설정 탭 */}
         <TabsContent value="levels" className="space-y-6 animate-fade-up">
-          {/* Info Card */}
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                <Icon icon="solar:info-circle-linear" className="w-4 h-4 text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-blue-300 font-medium">기본 공식</p>
-                <p className="text-sm text-blue-300/70 mt-1">
-                  레벨² × 100 (예: 레벨 5 = 2,500 XP)
-                  <br />
-                  커스텀 설정이 없으면 기본 공식이 적용됩니다.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-between">
+            <div />
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -560,6 +543,23 @@ export default function XpSettingsPage() {
                 <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
                 레벨 추가
               </Button>
+            </div>
+          </div>
+
+          {/* Info Card */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                <Icon icon="solar:info-circle-linear" className="w-4 h-4 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-blue-300 font-medium">기본 공식</p>
+                <p className="text-sm text-blue-300/70 mt-1">
+                  레벨² × 100 (예: 레벨 5 = 2,500 XP)
+                  <br />
+                  커스텀 설정이 없으면 기본 공식이 적용됩니다.
+                </p>
+              </div>
             </div>
           </div>
 
