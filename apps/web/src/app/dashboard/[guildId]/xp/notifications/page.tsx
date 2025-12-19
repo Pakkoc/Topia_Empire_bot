@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChanges } from "@/contexts/unsaved-changes-context";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Icon } from "@iconify/react";
 
 const notificationFormSchema = z.object({
@@ -72,15 +72,17 @@ export default function NotificationSettingsPage() {
   });
 
   const isDirty = form.formState.isDirty;
+  const isInitialized = useRef(false);
 
   useEffect(() => {
     setHasUnsavedChanges(isDirty);
   }, [isDirty, setHasUnsavedChanges]);
 
   useEffect(() => {
-    // settings와 channels가 모두 로드된 후에만 form.reset 호출
+    // settings와 channels가 모두 로드된 후에만 form.reset 호출 (최초 1회만)
     // (Radix Select가 value와 일치하는 SelectItem이 없으면 값을 리셋하는 문제 방지)
-    if (settings && !channelsLoading) {
+    if (settings && !channelsLoading && !isInitialized.current) {
+      isInitialized.current = true;
       form.reset({
         levelUpChannelId: settings.levelUpChannelId,
         levelUpMessage: settings.levelUpMessage ?? defaultMessage,
