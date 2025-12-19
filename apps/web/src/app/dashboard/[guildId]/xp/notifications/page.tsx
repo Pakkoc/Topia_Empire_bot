@@ -80,13 +80,14 @@ export default function NotificationSettingsPage() {
 
   useEffect(() => {
     // settings와 channels 데이터가 모두 있을 때만 form.reset 호출
-    // (channelsLoading 대신 channels 데이터 존재 여부로 확인 - 캐시된 데이터도 사용)
     if (settings && channels) {
-      const currentSettingsKey = `${settings.levelUpChannelId}-${settings.levelUpMessage}`;
+      // levelUpChannelId를 문자열로 변환 (API에서 숫자로 반환될 수 있음)
+      const channelId = settings.levelUpChannelId ? String(settings.levelUpChannelId) : null;
+      const currentSettingsKey = `${channelId}-${settings.levelUpMessage}`;
       if (lastSettingsId.current !== currentSettingsKey) {
         lastSettingsId.current = currentSettingsKey;
         form.reset({
-          levelUpChannelId: settings.levelUpChannelId,
+          levelUpChannelId: channelId,
           levelUpMessage: settings.levelUpMessage ?? defaultMessage,
         });
       }
