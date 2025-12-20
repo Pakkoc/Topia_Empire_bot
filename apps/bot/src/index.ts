@@ -311,9 +311,9 @@ async function main() {
       console.log(`[SETTINGS] 상세: ${details}`);
     }
 
-    // 레벨 설정 변경 시 모든 유저의 레벨과 역할 동기화
-    if (type === 'xp-level-requirement') {
-      console.log(`[SETTINGS] 레벨 설정 변경 감지 - 역할 동기화 시작...`);
+    // 레벨 설정 또는 역할 보상 변경 시 모든 유저의 레벨과 역할 동기화
+    if (type === 'xp-level-requirement' || type === 'xp-reward') {
+      console.log(`[SETTINGS] ${typeLabel} 변경 감지 - 역할 동기화 시작...`);
       const syncResult = await xpHandler.syncAllUserLevelsAndRewards(guildId);
       console.log(`[SETTINGS] 역할 동기화 완료: ${syncResult.updatedCount}/${syncResult.totalUsers}명 업데이트`);
     }

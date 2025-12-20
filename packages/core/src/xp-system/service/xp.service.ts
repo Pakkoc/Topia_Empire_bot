@@ -397,7 +397,7 @@ export class XpService {
 
   /**
    * 모든 유저의 레벨을 재계산하고 역할 보상 정보를 반환합니다.
-   * 레벨 요구사항이 변경되었을 때 호출됩니다.
+   * 레벨 요구사항 또는 역할 보상이 변경되었을 때 호출됩니다.
    */
   async syncAllUserLevels(guildId: string): Promise<Result<{
     updatedUsers: Array<{
@@ -430,7 +430,7 @@ export class XpService {
     const rewardsResult = await this.settingsRepo.getLevelRewards(guildId);
     const rewards = rewardsResult.success ? rewardsResult.data : [];
 
-    // 4. 각 유저의 레벨 재계산
+    // 4. 각 유저의 레벨 재계산 및 역할 동기화
     const now = this.clock.now();
     const updatedUsers: Array<{
       userId: string;
@@ -444,33 +444,34 @@ export class XpService {
 
     for (const user of users) {
       const newLevel = calculateLevelWithCustom(user.xp, levelRequirements);
+      const levelChanged = newLevel !== user.level;
 
-      if (newLevel !== user.level) {
-        // 레벨이 변경된 경우
-        const rolesToAdd: LevelRewardInfo[] = [];
-        const rolesToRemove: string[] = [];
+      // 역할 보상 계산 (레벨 변경 여부와 관계없이 항상 계산)
+      const rolesToAdd: LevelRewardInfo[] = [];
+      const rolesToRemove: string[] = [];
 
-        // 새 레벨에 해당하는 보상 역할 찾기 (현재 레벨 이하 모든 보상)
-        for (const reward of rewards) {
-          if (reward.level <= newLevel) {
-            // 현재 레벨 이하의 모든 보상 역할 추가
-            if (!reward.removeOnHigherLevel || reward.level === newLevel) {
-              rolesToAdd.push({
-                roleId: reward.roleId,
-                removeOnHigherLevel: reward.removeOnHigherLevel,
-              });
-            }
-          }
-          // 새 레벨보다 높은 레벨의 보상 역할은 제거
-          if (reward.level > newLevel) {
-            rolesToRemove.push(reward.roleId);
-          }
-          // removeOnHigherLevel이 true이고 현재 레벨보다 낮은 보상은 제거
-          if (reward.removeOnHigherLevel && reward.level < newLevel) {
-            rolesToRemove.push(reward.roleId);
+      for (const reward of rewards) {
+        if (reward.level <= newLevel) {
+          // 현재 레벨 이하의 보상 역할 추가
+          if (!reward.removeOnHigherLevel || reward.level === newLevel) {
+            rolesToAdd.push({
+              roleId: reward.roleId,
+              removeOnHigherLevel: reward.removeOnHigherLevel,
+            });
           }
         }
+        // 새 레벨보다 높은 레벨의 보상 역할은 제거
+        if (reward.level > newLevel) {
+          rolesToRemove.push(reward.roleId);
+        }
+        // removeOnHigherLevel이 true이고 현재 레벨보다 낮은 보상은 제거
+        if (reward.removeOnHigherLevel && reward.level < newLevel) {
+          rolesToRemove.push(reward.roleId);
+        }
+      }
 
+      // 역할 변경이 있거나 레벨이 변경된 경우에만 추가
+      if (rolesToAdd.length > 0 || rolesToRemove.length > 0 || levelChanged) {
         updatedUsers.push({
           userId: user.userId,
           oldLevel: user.level,
@@ -479,15 +480,17 @@ export class XpService {
           rolesToRemove,
         });
 
-        usersToSave.push({
-          ...user,
-          level: newLevel,
-          updatedAt: now,
-        });
+        if (levelChanged) {
+          usersToSave.push({
+            ...user,
+            level: newLevel,
+            updatedAt: now,
+          });
+        }
       }
     }
 
-    // 5. 변경된 유저들 저장
+    // 5. 레벨이 변경된 유저들 저장
     if (usersToSave.length > 0) {
       const saveResult = await this.xpRepo.saveBulk(usersToSave);
       if (!saveResult.success) {
