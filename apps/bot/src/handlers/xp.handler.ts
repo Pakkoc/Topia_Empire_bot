@@ -273,5 +273,81 @@ export function createXpHandler(container: Container, client: Client) {
         totalUsers,
       };
     },
+
+    /**
+     * 해금 채널 설정 변경 시 모든 채널 권한을 동기화합니다.
+     */
+    async syncAllChannelPermissions(guildId: string): Promise<{
+      success: boolean;
+      lockedChannels: number;
+      totalPermissionsSet: number;
+    }> {
+      console.log(`[CHANNEL SYNC] Starting channel sync for guild ${guildId}...`);
+
+      const result = await container.xpService.syncAllUserChannels(guildId);
+
+      if (!result.success) {
+        console.error('[CHANNEL SYNC] Failed to sync channels:', result.error);
+        return { success: false, lockedChannels: 0, totalPermissionsSet: 0 };
+      }
+
+      const { channelsToLock, userChannelPermissions } = result.data;
+
+      try {
+        const guild = await client.guilds.fetch(guildId);
+
+        // 1. 모든 해금 채널 잠금 (@everyone ViewChannel 거부)
+        for (const channelId of channelsToLock) {
+          try {
+            const channel = await guild.channels.fetch(channelId);
+            if (channel && 'permissionOverwrites' in channel) {
+              // @everyone 권한 거부
+              await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                ViewChannel: false,
+              });
+              console.log(`[CHANNEL SYNC] Locked channel ${channelId}`);
+            }
+          } catch (err) {
+            console.error(`[CHANNEL SYNC] Failed to lock channel ${channelId}:`, err);
+          }
+        }
+
+        // 2. 자격 있는 유저들에게 채널 권한 부여
+        let totalPermissionsSet = 0;
+        for (const { channelId, userIds } of userChannelPermissions) {
+          try {
+            const channel = await guild.channels.fetch(channelId);
+            if (channel && 'permissionOverwrites' in channel) {
+              for (const userId of userIds) {
+                try {
+                  const member = await guild.members.fetch(userId);
+                  await channel.permissionOverwrites.edit(member, {
+                    ViewChannel: true,
+                    SendMessages: true,
+                  });
+                  totalPermissionsSet++;
+                } catch (err) {
+                  // 멤버를 찾을 수 없는 경우 무시
+                  console.error(`[CHANNEL SYNC] Failed to set permission for user ${userId}:`, err);
+                }
+              }
+              console.log(`[CHANNEL SYNC] Set permissions for ${userIds.length} users on channel ${channelId}`);
+            }
+          } catch (err) {
+            console.error(`[CHANNEL SYNC] Failed to process channel ${channelId}:`, err);
+          }
+        }
+
+        console.log(`[CHANNEL SYNC] Completed channel sync for guild ${guildId}`);
+        return {
+          success: true,
+          lockedChannels: channelsToLock.length,
+          totalPermissionsSet,
+        };
+      } catch (error) {
+        console.error('[CHANNEL SYNC] Failed to sync channel permissions:', error);
+        return { success: false, lockedChannels: 0, totalPermissionsSet: 0 };
+      }
+    },
   };
 }

@@ -503,4 +503,77 @@ export class XpService {
       totalUsers: users.length,
     });
   }
+
+  /**
+   * 모든 유저의 레벨에 따라 해금 채널 권한 정보를 반환합니다.
+   * 해금 채널 설정이 변경되었을 때 호출됩니다.
+   */
+  async syncAllUserChannels(guildId: string): Promise<Result<{
+    channelsToLock: string[];
+    userChannelPermissions: Array<{
+      channelId: string;
+      userIds: string[];
+    }>;
+    totalUsers: number;
+  }, XpError>> {
+    // 1. 모든 유저 조회
+    const usersResult = await this.xpRepo.getAllByGuild(guildId);
+    if (!usersResult.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: usersResult.error });
+    }
+
+    const users = usersResult.data;
+
+    // 2. 레벨 요구사항 조회
+    const levelReqResult = await this.settingsRepo.getLevelRequirements(guildId);
+    const levelRequirements = levelReqResult.success
+      ? toLevelRequirementsMap(levelReqResult.data)
+      : new Map<number, number>();
+
+    // 3. 해금 채널 조회
+    const channelsResult = await this.settingsRepo.getLevelChannels(guildId);
+    if (!channelsResult.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: channelsResult.error });
+    }
+
+    const levelChannels = channelsResult.data;
+    if (levelChannels.length === 0) {
+      return Result.ok({
+        channelsToLock: [],
+        userChannelPermissions: [],
+        totalUsers: users.length,
+      });
+    }
+
+    // 4. 모든 해금 채널 ID 목록 (잠금 대상)
+    const channelsToLock = levelChannels.map(c => c.channelId);
+
+    // 5. 각 채널별로 접근 가능한 유저 목록 계산
+    const userChannelPermissions: Array<{
+      channelId: string;
+      userIds: string[];
+    }> = [];
+
+    for (const channel of levelChannels) {
+      const eligibleUserIds: string[] = [];
+
+      for (const user of users) {
+        const userLevel = calculateLevelWithCustom(user.xp, levelRequirements);
+        if (userLevel >= channel.level) {
+          eligibleUserIds.push(user.userId);
+        }
+      }
+
+      userChannelPermissions.push({
+        channelId: channel.channelId,
+        userIds: eligibleUserIds,
+      });
+    }
+
+    return Result.ok({
+      channelsToLock,
+      userChannelPermissions,
+      totalUsers: users.length,
+    });
+  }
 }

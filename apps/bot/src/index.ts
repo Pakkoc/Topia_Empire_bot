@@ -318,6 +318,13 @@ async function main() {
       console.log(`[SETTINGS] 역할 동기화 완료: ${syncResult.updatedCount}/${syncResult.totalUsers}명 업데이트`);
     }
 
+    // 해금 채널 변경 시 채널 권한 동기화
+    if (type === 'xp-level-channel') {
+      console.log(`[SETTINGS] ${typeLabel} 변경 감지 - 채널 권한 동기화 시작...`);
+      const channelSyncResult = await xpHandler.syncAllChannelPermissions(guildId);
+      console.log(`[SETTINGS] 채널 동기화 완료: ${channelSyncResult.lockedChannels}개 채널 잠금, ${channelSyncResult.totalPermissionsSet}개 권한 설정`);
+    }
+
     return res.json({ success: true });
   });
 
