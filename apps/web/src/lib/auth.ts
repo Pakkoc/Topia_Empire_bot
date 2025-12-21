@@ -9,6 +9,7 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: {
           scope: "identify email guilds",
+          prompt: "consent",
         },
       },
     }),
