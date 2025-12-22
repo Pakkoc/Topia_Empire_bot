@@ -316,6 +316,11 @@ async function main() {
       console.log(`[SETTINGS] ${typeLabel} 변경 감지 - 역할 동기화 시작...`);
       const syncResult = await xpHandler.syncAllUserLevelsAndRewards(guildId);
       console.log(`[SETTINGS] 역할 동기화 완료: ${syncResult.updatedCount}/${syncResult.totalUsers}명 업데이트`);
+
+      // 레벨 변경에 따른 해금 채널 권한도 동기화
+      console.log(`[SETTINGS] 레벨 변경에 따른 채널 권한 동기화 시작...`);
+      const channelSyncResult = await xpHandler.syncAllChannelPermissions(guildId);
+      console.log(`[SETTINGS] 채널 동기화 완료: ${channelSyncResult.lockedChannels}개 채널 잠금, ${channelSyncResult.totalPermissionsSet}개 권한 설정`);
     }
 
     // 해금 채널 변경 시 채널 권한 동기화
