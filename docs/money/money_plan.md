@@ -31,6 +31,34 @@ XP 시스템과 동일한 아키텍처 패턴으로 토피/루비 화폐 시스�
 ### 핵심 테이블 스키마
 
 ```sql
+-- 10_currency_settings.sql
+CREATE TABLE currency_settings (
+    guild_id VARCHAR(20) NOT NULL,
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+
+    -- 텍스트 보상 설정
+    text_earn_enabled TINYINT(1) NOT NULL DEFAULT 1,
+    text_earn_min INT NOT NULL DEFAULT 1,
+    text_earn_max INT NOT NULL DEFAULT 1,
+    text_min_length INT NOT NULL DEFAULT 15,
+    text_cooldown_seconds INT NOT NULL DEFAULT 30,
+    text_max_per_cooldown INT NOT NULL DEFAULT 1,
+    text_daily_limit INT NOT NULL DEFAULT 300,
+
+    -- 음성 보상 설정
+    voice_earn_enabled TINYINT(1) NOT NULL DEFAULT 1,
+    voice_earn_min INT NOT NULL DEFAULT 1,
+    voice_earn_max INT NOT NULL DEFAULT 1,
+    voice_cooldown_seconds INT NOT NULL DEFAULT 60,
+    voice_daily_limit INT NOT NULL DEFAULT 2000,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (guild_id),
+    CONSTRAINT fk_currency_settings_guild FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 11_topy_wallets.sql
 CREATE TABLE topy_wallets (
     guild_id VARCHAR(20) NOT NULL,
@@ -38,20 +66,36 @@ CREATE TABLE topy_wallets (
     balance BIGINT NOT NULL DEFAULT 0,
     total_earned BIGINT NOT NULL DEFAULT 0,
     daily_earned INT NOT NULL DEFAULT 0,
-    daily_reset_at DATE NOT NULL,
+    daily_reset_at DATETIME NOT NULL,
     last_text_earn_at DATETIME NULL,
     text_count_in_cooldown INT NOT NULL DEFAULT 0,
     last_voice_earn_at DATETIME NULL,
     voice_count_in_cooldown INT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
     PRIMARY KEY (guild_id, user_id),
-    INDEX idx_topy_balance (guild_id, balance DESC)
-);
+    KEY idx_topy_balance (guild_id, balance DESC),
+    CONSTRAINT fk_topy_wallets_guild FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 12_ruby_wallets.sql
+CREATE TABLE ruby_wallets (
+    guild_id VARCHAR(20) NOT NULL,
+    user_id VARCHAR(20) NOT NULL,
+    balance BIGINT NOT NULL DEFAULT 0,
+    total_earned BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (guild_id, user_id),
+    KEY idx_ruby_balance (guild_id, balance DESC),
+    CONSTRAINT fk_ruby_wallets_guild FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 13_currency_transactions.sql
 CREATE TABLE currency_transactions (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT NOT NULL AUTO_INCREMENT,
     guild_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(20) NOT NULL,
     currency_type ENUM('topy', 'ruby') NOT NULL,
@@ -62,13 +106,61 @@ CREATE TABLE currency_transactions (
     related_user_id VARCHAR(20) NULL,
     description TEXT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_tx_user (guild_id, user_id, created_at DESC),
-    INDEX idx_tx_type (guild_id, transaction_type, created_at DESC)
-);
+
+    PRIMARY KEY (id),
+    KEY idx_tx_user (guild_id, user_id, created_at DESC),
+    KEY idx_tx_type (guild_id, transaction_type, created_at DESC),
+    CONSTRAINT fk_currency_tx_guild FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 14_currency_hot_times.sql
+CREATE TABLE currency_hot_times (
+    id INT NOT NULL AUTO_INCREMENT,
+    guild_id VARCHAR(20) NOT NULL,
+    type ENUM('text', 'voice', 'all') NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    multiplier DECIMAL(4,2) NOT NULL DEFAULT 1.50,
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+    KEY idx_currency_hot_times_lookup (guild_id, type, enabled),
+    CONSTRAINT fk_currency_hot_times_guild FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 15_currency_exclusions.sql
+CREATE TABLE currency_exclusions (
+    id INT NOT NULL AUTO_INCREMENT,
+    guild_id VARCHAR(20) NOT NULL,
+    target_type ENUM('channel', 'role') NOT NULL,
+    target_id VARCHAR(20) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_currency_exclusions (guild_id, target_type, target_id),
+    KEY idx_currency_exclusions_lookup (guild_id, target_type),
+    CONSTRAINT fk_currency_exclusions_guild FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 16_currency_multipliers.sql
+CREATE TABLE currency_multipliers (
+    id INT NOT NULL AUTO_INCREMENT,
+    guild_id VARCHAR(20) NOT NULL,
+    target_type ENUM('channel', 'role') NOT NULL,
+    target_id VARCHAR(20) NOT NULL,
+    multiplier DECIMAL(4,2) NOT NULL DEFAULT 1.00,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_currency_multipliers (guild_id, target_type, target_id),
+    KEY idx_currency_multipliers_lookup (guild_id, target_type),
+    CONSTRAINT fk_currency_multipliers_guild FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 17_currency_channel_categories.sql (음성 채널 타입별 보상 설정)
 CREATE TABLE currency_channel_categories (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT NOT NULL AUTO_INCREMENT,
     guild_id VARCHAR(20) NOT NULL,
     channel_id VARCHAR(20) NOT NULL,
     category ENUM('normal', 'music', 'afk', 'premium') NOT NULL DEFAULT 'normal',
@@ -77,9 +169,12 @@ CREATE TABLE currency_channel_categories (
     -- afk: 일반 잠수방 (1분당 0.1토피)
     -- premium: 프리미엄 잠수방 (1분당 1토피)
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_channel (guild_id, channel_id),
-    INDEX idx_guild (guild_id)
-);
+
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_currency_channel (guild_id, channel_id),
+    KEY idx_currency_channel_guild (guild_id),
+    CONSTRAINT fk_currency_channel_categories_guild FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ---

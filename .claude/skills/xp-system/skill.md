@@ -187,7 +187,7 @@ XP 시스템 구현 시 이 규칙을 따르세요.
 ## ERD 관계도
 
 ```
-guilds (1) ─────┬───── (1) xp_settings
+guilds (1) ────┬───── (1) xp_settings
                │
                ├───── (N) xp_users
                │

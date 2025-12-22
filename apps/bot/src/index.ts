@@ -3,6 +3,7 @@ import express from 'express';
 import { Client, GatewayIntentBits, Events, VoiceState } from 'discord.js';
 import { createPool, createRedisClient, createContainer, getPool } from '@topia/infra';
 import { createXpHandler } from './handlers/xp.handler';
+import { createCurrencyHandler } from './handlers/currency.handler';
 
 const client = new Client({
   intents: [
@@ -39,6 +40,7 @@ async function main() {
 
   // Handlers 생성
   const xpHandler = createXpHandler(container, client);
+  const currencyHandler = createCurrencyHandler(container, client);
 
   // Events
   client.once(Events.ClientReady, async (c) => {
@@ -113,11 +115,22 @@ async function main() {
     if (message.author.bot || !message.guildId) return;
 
     const roleIds = message.member?.roles.cache.map(r => r.id) ?? [];
+
+    // XP 처리
     await xpHandler.handleTextMessage(
       message.guildId,
       message.author.id,
       message.channelId,
       roleIds
+    );
+
+    // 화폐 처리
+    await currencyHandler.handleTextMessage(
+      message.guildId,
+      message.author.id,
+      message.channelId,
+      roleIds,
+      message.content.length
     );
   });
 
@@ -191,6 +204,14 @@ async function main() {
 
         // Give voice XP
         await xpHandler.handleVoiceXp(
+          guildId,
+          userId,
+          data.channelId,
+          data.roleIds
+        );
+
+        // Give voice currency
+        await currencyHandler.handleVoiceReward(
           guildId,
           userId,
           data.channelId,
