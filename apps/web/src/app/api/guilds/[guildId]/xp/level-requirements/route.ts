@@ -89,8 +89,8 @@ export async function POST(
       requiredXp: validatedData.requiredXp,
     };
 
-    // 봇에 설정 변경 알림
-    await notifyBotSettingsChanged({
+    // 봇에 설정 변경 알림 (비동기, 대기 안함)
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-level-requirement',
       action: '추가',
@@ -147,8 +147,8 @@ export async function PATCH(
       [guildId]
     );
 
-    // 봇에 설정 변경 알림
-    await notifyBotSettingsChanged({
+    // 봇에 설정 변경 알림 (비동기, 대기 안함)
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-level-requirement',
       action: '변경',
@@ -198,8 +198,8 @@ export async function DELETE(
         return NextResponse.json({ error: "Level requirement not found" }, { status: 404 });
       }
 
-      // 봇에 설정 변경 알림
-      await notifyBotSettingsChanged({
+      // 봇에 설정 변경 알림 (비동기, 대기 안함)
+      notifyBotSettingsChanged({
         guildId,
         type: 'xp-level-requirement',
         action: '삭제',
@@ -212,8 +212,8 @@ export async function DELETE(
         [guildId]
       );
 
-      // 봇에 설정 변경 알림
-      await notifyBotSettingsChanged({
+      // 봇에 설정 변경 알림 (비동기, 대기 안함)
+      notifyBotSettingsChanged({
         guildId,
         type: 'xp-level-requirement',
         action: '삭제',

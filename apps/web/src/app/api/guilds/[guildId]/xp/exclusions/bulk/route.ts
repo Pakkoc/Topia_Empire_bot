@@ -59,8 +59,8 @@ export async function POST(
       [values]
     );
 
-    // 봇에 설정 변경 알림 (한 번에)
-    await notifyBotSettingsChanged({
+    // 봇에 설정 변경 알림 (비동기, 대기 안함)
+    notifyBotSettingsChanged({
       guildId,
       type: "xp-exclusion",
       action: "추가",

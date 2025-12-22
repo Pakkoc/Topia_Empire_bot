@@ -103,8 +103,8 @@ export async function POST(
       removeOnHigherLevel: validatedData.removeOnHigherLevel ?? false,
     };
 
-    // 봇에 설정 변경 알림
-    await notifyBotSettingsChanged({
+    // 봇에 설정 변경 알림 (비동기, 대기 안함)
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-reward',
       action: '추가',
@@ -192,8 +192,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Reward not found" }, { status: 404 });
     }
 
-    // 봇에 설정 변경 알림
-    await notifyBotSettingsChanged({
+    // 봇에 설정 변경 알림 (비동기, 대기 안함)
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-reward',
       action: '수정',
@@ -244,8 +244,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Reward not found" }, { status: 404 });
     }
 
-    // 봇에 설정 변경 알림
-    await notifyBotSettingsChanged({
+    // 봇에 설정 변경 알림 (비동기, 대기 안함)
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-reward',
       action: '삭제',

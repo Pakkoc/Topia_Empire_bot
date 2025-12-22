@@ -161,9 +161,9 @@ export async function PATCH(
       return NextResponse.json({ guildId, ...DEFAULT_SETTINGS });
     }
 
-    // 봇에 설정 변경 알림
+    // 봇에 설정 변경 알림 (비동기, 대기 안함)
     const changedFields = Object.keys(validatedData).join(', ');
-    await notifyBotSettingsChanged({
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-settings',
       action: '수정',

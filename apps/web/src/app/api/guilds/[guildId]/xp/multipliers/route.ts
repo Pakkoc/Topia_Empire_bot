@@ -98,7 +98,7 @@ export async function POST(
       multiplier: validatedData.multiplier,
     };
 
-    await notifyBotSettingsChanged({
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-multiplier',
       action: '추가',
@@ -152,7 +152,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Multiplier not found" }, { status: 404 });
     }
 
-    await notifyBotSettingsChanged({
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-multiplier',
       action: '수정',
@@ -203,7 +203,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Multiplier not found" }, { status: 404 });
     }
 
-    await notifyBotSettingsChanged({
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-multiplier',
       action: '삭제',

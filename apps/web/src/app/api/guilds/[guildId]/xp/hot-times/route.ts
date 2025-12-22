@@ -124,8 +124,8 @@ export async function POST(
       channelIds,
     };
 
-    // 봇에 설정 변경 알림
-    await notifyBotSettingsChanged({
+    // 봇에 설정 변경 알림 (비동기, 대기 안함)
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-hottime',
       action: '추가',
@@ -244,8 +244,8 @@ export async function PATCH(
       [hotTimeId]
     );
 
-    // 봇에 설정 변경 알림
-    await notifyBotSettingsChanged({
+    // 봇에 설정 변경 알림 (비동기, 대기 안함)
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-hottime',
       action: '수정',
@@ -296,8 +296,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Hot time not found" }, { status: 404 });
     }
 
-    // 봇에 설정 변경 알림
-    await notifyBotSettingsChanged({
+    // 봇에 설정 변경 알림 (비동기, 대기 안함)
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-hottime',
       action: '삭제',

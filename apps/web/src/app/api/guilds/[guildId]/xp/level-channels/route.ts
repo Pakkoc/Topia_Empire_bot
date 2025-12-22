@@ -115,7 +115,7 @@ export async function POST(
       console.log(`[LEVEL CHANNEL] Retroactive unlock: ${unlockResult.unlocked}/${userIds.length} users for level ${validatedData.level}`);
     }
 
-    await notifyBotSettingsChanged({
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-level-channel',
       action: '추가',
@@ -197,7 +197,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Level channel not found" }, { status: 404 });
     }
 
-    await notifyBotSettingsChanged({
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-level-channel',
       action: '수정',
@@ -248,7 +248,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Level channel not found" }, { status: 404 });
     }
 
-    await notifyBotSettingsChanged({
+    notifyBotSettingsChanged({
       guildId,
       type: 'xp-level-channel',
       action: '삭제',
