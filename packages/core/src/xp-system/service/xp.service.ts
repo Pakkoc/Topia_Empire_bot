@@ -102,38 +102,47 @@ export class XpService {
     const randomValue = Math.random();
     let earnedXp = generateRandomXp(settings.textXpMin, settings.textXpMax, randomValue);
 
-    // 핫타임 배율 적용
-    const hotTimesResult = await this.settingsRepo.getHotTimes(guildId, 'text');
+    // 우선순위 기반 단일 배율 적용 (핫타임 > 역할 > 채널, 중첩 없음)
+    const currentTime = formatTimeForHotTime(now);
+    let appliedMultiplier = 1;
+
+    // 1. 핫타임 확인 (채널 조건 포함)
+    const hotTimesResult = await this.settingsRepo.getHotTimesWithChannels(guildId, 'text');
     if (hotTimesResult.success) {
-      const currentTime = formatTimeForHotTime(now);
-      const hotTimeResult = checkHotTime(hotTimesResult.data, currentTime);
+      const hotTimeResult = checkHotTime(hotTimesResult.data, currentTime, channelId);
       if (hotTimeResult.isActive) {
-        earnedXp = applyMultiplier(earnedXp, hotTimeResult.multiplier);
+        appliedMultiplier = hotTimeResult.multiplier;
       }
     }
 
-    // 채널/역할 배율 적용 (역할 우선)
-    const multipliersResult = await this.settingsRepo.getMultipliers(guildId);
-    if (multipliersResult.success) {
-      const multipliers = multipliersResult.data;
+    // 2. 핫타임 미적용 시 역할/채널 배율 확인
+    if (appliedMultiplier === 1) {
+      const multipliersResult = await this.settingsRepo.getMultipliers(guildId);
+      if (multipliersResult.success) {
+        const multipliers = multipliersResult.data;
 
-      // 역할 배율 찾기 (여러 역할 중 가장 높은 배율)
-      const roleMultipliers = multipliers.filter(
-        m => m.targetType === 'role' && roleIds.includes(m.targetId)
-      );
+        // 역할 배율 찾기 (여러 역할 중 가장 높은 배율)
+        const roleMultipliers = multipliers.filter(
+          m => m.targetType === 'role' && roleIds.includes(m.targetId)
+        );
 
-      // 채널 배율 찾기
-      const channelMultiplier = multipliers.find(
-        m => m.targetType === 'channel' && m.targetId === channelId
-      );
-
-      // 역할 우선: 역할 배율이 있으면 사용, 없으면 채널 배율 사용
-      if (roleMultipliers.length > 0) {
-        const maxRoleMultiplier = Math.max(...roleMultipliers.map(m => m.multiplier));
-        earnedXp = applyMultiplier(earnedXp, maxRoleMultiplier);
-      } else if (channelMultiplier) {
-        earnedXp = applyMultiplier(earnedXp, channelMultiplier.multiplier);
+        if (roleMultipliers.length > 0) {
+          appliedMultiplier = Math.max(...roleMultipliers.map(m => m.multiplier));
+        } else {
+          // 채널 배율 찾기
+          const channelMultiplier = multipliers.find(
+            m => m.targetType === 'channel' && m.targetId === channelId
+          );
+          if (channelMultiplier) {
+            appliedMultiplier = channelMultiplier.multiplier;
+          }
+        }
       }
+    }
+
+    // 배율 적용
+    if (appliedMultiplier !== 1) {
+      earnedXp = applyMultiplier(earnedXp, appliedMultiplier);
     }
 
     const newTotalXp = userXp.xp + earnedXp;
@@ -269,38 +278,47 @@ export class XpService {
     const randomValue = Math.random();
     let earnedXp = generateRandomXp(settings.voiceXpMin, settings.voiceXpMax, randomValue);
 
-    // 핫타임 배율 적용
-    const hotTimesResult = await this.settingsRepo.getHotTimes(guildId, 'voice');
+    // 우선순위 기반 단일 배율 적용 (핫타임 > 역할 > 채널, 중첩 없음)
+    const currentTime = formatTimeForHotTime(now);
+    let appliedMultiplier = 1;
+
+    // 1. 핫타임 확인 (채널 조건 포함)
+    const hotTimesResult = await this.settingsRepo.getHotTimesWithChannels(guildId, 'voice');
     if (hotTimesResult.success) {
-      const currentTime = formatTimeForHotTime(now);
-      const hotTimeResult = checkHotTime(hotTimesResult.data, currentTime);
+      const hotTimeResult = checkHotTime(hotTimesResult.data, currentTime, channelId);
       if (hotTimeResult.isActive) {
-        earnedXp = applyMultiplier(earnedXp, hotTimeResult.multiplier);
+        appliedMultiplier = hotTimeResult.multiplier;
       }
     }
 
-    // 채널/역할 배율 적용 (역할 우선)
-    const voiceMultipliersResult = await this.settingsRepo.getMultipliers(guildId);
-    if (voiceMultipliersResult.success) {
-      const multipliers = voiceMultipliersResult.data;
+    // 2. 핫타임 미적용 시 역할/채널 배율 확인
+    if (appliedMultiplier === 1) {
+      const voiceMultipliersResult = await this.settingsRepo.getMultipliers(guildId);
+      if (voiceMultipliersResult.success) {
+        const multipliers = voiceMultipliersResult.data;
 
-      // 역할 배율 찾기 (여러 역할 중 가장 높은 배율)
-      const roleMultipliers = multipliers.filter(
-        m => m.targetType === 'role' && roleIds.includes(m.targetId)
-      );
+        // 역할 배율 찾기 (여러 역할 중 가장 높은 배율)
+        const roleMultipliers = multipliers.filter(
+          m => m.targetType === 'role' && roleIds.includes(m.targetId)
+        );
 
-      // 채널 배율 찾기
-      const channelMultiplier = multipliers.find(
-        m => m.targetType === 'channel' && m.targetId === channelId
-      );
-
-      // 역할 우선: 역할 배율이 있으면 사용, 없으면 채널 배율 사용
-      if (roleMultipliers.length > 0) {
-        const maxRoleMultiplier = Math.max(...roleMultipliers.map(m => m.multiplier));
-        earnedXp = applyMultiplier(earnedXp, maxRoleMultiplier);
-      } else if (channelMultiplier) {
-        earnedXp = applyMultiplier(earnedXp, channelMultiplier.multiplier);
+        if (roleMultipliers.length > 0) {
+          appliedMultiplier = Math.max(...roleMultipliers.map(m => m.multiplier));
+        } else {
+          // 채널 배율 찾기
+          const channelMultiplier = multipliers.find(
+            m => m.targetType === 'channel' && m.targetId === channelId
+          );
+          if (channelMultiplier) {
+            appliedMultiplier = channelMultiplier.multiplier;
+          }
+        }
       }
+    }
+
+    // 배율 적용
+    if (appliedMultiplier !== 1) {
+      earnedXp = applyMultiplier(earnedXp, appliedMultiplier);
     }
 
     const newTotalXp = userXp.xp + earnedXp;

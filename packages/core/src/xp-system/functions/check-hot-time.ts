@@ -1,8 +1,10 @@
 export interface HotTimeConfig {
+  id?: number;
   startTime: string; // "HH:mm" format
   endTime: string;   // "HH:mm" format
   multiplier: number;
   enabled: boolean;
+  channelIds?: string[]; // 적용 채널 목록 (비어있으면 모든 채널)
 }
 
 export interface HotTimeResult {
@@ -14,8 +16,9 @@ export interface HotTimeResult {
  * 현재 시간이 핫타임인지 체크 (순수함수)
  * @param configs - 핫타임 설정 목록
  * @param currentTime - 현재 시간 "HH:mm" format (주입)
+ * @param channelId - 현재 채널 ID (optional, 채널 조건 체크용)
  */
-export function checkHotTime(configs: HotTimeConfig[], currentTime: string): HotTimeResult {
+export function checkHotTime(configs: HotTimeConfig[], currentTime: string, channelId?: string): HotTimeResult {
   const currentParts = currentTime.split(':').map(Number);
   const currentHour = currentParts[0] ?? 0;
   const currentMinute = currentParts[1] ?? 0;
@@ -23,6 +26,13 @@ export function checkHotTime(configs: HotTimeConfig[], currentTime: string): Hot
 
   for (const config of configs) {
     if (!config.enabled) continue;
+
+    // 채널 조건 체크: channelIds가 비어있으면 모든 채널, 있으면 해당 채널만
+    if (channelId && config.channelIds && config.channelIds.length > 0) {
+      if (!config.channelIds.includes(channelId)) {
+        continue;
+      }
+    }
 
     const startParts = config.startTime.split(':').map(Number);
     const endParts = config.endTime.split(':').map(Number);

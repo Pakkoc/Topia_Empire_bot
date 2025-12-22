@@ -26,10 +26,17 @@ interface ExclusionRow extends RowDataPacket {
 }
 
 interface HotTimeRow extends RowDataPacket {
+  id: number;
   start_time: string;
   end_time: string;
   multiplier: number;
   enabled: number;
+}
+
+interface HotTimeChannelRow extends RowDataPacket {
+  id: number;
+  hot_time_id: number;
+  channel_id: string;
 }
 
 interface LevelRewardRow extends RowDataPacket {
@@ -38,6 +45,7 @@ interface LevelRewardRow extends RowDataPacket {
   level: number;
   role_id: string;
   remove_on_higher_level: number;
+  created_at: Date;
 }
 
 interface LevelChannelRow extends RowDataPacket {
@@ -220,7 +228,7 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
   async getLevelRewards(guildId: string): Promise<Result<LevelReward[], RepositoryError>> {
     try {
       const [rows] = await this.pool.execute<LevelRewardRow[]>(
-        `SELECT id, guild_id, level, role_id, remove_on_higher_level
+        `SELECT id, guild_id, level, role_id, remove_on_higher_level, created_at
          FROM xp_level_rewards
          WHERE guild_id = ?
          ORDER BY level`,
@@ -233,6 +241,7 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
         level: r.level,
         roleId: r.role_id,
         removeOnHigherLevel: Boolean(r.remove_on_higher_level),
+        createdAt: r.created_at,
       })));
     } catch (error) {
       return Result.err({
@@ -357,6 +366,85 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
         targetId: r.target_id,
         multiplier: Number(r.multiplier),
       })));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async getHotTimesWithChannels(guildId: string, type: 'text' | 'voice' | 'all'): Promise<Result<HotTimeConfig[], RepositoryError>> {
+    try {
+      // 핫타임 조회
+      const [hotTimeRows] = await this.pool.execute<HotTimeRow[]>(
+        `SELECT id, start_time, end_time, multiplier, enabled
+         FROM xp_hot_times
+         WHERE guild_id = ? AND (type = ? OR type = 'all')`,
+        [guildId, type]
+      );
+
+      // 각 핫타임의 채널 목록 조회
+      const hotTimes: HotTimeConfig[] = [];
+      for (const row of hotTimeRows) {
+        const [channelRows] = await this.pool.execute<HotTimeChannelRow[]>(
+          `SELECT channel_id FROM xp_hot_time_channels WHERE hot_time_id = ?`,
+          [row.id]
+        );
+
+        hotTimes.push({
+          id: row.id,
+          startTime: row.start_time,
+          endTime: row.end_time,
+          multiplier: Number(row.multiplier),
+          enabled: Boolean(row.enabled),
+          channelIds: channelRows.map(c => c.channel_id),
+        });
+      }
+
+      return Result.ok(hotTimes);
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async getHotTimeChannels(hotTimeId: number): Promise<Result<string[], RepositoryError>> {
+    try {
+      const [rows] = await this.pool.execute<HotTimeChannelRow[]>(
+        `SELECT channel_id FROM xp_hot_time_channels WHERE hot_time_id = ?`,
+        [hotTimeId]
+      );
+
+      return Result.ok(rows.map(r => r.channel_id));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async setHotTimeChannels(hotTimeId: number, channelIds: string[]): Promise<Result<void, RepositoryError>> {
+    try {
+      // 기존 채널 삭제
+      await this.pool.execute(
+        `DELETE FROM xp_hot_time_channels WHERE hot_time_id = ?`,
+        [hotTimeId]
+      );
+
+      // 새 채널 추가
+      if (channelIds.length > 0) {
+        const values = channelIds.map(channelId => [hotTimeId, channelId]);
+        await this.pool.query(
+          `INSERT INTO xp_hot_time_channels (hot_time_id, channel_id) VALUES ?`,
+          [values]
+        );
+      }
+
+      return Result.ok(undefined);
     } catch (error) {
       return Result.err({
         type: 'QUERY_ERROR',

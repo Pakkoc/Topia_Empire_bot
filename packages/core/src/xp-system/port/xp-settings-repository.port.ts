@@ -1,16 +1,11 @@
 import type { Result } from '../../shared/types/result';
 import type { XpSettings } from '../domain/xp-settings';
 import type { LevelRequirement } from '../domain/xp-level-requirements';
+import type { LevelReward } from '../domain/level-reward';
 import type { RepositoryError } from '../errors';
 import type { HotTimeConfig } from '../functions/check-hot-time';
 
-export interface LevelReward {
-  id: number;
-  guildId: string;
-  level: number;
-  roleId: string;
-  removeOnHigherLevel: boolean;
-}
+export type { LevelReward };
 
 export interface LevelChannel {
   id: number;
@@ -25,6 +20,12 @@ export interface XpMultiplier {
   targetType: 'channel' | 'role';
   targetId: string;
   multiplier: number;
+}
+
+export interface HotTimeChannel {
+  id: number;
+  hotTimeId: number;
+  channelId: string;
 }
 
 export interface XpSettingsRepositoryPort {
@@ -44,4 +45,9 @@ export interface XpSettingsRepositoryPort {
 
   // XP 배율 (채널/역할)
   getMultipliers(guildId: string, targetType?: 'channel' | 'role'): Promise<Result<XpMultiplier[], RepositoryError>>;
+
+  // 핫타임 채널 관련
+  getHotTimesWithChannels(guildId: string, type: 'text' | 'voice' | 'all'): Promise<Result<HotTimeConfig[], RepositoryError>>;
+  getHotTimeChannels(hotTimeId: number): Promise<Result<string[], RepositoryError>>;
+  setHotTimeChannels(hotTimeId: number, channelIds: string[]): Promise<Result<void, RepositoryError>>;
 }

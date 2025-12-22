@@ -32,6 +32,7 @@ export const xpHotTimeSchema = z.object({
   endTime: z.string(), // HH:mm format
   multiplier: z.number().min(1).max(10),
   enabled: z.boolean(),
+  channelIds: z.array(z.string()).optional(), // 적용 채널 (비어있으면 모든 채널)
 });
 
 export type XpHotTime = z.infer<typeof xpHotTimeSchema>;

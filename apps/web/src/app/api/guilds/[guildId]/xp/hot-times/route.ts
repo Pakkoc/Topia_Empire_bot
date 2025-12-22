@@ -17,7 +17,11 @@ interface HotTimeRow extends RowDataPacket {
   created_at: Date;
 }
 
-function rowToHotTime(row: HotTimeRow) {
+interface HotTimeChannelRow extends RowDataPacket {
+  channel_id: string;
+}
+
+function rowToHotTime(row: HotTimeRow, channelIds: string[] = []) {
   return {
     id: row.id,
     guildId: row.guild_id,
@@ -27,6 +31,7 @@ function rowToHotTime(row: HotTimeRow) {
     multiplier: Number(row.multiplier),
     enabled: row.enabled,
     createdAt: row.created_at,
+    channelIds,
   };
 }
 
@@ -48,7 +53,18 @@ export async function GET(
       [guildId]
     );
 
-    return NextResponse.json(rows.map(rowToHotTime));
+    // 각 핫타임의 채널 목록 조회
+    const hotTimesWithChannels = await Promise.all(
+      rows.map(async (row) => {
+        const [channelRows] = await pool.query<HotTimeChannelRow[]>(
+          `SELECT channel_id FROM xp_hot_time_channels WHERE hot_time_id = ?`,
+          [row.id]
+        );
+        return rowToHotTime(row, channelRows.map(c => c.channel_id));
+      })
+    );
+
+    return NextResponse.json(hotTimesWithChannels);
   } catch (error) {
     console.error("Error fetching hot times:", error);
     return NextResponse.json(
@@ -72,6 +88,7 @@ export async function POST(
   try {
     const body = await request.json();
     const validatedData = createXpHotTimeSchema.parse(body);
+    const channelIds: string[] = body.channelIds || [];
 
     const pool = db();
 
@@ -88,11 +105,23 @@ export async function POST(
       ]
     );
 
+    const hotTimeId = result.insertId;
+
+    // 채널 설정 저장
+    if (channelIds.length > 0) {
+      const channelValues = channelIds.map(channelId => [hotTimeId, channelId]);
+      await pool.query(
+        `INSERT INTO xp_hot_time_channels (hot_time_id, channel_id) VALUES ?`,
+        [channelValues]
+      );
+    }
+
     const newHotTime = {
-      id: result.insertId,
+      id: hotTimeId,
       guildId,
       ...validatedData,
       enabled: validatedData.enabled ?? true,
+      channelIds,
     };
 
     // 봇에 설정 변경 알림
@@ -139,8 +168,10 @@ export async function PATCH(
   try {
     const body = await request.json();
     const validatedData = createXpHotTimeSchema.partial().parse(body);
+    const channelIds: string[] | undefined = body.channelIds;
 
     const pool = db();
+    const hotTimeId = parseInt(id);
 
     // Build update query dynamically
     const updates: string[] = [];
@@ -167,30 +198,51 @@ export async function PATCH(
       values.push(validatedData.enabled);
     }
 
-    if (updates.length === 0) {
-      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    // 핫타임 기본 정보 업데이트
+    if (updates.length > 0) {
+      values.push(hotTimeId, guildId);
+      const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE xp_hot_times SET ${updates.join(", ")} WHERE id = ? AND guild_id = ?`,
+        values
+      );
+
+      if (result.affectedRows === 0) {
+        return NextResponse.json({ error: "Hot time not found" }, { status: 404 });
+      }
     }
 
-    values.push(parseInt(id), guildId);
+    // 채널 설정 업데이트 (channelIds가 전달된 경우에만)
+    if (channelIds !== undefined) {
+      // 기존 채널 삭제
+      await pool.query(
+        `DELETE FROM xp_hot_time_channels WHERE hot_time_id = ?`,
+        [hotTimeId]
+      );
 
-    const [result] = await pool.query<ResultSetHeader>(
-      `UPDATE xp_hot_times SET ${updates.join(", ")} WHERE id = ? AND guild_id = ?`,
-      values
-    );
-
-    if (result.affectedRows === 0) {
-      return NextResponse.json({ error: "Hot time not found" }, { status: 404 });
+      // 새 채널 추가
+      if (channelIds.length > 0) {
+        const channelValues = channelIds.map(channelId => [hotTimeId, channelId]);
+        await pool.query(
+          `INSERT INTO xp_hot_time_channels (hot_time_id, channel_id) VALUES ?`,
+          [channelValues]
+        );
+      }
     }
 
-    // Fetch and return updated hot time
+    // Fetch and return updated hot time with channels
     const [rows] = await pool.query<HotTimeRow[]>(
       `SELECT * FROM xp_hot_times WHERE id = ?`,
-      [parseInt(id)]
+      [hotTimeId]
     );
 
     if (rows.length === 0) {
       return NextResponse.json({ error: "Hot time not found" }, { status: 404 });
     }
+
+    const [channelRows] = await pool.query<HotTimeChannelRow[]>(
+      `SELECT channel_id FROM xp_hot_time_channels WHERE hot_time_id = ?`,
+      [hotTimeId]
+    );
 
     // 봇에 설정 변경 알림
     await notifyBotSettingsChanged({
@@ -200,7 +252,7 @@ export async function PATCH(
       details: `ID: ${id}`,
     });
 
-    return NextResponse.json(rowToHotTime(rows[0]!));
+    return NextResponse.json(rowToHotTime(rows[0]!, channelRows.map(c => c.channel_id)));
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
