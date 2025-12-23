@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { NavigationLink } from "@/components/navigation-link";
 import { Icon } from "@iconify/react";
@@ -79,16 +79,6 @@ export function DashboardSidebar({ guildId, guildName, guildIcon }: SidebarProps
     return children?.some(child => isActive(child.href));
   };
 
-  // 활성화된 카테고리 자동 펼침
-  useEffect(() => {
-    const newOpenState: Record<string, boolean> = {};
-    navigation.forEach((item) => {
-      if (item.children && isParentActive(item.children)) {
-        newOpenState[item.name] = true;
-      }
-    });
-    setOpenCategories((prev) => ({ ...prev, ...newOpenState }));
-  }, [pathname]);
 
   const toggleCategory = (name: string) => {
     setOpenCategories((prev) => ({
