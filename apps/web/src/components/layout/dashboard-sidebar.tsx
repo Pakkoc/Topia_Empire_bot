@@ -97,10 +97,18 @@ export function DashboardSidebar({ guildId, guildName, guildIcon }: SidebarProps
     }));
   };
 
-  const isCategoryOpen = (name: string, children: typeof navigation[1]["children"]) => {
-    // 활성화된 카테고리는 항상 열림
-    if (isParentActive(children)) return true;
+  const isCategoryOpen = (name: string) => {
+    // 명시적으로 설정된 값이 있으면 그 값 사용, 없으면 false
     return openCategories[name] ?? false;
+  };
+
+  // 접힌 상태에서 활성화된 항목만 필터링
+  const getVisibleChildren = (name: string, children: NonNullable<typeof navigation[1]["children"]>) => {
+    if (isCategoryOpen(name)) {
+      return children; // 펼쳐진 상태면 전체 표시
+    }
+    // 접힌 상태면 활성화된 항목만 표시
+    return children.filter(child => isActive(child.href));
   };
 
   return (
@@ -158,38 +166,38 @@ export function DashboardSidebar({ guildId, guildName, guildIcon }: SidebarProps
                       icon="solar:alt-arrow-down-linear"
                       className={cn(
                         "h-4 w-4 transition-transform duration-200",
-                        isCategoryOpen(item.name, item.children) ? "rotate-180" : ""
+                        isCategoryOpen(item.name) ? "rotate-180" : ""
                       )}
                     />
                   </button>
-                  <div
-                    className={cn(
-                      "overflow-hidden transition-all duration-200",
-                      isCategoryOpen(item.name, item.children) ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-                    )}
-                  >
-                    <ul className="ml-4 space-y-0.5 pl-4 border-l border-white/10">
-                      {item.children.map((child) => (
-                        <li key={child.name}>
-                          <NavigationLink
-                            href={`${basePath}${child.href}`}
-                            className={cn(
-                              "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-all",
-                              isActive(child.href)
-                                ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white font-medium border border-indigo-500/30"
-                                : "text-white/50 hover:bg-white/5 hover:text-white/80"
-                            )}
-                          >
-                            <Icon
-                              icon={isActive(child.href) ? child.iconActive : child.icon}
-                              className="h-4 w-4"
-                            />
-                            {child.name}
-                          </NavigationLink>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  {/* 하위 항목 목록 */}
+                  {(() => {
+                    const visibleChildren = getVisibleChildren(item.name, item.children);
+                    if (visibleChildren.length === 0) return null;
+                    return (
+                      <ul className="ml-4 space-y-0.5 pl-4 border-l border-white/10">
+                        {visibleChildren.map((child) => (
+                          <li key={child.name}>
+                            <NavigationLink
+                              href={`${basePath}${child.href}`}
+                              className={cn(
+                                "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-all",
+                                isActive(child.href)
+                                  ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white font-medium border border-indigo-500/30"
+                                  : "text-white/50 hover:bg-white/5 hover:text-white/80"
+                              )}
+                            >
+                              <Icon
+                                icon={isActive(child.href) ? child.iconActive : child.icon}
+                                className="h-4 w-4"
+                              />
+                              {child.name}
+                            </NavigationLink>
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  })()}
                 </div>
               ) : (
                 <NavigationLink
