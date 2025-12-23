@@ -21,24 +21,23 @@
 
 ## 앞으로 구현할 기능
 
-### Phase 3: 지갑 조회 (우선순위: 높음)
+### Phase 3: 지갑 조회 ✅
 
 #### 3-1. 봇 명령어
-| 명령어 | 설명 | 파일 |
-|--------|------|------|
-| `/지갑` | 본인 토피/루비 잔액 조회 | `apps/bot/src/commands/wallet.ts` |
-| `/잔액 @유저` | 다른 유저 잔액 조회 | 위와 동일 |
-| `/랭킹` | 토피 보유량 상위 10명 | `apps/bot/src/commands/leaderboard.ts` |
+| 명령어 | 설명 | 파일 | 상태 |
+|--------|------|------|------|
+| `/지갑` | 본인/다른 유저 토피/루비 잔액 조회 | `apps/bot/src/commands/wallet.ts` | ✅ |
+| `/랭킹` | 토피 보유량 상위 10명 | `apps/bot/src/commands/leaderboard.ts` | ✅ |
 
 #### 3-2. 웹 API
-| 라우트 | 메서드 | 설명 |
-|--------|--------|------|
-| `/api/guilds/[guildId]/currency/wallets` | GET | 지갑 목록 (페이지네이션) |
-| `/api/guilds/[guildId]/currency/wallets/[userId]` | GET | 특정 유저 지갑 |
-| `/api/guilds/[guildId]/currency/leaderboard` | GET | 리더보드 |
+| 라우트 | 메서드 | 설명 | 상태 |
+|--------|--------|------|------|
+| `/api/guilds/[guildId]/currency/wallets` | GET | 지갑 목록 (페이지네이션) | ✅ |
+| `/api/guilds/[guildId]/currency/wallets/[userId]` | GET | 특정 유저 지갑 | ✅ |
+| `/api/guilds/[guildId]/currency/leaderboard` | GET | 리더보드 | ✅ |
 
 #### 3-3. 웹 페이지
-- `apps/web/src/app/dashboard/[guildId]/currency/wallets/page.tsx`
+- `apps/web/src/app/dashboard/[guildId]/currency/wallets/page.tsx` ✅
 
 ---
 
