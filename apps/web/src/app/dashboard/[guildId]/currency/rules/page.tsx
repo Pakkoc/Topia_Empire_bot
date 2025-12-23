@@ -88,6 +88,7 @@ export default function CurrencyRulesPage() {
   const guildId = params["guildId"] as string;
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("hottime");
+  const [isAddingHotTime, setIsAddingHotTime] = useState(false);
   const [selectedHotTimeChannels, setSelectedHotTimeChannels] = useState<string[]>([]);
 
   // Data queries
@@ -155,6 +156,7 @@ export default function CurrencyRulesPage() {
       });
       hotTimeForm.reset();
       setSelectedHotTimeChannels([]);
+      setIsAddingHotTime(false);
       toast({ title: "핫타임 추가 완료" });
     } catch {
       toast({ title: "추가 실패", variant: "destructive" });
@@ -255,154 +257,186 @@ export default function CurrencyRulesPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-white/5 border border-white/10 p-1 rounded-xl">
-          <TabsTrigger
-            value="hottime"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white rounded-lg px-4 py-2 text-white/60"
-          >
-            <Icon icon="solar:fire-linear" className="mr-2 h-4 w-4" />
-            핫타임
-          </TabsTrigger>
-          <TabsTrigger
-            value="exclusion"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white rounded-lg px-4 py-2 text-white/60"
-          >
-            <Icon icon="solar:close-circle-linear" className="mr-2 h-4 w-4" />
-            제외
-          </TabsTrigger>
-          <TabsTrigger
-            value="multiplier"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white rounded-lg px-4 py-2 text-white/60"
-          >
-            <Icon icon="solar:graph-up-linear" className="mr-2 h-4 w-4" />
-            배율
-          </TabsTrigger>
-          <TabsTrigger
-            value="channel-category"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white rounded-lg px-4 py-2 text-white/60"
-          >
-            <Icon icon="solar:volume-loud-linear" className="mr-2 h-4 w-4" />
-            채널 유형
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList className="bg-white/5 border border-white/10 p-1 rounded-xl">
+            <TabsTrigger
+              value="hottime"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white rounded-lg px-4 py-2 text-white/60"
+            >
+              <Icon icon="solar:fire-linear" className="mr-2 h-4 w-4" />
+              핫타임
+            </TabsTrigger>
+            <TabsTrigger
+              value="exclusion"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white rounded-lg px-4 py-2 text-white/60"
+            >
+              <Icon icon="solar:close-circle-linear" className="mr-2 h-4 w-4" />
+              제외
+            </TabsTrigger>
+            <TabsTrigger
+              value="multiplier"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white rounded-lg px-4 py-2 text-white/60"
+            >
+              <Icon icon="solar:graph-up-linear" className="mr-2 h-4 w-4" />
+              배율
+            </TabsTrigger>
+            <TabsTrigger
+              value="channel-category"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white rounded-lg px-4 py-2 text-white/60"
+            >
+              <Icon icon="solar:volume-loud-linear" className="mr-2 h-4 w-4" />
+              채널 유형
+            </TabsTrigger>
+          </TabsList>
+
+          {activeTab === "hottime" && (
+            <Button
+              onClick={() => setIsAddingHotTime(true)}
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-lg shadow-amber-500/25"
+            >
+              <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
+              핫타임 추가
+            </Button>
+          )}
+        </div>
 
         {/* 핫타임 탭 */}
         <TabsContent value="hottime" className="space-y-6 animate-fade-up">
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
-            <h3 className="font-semibold text-white mb-4">핫타임 추가</h3>
-            <Form {...hotTimeForm}>
-              <form onSubmit={hotTimeForm.handleSubmit(onSubmitHotTime)} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-4">
-                  <FormField
-                    control={hotTimeForm.control}
-                    name="type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white/70 text-sm">유형</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            setSelectedHotTimeChannels([]);
-                          }}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="all">전체</SelectItem>
-                            <SelectItem value="text">텍스트</SelectItem>
-                            <SelectItem value="voice">음성</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={hotTimeForm.control}
-                    name="startTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white/70 text-sm">시작 시간</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                            className="bg-white/5 border-white/10 text-white"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={hotTimeForm.control}
-                    name="endTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white/70 text-sm">종료 시간</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                            className="bg-white/5 border-white/10 text-white"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={hotTimeForm.control}
-                    name="multiplier"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white/70 text-sm">배율</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            {...field}
-                            className="bg-white/5 border-white/10 text-white"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+          {/* Add Hot Time Form */}
+          {isAddingHotTime && (
+            <div className="relative z-20 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-amber-500/30 animate-fade-up">
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-orange-500/5 rounded-2xl" />
+              <div className="relative">
+                <h3 className="text-lg font-semibold text-white mb-4">새 핫타임 추가</h3>
+                <Form {...hotTimeForm}>
+                  <form onSubmit={hotTimeForm.handleSubmit(onSubmitHotTime)} className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-4">
+                      <FormField
+                        control={hotTimeForm.control}
+                        name="type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white/70 text-sm">유형</FormLabel>
+                            <Select
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                setSelectedHotTimeChannels([]);
+                              }}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="all">전체</SelectItem>
+                                <SelectItem value="text">텍스트</SelectItem>
+                                <SelectItem value="voice">음성</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={hotTimeForm.control}
+                        name="startTime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white/70 text-sm">시작 시간</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="time"
+                                {...field}
+                                className="bg-white/5 border-white/10 text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={hotTimeForm.control}
+                        name="endTime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white/70 text-sm">종료 시간</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="time"
+                                {...field}
+                                className="bg-white/5 border-white/10 text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={hotTimeForm.control}
+                        name="multiplier"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white/70 text-sm">배율</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.1"
+                                {...field}
+                                className="bg-white/5 border-white/10 text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                {/* 적용 채널 */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/70 flex items-center gap-1">
-                    <Icon icon="solar:hashtag-linear" className="w-4 h-4" />
-                    적용 채널
-                    <span className="text-white/40 text-xs">(선택)</span>
-                  </label>
-                  <MultiSelect
-                    options={hotTimeChannelOptions}
-                    selected={selectedHotTimeChannels}
-                    onChange={setSelectedHotTimeChannels}
-                    placeholder="채널을 선택하세요 (미선택 시 전체 적용)"
-                  />
-                  <p className="text-xs text-white/40">
-                    선택하지 않으면 모든 채널에 적용됩니다.
-                  </p>
-                </div>
+                    {/* 적용 채널 */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-white/70 flex items-center gap-1">
+                        <Icon icon="solar:hashtag-linear" className="w-4 h-4" />
+                        적용 채널
+                        <span className="text-white/40 text-xs">(선택)</span>
+                      </label>
+                      <MultiSelect
+                        options={hotTimeChannelOptions}
+                        selected={selectedHotTimeChannels}
+                        onChange={setSelectedHotTimeChannels}
+                        placeholder="채널을 선택하세요 (미선택 시 전체 적용)"
+                      />
+                      <p className="text-xs text-white/40">
+                        선택하지 않으면 모든 채널에 적용됩니다.
+                      </p>
+                    </div>
 
-                <Button
-                  type="submit"
-                  disabled={createHotTime.isPending}
-                  className="bg-gradient-to-r from-amber-600 to-orange-600"
-                >
-                  <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
-                  추가
-                </Button>
-              </form>
-            </Form>
-          </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="submit"
+                        disabled={createHotTime.isPending}
+                        className="bg-gradient-to-r from-amber-600 to-orange-600"
+                      >
+                        <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
+                        추가
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setIsAddingHotTime(false);
+                          hotTimeForm.reset();
+                          setSelectedHotTimeChannels([]);
+                        }}
+                        className="text-white/60 hover:text-white"
+                      >
+                        취소
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </div>
+            </div>
+          )}
 
           {/* 핫타임 목록 */}
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
