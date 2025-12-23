@@ -103,9 +103,13 @@ export class TopyWalletRepository implements TopyWalletRepositoryPort {
 
   async getLeaderboard(guildId: string, limit: number, offset: number = 0): Promise<Result<TopyWallet[], RepositoryError>> {
     try {
+      // MySQL prepared statement에서 LIMIT/OFFSET 바인딩 문제 방지
+      const safeLimit = Math.max(1, Math.min(100, Number(limit) || 10));
+      const safeOffset = Math.max(0, Number(offset) || 0);
+
       const [rows] = await this.pool.execute<TopyWalletRow[]>(
-        'SELECT * FROM topy_wallets WHERE guild_id = ? ORDER BY balance DESC LIMIT ? OFFSET ?',
-        [guildId, limit, offset]
+        `SELECT * FROM topy_wallets WHERE guild_id = ? ORDER BY balance DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+        [guildId]
       );
 
       return Result.ok(rows.map(toTopyWallet));

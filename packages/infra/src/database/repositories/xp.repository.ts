@@ -94,9 +94,13 @@ export class XpRepository implements XpRepositoryPort {
 
   async getLeaderboard(guildId: string, limit: number, offset: number = 0): Promise<Result<UserXp[], RepositoryError>> {
     try {
+      // MySQL prepared statement에서 LIMIT/OFFSET 바인딩 문제 방지
+      const safeLimit = Math.max(1, Math.min(100, Number(limit) || 10));
+      const safeOffset = Math.max(0, Number(offset) || 0);
+
       const [rows] = await this.pool.execute<UserXpRow[]>(
-        'SELECT * FROM xp_users WHERE guild_id = ? ORDER BY xp DESC LIMIT ? OFFSET ?',
-        [guildId, limit, offset]
+        `SELECT * FROM xp_users WHERE guild_id = ? ORDER BY xp DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+        [guildId]
       );
 
       return Result.ok(rows.map(toUserXp));
