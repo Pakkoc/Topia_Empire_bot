@@ -9,6 +9,8 @@ import type { RowDataPacket } from "mysql2";
 interface CurrencySettingsRow extends RowDataPacket {
   guild_id: string;
   enabled: number;
+  topy_name: string;
+  ruby_name: string;
   text_earn_enabled: number;
   text_earn_min: number;
   text_earn_max: number;
@@ -27,6 +29,8 @@ function rowToSettings(row: CurrencySettingsRow) {
   return {
     guildId: row.guild_id,
     enabled: row.enabled === 1,
+    topyName: row.topy_name ?? '토피',
+    rubyName: row.ruby_name ?? '루비',
     textEarnEnabled: row.text_earn_enabled === 1,
     textEarnMin: row.text_earn_min,
     textEarnMax: row.text_earn_max,
@@ -93,6 +97,8 @@ export async function PATCH(
 
     const fieldMap: Record<string, string> = {
       enabled: "enabled",
+      topyName: "topy_name",
+      rubyName: "ruby_name",
       textEarnEnabled: "text_earn_enabled",
       textEarnMin: "text_earn_min",
       textEarnMax: "text_earn_max",

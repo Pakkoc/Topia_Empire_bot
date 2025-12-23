@@ -5,6 +5,7 @@ import type { CurrencySettingsRepositoryPort } from '../port/currency-settings-r
 import type { CurrencyTransactionRepositoryPort } from '../port/currency-transaction-repository.port';
 import type { TopyWallet } from '../domain/topy-wallet';
 import type { RubyWallet } from '../domain/ruby-wallet';
+import type { CurrencySettings } from '../domain/currency-settings';
 import type { CurrencyError } from '../errors';
 import { Result } from '../../shared/types/result';
 import { createTopyWallet, needsDailyReset, applyDailyReset } from '../domain/topy-wallet';
@@ -415,5 +416,18 @@ export class CurrencyService {
       topy: topyResult.data,
       ruby: rubyResult.data,
     });
+  }
+
+  /**
+   * 설정 조회 (화폐 이름 등)
+   */
+  async getSettings(
+    guildId: string
+  ): Promise<Result<CurrencySettings | null, CurrencyError>> {
+    const result = await this.settingsRepo.findByGuild(guildId);
+    if (!result.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: result.error });
+    }
+    return Result.ok(result.data);
   }
 }

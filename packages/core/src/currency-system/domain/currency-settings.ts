@@ -7,6 +7,10 @@ export interface CurrencySettings {
   guildId: string;
   enabled: boolean;
 
+  // 화폐 이름 (커스터마이징)
+  topyName: string;
+  rubyName: string;
+
   // 텍스트 보상 설정
   textEarnEnabled: boolean;
   textEarnMin: number;
@@ -32,6 +36,9 @@ export function createDefaultCurrencySettings(guildId: string): CurrencySettings
   return {
     guildId,
     enabled: true,
+
+    topyName: '토피',
+    rubyName: '루비',
 
     textEarnEnabled: true,
     textEarnMin: CURRENCY_DEFAULTS.TEXT_EARN_MIN,

@@ -24,6 +24,8 @@ import { Icon } from "@iconify/react";
 
 const currencySettingsFormSchema = z.object({
   enabled: z.boolean(),
+  topyName: z.string().min(1).max(20),
+  rubyName: z.string().min(1).max(20),
   textEarnEnabled: z.boolean(),
   textEarnMin: z.coerce.number().min(0).max(10000),
   textEarnMax: z.coerce.number().min(0).max(10000),
@@ -53,6 +55,8 @@ export default function CurrencySettingsPage() {
     resolver: zodResolver(currencySettingsFormSchema),
     defaultValues: {
       enabled: true,
+      topyName: "토피",
+      rubyName: "루비",
       textEarnEnabled: true,
       textEarnMin: 1,
       textEarnMax: 1,
@@ -78,6 +82,8 @@ export default function CurrencySettingsPage() {
     if (settings) {
       form.reset({
         enabled: Boolean(settings.enabled),
+        topyName: settings.topyName ?? "토피",
+        rubyName: settings.rubyName ?? "루비",
         textEarnEnabled: Boolean(settings.textEarnEnabled),
         textEarnMin: settings.textEarnMin,
         textEarnMax: settings.textEarnMax,
@@ -165,6 +171,62 @@ export default function CurrencySettingsPage() {
                 </FormItem>
               )}
             />
+          </div>
+
+          {/* 화폐 이름 설정 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <Icon icon="solar:pen-linear" className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">화폐 이름</h3>
+                <p className="text-white/50 text-sm">서버에서 사용할 화폐 이름을 설정합니다</p>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="topyName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/70 text-sm">무상 화폐 이름</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="토피"
+                        className="bg-white/5 border-white/10 text-white focus:border-purple-500/50"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs text-white/40">
+                      활동으로 획득하는 화폐 (기본: 토피)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="rubyName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/70 text-sm">유상 화폐 이름</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="루비"
+                        className="bg-white/5 border-white/10 text-white focus:border-pink-500/50"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs text-white/40">
+                      구매/거래로 획득하는 화폐 (기본: 루비)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">

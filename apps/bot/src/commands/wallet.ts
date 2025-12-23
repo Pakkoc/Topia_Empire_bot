@@ -4,7 +4,7 @@ import type { Command } from './types';
 export const walletCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('지갑')
-    .setDescription('토피/루비 잔액을 조회합니다')
+    .setDescription('화폐 잔액을 조회합니다')
     .addUserOption(option =>
       option
         .setName('유저')
@@ -23,6 +23,11 @@ export const walletCommand: Command = {
       });
       return;
     }
+
+    // 설정에서 화폐 이름 가져오기
+    const settingsResult = await container.currencyService.getSettings(guildId);
+    const topyName = settingsResult.success && settingsResult.data?.topyName || '토피';
+    const rubyName = settingsResult.success && settingsResult.data?.rubyName || '루비';
 
     const result = await container.currencyService.getWallets(guildId, targetUser.id);
 
@@ -48,18 +53,18 @@ export const walletCommand: Command = {
       .setThumbnail(targetUser.displayAvatarURL())
       .addFields(
         {
-          name: '토피 (Topy)',
-          value: `${topyBalance.toLocaleString()} 토피`,
+          name: topyName,
+          value: `${topyBalance.toLocaleString()} ${topyName}`,
           inline: true,
         },
         {
-          name: '루비 (Ruby)',
-          value: `${rubyBalance.toLocaleString()} 루비`,
+          name: rubyName,
+          value: `${rubyBalance.toLocaleString()} ${rubyName}`,
           inline: true,
         },
         {
-          name: '총 획득 토피',
-          value: `${topyTotalEarned.toLocaleString()} 토피`,
+          name: `총 획득 ${topyName}`,
+          value: `${topyTotalEarned.toLocaleString()} ${topyName}`,
           inline: true,
         }
       )

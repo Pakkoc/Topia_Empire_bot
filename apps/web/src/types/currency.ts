@@ -4,6 +4,8 @@ import { z } from "zod";
 export const currencySettingsSchema = z.object({
   guildId: z.string(),
   enabled: z.boolean(),
+  topyName: z.string().min(1).max(20),
+  rubyName: z.string().min(1).max(20),
   textEarnEnabled: z.boolean(),
   textEarnMin: z.number().min(0).max(10000),
   textEarnMax: z.number().min(0).max(10000),
@@ -86,6 +88,8 @@ export type CreateChannelCategory = z.infer<typeof createChannelCategorySchema>;
 // Default values
 export const DEFAULT_CURRENCY_SETTINGS: Omit<CurrencySettings, "guildId"> = {
   enabled: true,
+  topyName: "토피",
+  rubyName: "루비",
   textEarnEnabled: true,
   textEarnMin: 1,
   textEarnMax: 1,

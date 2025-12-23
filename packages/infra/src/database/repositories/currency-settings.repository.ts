@@ -14,6 +14,8 @@ import { Result } from '@topia/core';
 interface CurrencySettingsRow extends RowDataPacket {
   guild_id: string;
   enabled: number;
+  topy_name: string;
+  ruby_name: string;
   text_earn_enabled: number;
   text_earn_min: number;
   text_earn_max: number;
@@ -74,6 +76,8 @@ function toCurrencySettings(row: CurrencySettingsRow): CurrencySettings {
   return {
     guildId: row.guild_id,
     enabled: row.enabled === 1,
+    topyName: row.topy_name ?? '토피',
+    rubyName: row.ruby_name ?? '루비',
     textEarnEnabled: row.text_earn_enabled === 1,
     textEarnMin: row.text_earn_min,
     textEarnMax: row.text_earn_max,
@@ -119,13 +123,16 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
     try {
       await this.pool.execute(
         `INSERT INTO currency_settings
-         (guild_id, enabled, text_earn_enabled, text_earn_min, text_earn_max,
+         (guild_id, enabled, topy_name, ruby_name,
+          text_earn_enabled, text_earn_min, text_earn_max,
           text_min_length, text_cooldown_seconds, text_max_per_cooldown, text_daily_limit,
           voice_earn_enabled, voice_earn_min, voice_earn_max, voice_cooldown_seconds,
           voice_daily_limit, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          enabled = VALUES(enabled),
+         topy_name = VALUES(topy_name),
+         ruby_name = VALUES(ruby_name),
          text_earn_enabled = VALUES(text_earn_enabled),
          text_earn_min = VALUES(text_earn_min),
          text_earn_max = VALUES(text_earn_max),
@@ -142,6 +149,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
         [
           settings.guildId,
           settings.enabled ? 1 : 0,
+          settings.topyName,
+          settings.rubyName,
           settings.textEarnEnabled ? 1 : 0,
           settings.textEarnMin,
           settings.textEarnMax,

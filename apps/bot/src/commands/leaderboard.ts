@@ -6,7 +6,7 @@ const MEDALS = ['', '', ''];
 export const leaderboardCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('랭킹')
-    .setDescription('토피 보유량 상위 유저를 조회합니다')
+    .setDescription('화폐 보유량 상위 유저를 조회합니다')
     .addIntegerOption(option =>
       option
         .setName('페이지')
@@ -31,6 +31,10 @@ export const leaderboardCommand: Command = {
     }
 
     await interaction.deferReply();
+
+    // 설정에서 화폐 이름 가져오기
+    const settingsResult = await container.currencyService.getSettings(guildId);
+    const topyName = settingsResult.success && settingsResult.data?.topyName || '토피';
 
     const result = await container.currencyService.getLeaderboard(guildId, limit, offset);
 
@@ -62,17 +66,17 @@ export const leaderboardCommand: Command = {
       try {
         const user = await interaction.client.users.fetch(wallet.userId);
         lines.push(
-          `${medal} **${user.displayName}** - ${wallet.balance.toLocaleString()} 토피`
+          `${medal} **${user.displayName}** - ${wallet.balance.toLocaleString()} ${topyName}`
         );
       } catch {
         lines.push(
-          `${medal} <@${wallet.userId}> - ${wallet.balance.toLocaleString()} 토피`
+          `${medal} <@${wallet.userId}> - ${wallet.balance.toLocaleString()} ${topyName}`
         );
       }
     }
 
     const embed = new EmbedBuilder()
-      .setTitle('토피 랭킹')
+      .setTitle(`${topyName} 랭킹`)
       .setColor(0xFFD700)
       .setDescription(lines.join('\n'))
       .setFooter({ text: `페이지 ${page}` })
