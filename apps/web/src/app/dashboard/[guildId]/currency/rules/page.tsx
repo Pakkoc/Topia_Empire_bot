@@ -283,7 +283,7 @@ export default function CurrencyRulesPage() {
             <h3 className="font-semibold text-white mb-4">핫타임 추가</h3>
             <Form {...hotTimeForm}>
               <form onSubmit={hotTimeForm.handleSubmit(onSubmitHotTime)} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-6">
+                <div className="grid gap-4 sm:grid-cols-5">
                   <FormField
                     control={hotTimeForm.control}
                     name="type"
@@ -363,15 +363,6 @@ export default function CurrencyRulesPage() {
                       </FormItem>
                     )}
                   />
-                  <FormItem>
-                    <FormLabel className="text-white/70 text-sm">적용 채널</FormLabel>
-                    <MultiSelect
-                      options={hotTimeChannelOptions}
-                      selected={selectedHotTimeChannels}
-                      onChange={setSelectedHotTimeChannels}
-                      placeholder="전체 채널"
-                    />
-                  </FormItem>
                   <FormField
                     control={hotTimeForm.control}
                     name="enabled"
@@ -385,6 +376,25 @@ export default function CurrencyRulesPage() {
                     )}
                   />
                 </div>
+
+                {/* 적용 채널 */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70 flex items-center gap-1">
+                    <Icon icon="solar:hashtag-linear" className="w-4 h-4" />
+                    적용 채널
+                    <span className="text-white/40 text-xs">(선택)</span>
+                  </label>
+                  <MultiSelect
+                    options={hotTimeChannelOptions}
+                    selected={selectedHotTimeChannels}
+                    onChange={setSelectedHotTimeChannels}
+                    placeholder="채널을 선택하세요 (미선택 시 전체 적용)"
+                  />
+                  <p className="text-xs text-white/40">
+                    선택하지 않으면 모든 채널에 적용됩니다.
+                  </p>
+                </div>
+
                 <Button
                   type="submit"
                   disabled={createHotTime.isPending}
