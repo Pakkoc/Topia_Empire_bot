@@ -44,8 +44,10 @@ export const walletCommand: Command = {
     const rubyBalance = ruby?.balance ?? BigInt(0);
     const topyTotalEarned = topy?.totalEarned ?? BigInt(0);
 
-    const isSelf = targetUser.id === interaction.user.id;
-    const title = isSelf ? '내 지갑' : `${targetUser.displayName}님의 지갑`;
+    // 서버 닉네임 가져오기
+    const member = await interaction.guild?.members.fetch(targetUser.id).catch(() => null);
+    const displayName = member?.displayName ?? targetUser.displayName;
+    const title = `👛 ${displayName}의 지갑`;
 
     const embed = new EmbedBuilder()
       .setTitle(title)
