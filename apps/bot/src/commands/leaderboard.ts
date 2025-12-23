@@ -3,6 +3,11 @@ import type { Command } from './types';
 
 const MEDALS = ['', '', ''];
 
+// 이모지 제거 함수
+function removeEmoji(text: string): string {
+  return text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
+}
+
 export const leaderboardCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('랭킹')
@@ -35,6 +40,7 @@ export const leaderboardCommand: Command = {
     // 설정에서 화폐 이름 가져오기
     const settingsResult = await container.currencyService.getSettings(guildId);
     const topyName = settingsResult.success && settingsResult.data?.topyName || '토피';
+    const topyNameClean = removeEmoji(topyName);
 
     const result = await container.currencyService.getLeaderboard(guildId, limit, offset);
 
@@ -66,11 +72,11 @@ export const leaderboardCommand: Command = {
       try {
         const user = await interaction.client.users.fetch(wallet.userId);
         lines.push(
-          `${medal} **${user.displayName}** - ${wallet.balance.toLocaleString()} ${topyName}`
+          `${medal} **${user.displayName}** - ${wallet.balance.toLocaleString()} ${topyNameClean}`
         );
       } catch {
         lines.push(
-          `${medal} <@${wallet.userId}> - ${wallet.balance.toLocaleString()} ${topyName}`
+          `${medal} <@${wallet.userId}> - ${wallet.balance.toLocaleString()} ${topyNameClean}`
         );
       }
     }
