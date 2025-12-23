@@ -133,7 +133,7 @@ export default function NotificationSettingsPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* 알림 채널 카드 */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden animate-fade-up">
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 animate-fade-up">
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
