@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { NavigationLink } from "@/components/navigation-link";
 import { Icon } from "@iconify/react";
@@ -63,6 +64,9 @@ export function DashboardSidebar({ guildId, guildName, guildIcon }: SidebarProps
   const pathname = usePathname();
   const basePath = `/dashboard/${guildId}`;
 
+  // 토글 상태 관리 (카테고리 이름을 키로 사용)
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
+
   const isActive = (href: string) => {
     const fullPath = `${basePath}${href}`;
     if (href === "") {
@@ -73,6 +77,30 @@ export function DashboardSidebar({ guildId, guildName, guildIcon }: SidebarProps
 
   const isParentActive = (children: typeof navigation[1]["children"]) => {
     return children?.some(child => isActive(child.href));
+  };
+
+  // 활성화된 카테고리 자동 펼침
+  useEffect(() => {
+    const newOpenState: Record<string, boolean> = {};
+    navigation.forEach((item) => {
+      if (item.children && isParentActive(item.children)) {
+        newOpenState[item.name] = true;
+      }
+    });
+    setOpenCategories((prev) => ({ ...prev, ...newOpenState }));
+  }, [pathname]);
+
+  const toggleCategory = (name: string) => {
+    setOpenCategories((prev) => ({
+      ...prev,
+      [name]: !prev[name],
+    }));
+  };
+
+  const isCategoryOpen = (name: string, children: typeof navigation[1]["children"]) => {
+    // 활성화된 카테고리는 항상 열림
+    if (isParentActive(children)) return true;
+    return openCategories[name] ?? false;
   };
 
   return (
@@ -110,39 +138,58 @@ export function DashboardSidebar({ guildId, guildName, guildIcon }: SidebarProps
             <li key={item.name}>
               {item.children ? (
                 <div className="space-y-1">
-                  <div className={cn(
-                    "flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors",
-                    isParentActive(item.children)
-                      ? "text-white bg-white/5"
-                      : "text-white/50"
-                  )}>
+                  <button
+                    onClick={() => toggleCategory(item.name)}
+                    className={cn(
+                      "w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors",
+                      isParentActive(item.children)
+                        ? "text-white bg-white/5"
+                        : "text-white/50 hover:bg-white/5 hover:text-white/80"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon
+                        icon={isParentActive(item.children) ? item.iconActive : item.icon}
+                        className="h-5 w-5"
+                      />
+                      {item.name}
+                    </div>
                     <Icon
-                      icon={isParentActive(item.children) ? item.iconActive : item.icon}
-                      className="h-5 w-5"
+                      icon="solar:alt-arrow-down-linear"
+                      className={cn(
+                        "h-4 w-4 transition-transform duration-200",
+                        isCategoryOpen(item.name, item.children) ? "rotate-180" : ""
+                      )}
                     />
-                    {item.name}
+                  </button>
+                  <div
+                    className={cn(
+                      "overflow-hidden transition-all duration-200",
+                      isCategoryOpen(item.name, item.children) ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                    )}
+                  >
+                    <ul className="ml-4 space-y-0.5 pl-4 border-l border-white/10">
+                      {item.children.map((child) => (
+                        <li key={child.name}>
+                          <NavigationLink
+                            href={`${basePath}${child.href}`}
+                            className={cn(
+                              "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-all",
+                              isActive(child.href)
+                                ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white font-medium border border-indigo-500/30"
+                                : "text-white/50 hover:bg-white/5 hover:text-white/80"
+                            )}
+                          >
+                            <Icon
+                              icon={isActive(child.href) ? child.iconActive : child.icon}
+                              className="h-4 w-4"
+                            />
+                            {child.name}
+                          </NavigationLink>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="ml-4 space-y-0.5 pl-4 border-l border-white/10">
-                    {item.children.map((child) => (
-                      <li key={child.name}>
-                        <NavigationLink
-                          href={`${basePath}${child.href}`}
-                          className={cn(
-                            "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-all",
-                            isActive(child.href)
-                              ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white font-medium border border-indigo-500/30"
-                              : "text-white/50 hover:bg-white/5 hover:text-white/80"
-                          )}
-                        >
-                          <Icon
-                            icon={isActive(child.href) ? child.iconActive : child.icon}
-                            className="h-4 w-4"
-                          />
-                          {child.name}
-                        </NavigationLink>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
               ) : (
                 <NavigationLink
