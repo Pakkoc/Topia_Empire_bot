@@ -52,7 +52,7 @@ const hotTimeFormSchema = z.object({
   type: z.enum(["text", "voice", "all"]),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
-  multiplier: z.coerce.number().min(1).max(10),
+  multiplier: z.coerce.number().min(0).max(10),
   enabled: z.boolean(),
 });
 
@@ -163,7 +163,7 @@ export default function XpRulesPage() {
   const [isAddingMultiplier, setIsAddingMultiplier] = useState(false);
   const [multiplierTargetType, setMultiplierTargetType] = useState<"channel" | "role">("channel");
   const [multiplierTargetIds, setMultiplierTargetIds] = useState<string[]>([]);
-  const [multiplierValue, setMultiplierValue] = useState<number>(1.5);
+  const [multiplierValue, setMultiplierValue] = useState<number>(1);
   const [editedMultipliers, setEditedMultipliers] = useState<Record<number, number>>({});
 
   const { data: multipliers, isLoading: multipliersLoading } = useXpMultipliers(guildId);
@@ -400,7 +400,7 @@ export default function XpRulesPage() {
       });
       setIsAddingMultiplier(false);
       setMultiplierTargetIds([]);
-      setMultiplierValue(1.5);
+      setMultiplierValue(1);
     } catch {
       toast({
         title: "추가 실패",
@@ -629,8 +629,8 @@ export default function XpRulesPage() {
                             <FormControl>
                               <Input
                                 type="number"
-                                step="0.1"
-                                min="1"
+                                step="1"
+                                min="0"
                                 max="10"
                                 {...field}
                                 className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
@@ -838,11 +838,11 @@ export default function XpRulesPage() {
                     </label>
                     <Input
                       type="number"
-                      step="0.1"
-                      min="0.1"
+                      step="1"
+                      min="0"
                       max="10"
                       value={multiplierValue}
-                      onChange={(e) => setMultiplierValue(parseFloat(e.target.value) || 1)}
+                      onChange={(e) => setMultiplierValue(parseInt(e.target.value) || 0)}
                       className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
                     />
                   </div>
@@ -855,7 +855,7 @@ export default function XpRulesPage() {
                     onClick={() => {
                       setIsAddingMultiplier(false);
                       setMultiplierTargetIds([]);
-                      setMultiplierValue(1.5);
+                      setMultiplierValue(1);
                     }}
                     className="border-white/10 hover:bg-white/5"
                   >
@@ -917,13 +917,13 @@ export default function XpRulesPage() {
                           <div className="flex items-center gap-2">
                             <Input
                               type="number"
-                              step="0.1"
-                              min="0.1"
+                              step="1"
+                              min="0"
                               max="10"
                               value={editedMultipliers[multiplier.id] ?? multiplier.multiplier}
                               className="w-20 border-white/10 bg-white/5"
                               onChange={(e) => {
-                                const newValue = parseFloat(e.target.value);
+                                const newValue = parseInt(e.target.value);
                                 if (!isNaN(newValue)) {
                                   setEditedMultipliers((prev) => ({
                                     ...prev,
@@ -996,13 +996,13 @@ export default function XpRulesPage() {
                         <div className="flex items-center gap-2">
                           <Input
                             type="number"
-                            step="0.1"
-                            min="0.1"
+                            step="1"
+                            min="0"
                             max="10"
                             value={editedMultipliers[multiplier.id] ?? multiplier.multiplier}
                             className="w-20 border-white/10 bg-white/5"
                             onChange={(e) => {
-                              const newValue = parseFloat(e.target.value);
+                              const newValue = parseInt(e.target.value);
                               if (!isNaN(newValue)) {
                                 setEditedMultipliers((prev) => ({
                                   ...prev,
