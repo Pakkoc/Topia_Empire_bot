@@ -129,6 +129,54 @@ export async function POST(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ guildId: string }> }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.accessToken) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { guildId } = await params;
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json({ error: "ID is required" }, { status: 400 });
+  }
+
+  try {
+    const body = await request.json();
+    const { multiplier } = body;
+
+    if (multiplier === undefined) {
+      return NextResponse.json({ error: "multiplier is required" }, { status: 400 });
+    }
+
+    const pool = db();
+    await pool.query(
+      `UPDATE currency_multipliers SET multiplier = ? WHERE id = ? AND guild_id = ?`,
+      [multiplier, id, guildId]
+    );
+
+    notifyBotSettingsChanged({
+      guildId,
+      type: 'currency-multiplier',
+      action: '수정',
+      details: `배율: x${multiplier}`,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error updating currency multiplier:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ guildId: string }> }

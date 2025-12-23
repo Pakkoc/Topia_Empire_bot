@@ -32,6 +32,23 @@ export function useCreateCurrencyMultiplier(guildId: string) {
   });
 }
 
+export function useUpdateCurrencyMultiplier(guildId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { multiplier: number } }) => {
+      const response = await apiClient.patch(
+        `/api/guilds/${guildId}/currency/multipliers?id=${id}`,
+        data
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["currency-multipliers", guildId] });
+    },
+  });
+}
+
 export function useDeleteCurrencyMultiplier(guildId: string) {
   const queryClient = useQueryClient();
 
