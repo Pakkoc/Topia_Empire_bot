@@ -173,6 +173,15 @@ export default function CurrencyRulesPage() {
   const voiceChannels = channels.filter(c => c.type === 2);
   const textChannels = channels.filter(c => c.type === 0);
 
+  // 음성 채널 먼저, 텍스트 채널 나중에 정렬된 목록
+  const sortedChannels = [...channels].sort((a, b) => {
+    const aIsVoice = a.type === 2;
+    const bIsVoice = b.type === 2;
+    if (aIsVoice && !bIsVoice) return -1;
+    if (!aIsVoice && bIsVoice) return 1;
+    return 0;
+  });
+
   const isLoading = hotTimesLoading || exclusionsLoading || multipliersLoading || categoriesLoading;
 
   if (isLoading) {
@@ -407,9 +416,16 @@ export default function CurrencyRulesPage() {
                           </FormControl>
                           <SelectContent>
                             {exclusionForm.watch("targetType") === "channel"
-                              ? channels.map((ch) => (
+                              ? sortedChannels.map((ch) => (
                                   <SelectItem key={ch.id} value={ch.id}>
-                                    #{ch.name}
+                                    <span className="flex items-center gap-2">
+                                      {ch.type === 2 ? (
+                                        <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
+                                      ) : (
+                                        <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-slate-400" />
+                                      )}
+                                      {ch.name}
+                                    </span>
                                   </SelectItem>
                                 ))
                               : roles.map((r) => (
@@ -519,9 +535,16 @@ export default function CurrencyRulesPage() {
                           </FormControl>
                           <SelectContent>
                             {multiplierForm.watch("targetType") === "channel"
-                              ? channels.map((ch) => (
+                              ? sortedChannels.map((ch) => (
                                   <SelectItem key={ch.id} value={ch.id}>
-                                    #{ch.name}
+                                    <span className="flex items-center gap-2">
+                                      {ch.type === 2 ? (
+                                        <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
+                                      ) : (
+                                        <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-slate-400" />
+                                      )}
+                                      {ch.name}
+                                    </span>
                                   </SelectItem>
                                 ))
                               : roles.map((r) => (

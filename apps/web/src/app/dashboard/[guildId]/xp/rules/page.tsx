@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -44,7 +44,6 @@ import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-selec
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChanges } from "@/contexts/unsaved-changes-context";
-import { useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { XpHotTime, XpMultiplier } from "@/types/xp";
 
@@ -213,6 +212,14 @@ export default function XpRulesPage() {
 
   const channelOptions: MultiSelectOption[] = (filteredChannels ?? [])
     .filter((ch) => !existingChannelIds.has(ch.id))
+    // 음성 채널 먼저, 텍스트 채널 나중에 정렬
+    .sort((a, b) => {
+      const aIsVoice = isVoiceChannel(a.type);
+      const bIsVoice = isVoiceChannel(b.type);
+      if (aIsVoice && !bIsVoice) return -1;
+      if (!aIsVoice && bIsVoice) return 1;
+      return 0;
+    })
     .map((ch) => ({
       value: ch.id,
       label: ch.name,
@@ -231,16 +238,51 @@ export default function XpRulesPage() {
       color: r.color === 0 ? "#99aab5" : `#${r.color.toString(16).padStart(6, "0")}`,
     }));
 
-  // 핫타임 채널 선택용 옵션 (모든 채널 선택 가능)
-  const hotTimeChannelOptions: MultiSelectOption[] = (filteredChannels ?? []).map((ch) => ({
-    value: ch.id,
-    label: ch.name,
-    icon: isVoiceChannel(ch.type) ? (
-      <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
-    ) : (
-      <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-slate-400" />
-    ),
-  }));
+  // 핫타임 유형 watch (음성 유형 선택 시 채널 필터링용)
+  const hotTimeType = hotTimeForm.watch("type");
+
+  // 핫타임 채널 선택용 옵션 (음성 유형 선택 시 음성 채널만 표시, 음성/텍스트 그룹 정렬)
+  const hotTimeChannelOptions: MultiSelectOption[] = (filteredChannels ?? [])
+    .filter((ch) => {
+      // 음성 유형일 때는 음성 채널만 표시
+      if (hotTimeType === "voice") {
+        return isVoiceChannel(ch.type);
+      }
+      // 텍스트, 전체일 때는 모든 채널 표시 (음성 채널 내 채팅 포함)
+      return true;
+    })
+    // 음성 채널 먼저, 텍스트 채널 나중에 정렬
+    .sort((a, b) => {
+      const aIsVoice = isVoiceChannel(a.type);
+      const bIsVoice = isVoiceChannel(b.type);
+      if (aIsVoice && !bIsVoice) return -1;
+      if (!aIsVoice && bIsVoice) return 1;
+      return 0;
+    })
+    .map((ch) => ({
+      value: ch.id,
+      label: ch.name,
+      icon: isVoiceChannel(ch.type) ? (
+        <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
+      ) : (
+        <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-slate-400" />
+      ),
+    }));
+
+  // 음성 유형 선택 시 이미 선택된 텍스트 채널 자동 제거
+  useEffect(() => {
+    if (hotTimeType === "voice" && filteredChannels) {
+      const voiceChannelIds = new Set(
+        filteredChannels.filter((ch) => isVoiceChannel(ch.type)).map((ch) => ch.id)
+      );
+      const filteredSelection = selectedHotTimeChannels.filter((id) =>
+        voiceChannelIds.has(id)
+      );
+      if (filteredSelection.length !== selectedHotTimeChannels.length) {
+        setSelectedHotTimeChannels(filteredSelection);
+      }
+    }
+  }, [hotTimeType, filteredChannels, selectedHotTimeChannels]);
 
   const handleSubmitExclusion = async () => {
     if (selectedIds.length === 0) {
