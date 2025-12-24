@@ -13,90 +13,70 @@ const FONT_BOLD = 'Pretendard Bold';
 const TEMPLATE_PATH = join(__dirname, 'template.png');
 
 export interface ProfileCardData {
-  // 기본 정보
   avatarUrl: string;
   displayName: string;
   joinedAt: Date;
   attendanceCount: number;
   statusMessage?: string;
-
-  // 레벨
   voiceLevel: number;
   chatLevel: number;
-
-  // 구독 정보
   isPremium: boolean;
-
-  // 자산
   topyBalance: bigint;
   rubyBalance: bigint;
   topyName: string;
   rubyName: string;
-
-  // 클랜 (추후 구현)
   clanName?: string;
-
-  // 아이템 (추후 구현)
   warningCount: number;
   warningRemovalCount: number;
   colorTicketCount: number;
 }
 
-// 색상 팔레트 (골드 테마)
+// 제국 테마 색상 팔레트
 const COLORS = {
-  primary: '#8B7355',      // 골드 브라운
-  secondary: '#A69076',    // 라이트 골드
-  accent: '#C4A574',       // 밝은 골드
-  textPrimary: '#4A3F35',  // 다크 브라운
-  textSecondary: '#7A6B5A', // 미디엄 브라운
-  topy: '#B8860B',         // 다크 골드
-  ruby: '#8B0000',         // 다크 레드
+  gold: '#C9A227',           // 황금색
+  darkGold: '#8B6914',       // 진한 골드
+  bronze: '#CD7F32',         // 브론즈
+  cream: '#F5E6C8',          // 크림
+  darkBrown: '#3D2914',      // 다크 브라운 (주요 텍스트)
+  mediumBrown: '#6B4423',    // 미디엄 브라운 (보조 텍스트)
+  lightBrown: '#8B7355',     // 라이트 브라운
+  royalPurple: '#4A1C6B',    // 로얄 퍼플
+  imperialRed: '#8B0000',    // 임페리얼 레드
+  emerald: '#1B5E20',        // 에메랄드 그린
 };
 
-// 출력 크기 (Discord 최적화)
+// 출력 크기
 const OUTPUT_WIDTH = 600;
-const OUTPUT_HEIGHT = 856; // 비율 유지 (1728:2464 = 600:856)
+const OUTPUT_HEIGHT = 856;
 
 export async function generateProfileCard(data: ProfileCardData): Promise<Buffer> {
   const canvas = createCanvas(OUTPUT_WIDTH, OUTPUT_HEIGHT);
   const ctx = canvas.getContext('2d');
 
-  // 1. 배경 템플릿 로드 및 그리기
+  // 1. 배경 템플릿
   try {
     const template = await loadImage(TEMPLATE_PATH);
     ctx.drawImage(template, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
-  } catch (error) {
-    // 템플릿 로드 실패 시 단색 배경
-    ctx.fillStyle = '#F5F5DC';
+  } catch {
+    ctx.fillStyle = COLORS.cream;
     ctx.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
   }
 
-  // 2. 아바타 (액자 위치에 맞춤)
-  // 원본 기준 액자: x=135~465, y=115~530 -> 축소 비율 적용
+  // 2. 아바타 (액자 내부 - 위치 조정)
   const scale = OUTPUT_WIDTH / 1728;
-  const frameX = 135 * scale;
-  const frameY = 130 * scale;
-  const frameWidth = 330 * scale;
-  const frameHeight = 400 * scale;
-
-  // 액자 내부 타원 영역
-  const avatarCenterX = frameX + frameWidth / 2;
-  const avatarCenterY = frameY + frameHeight / 2;
-  const avatarRadiusX = (frameWidth / 2) * 0.75;
-  const avatarRadiusY = (frameHeight / 2) * 0.7;
+  const avatarCenterX = 104 * scale + 57;
+  const avatarCenterY = 195 * scale + 85;
+  const avatarRadiusX = 43;
+  const avatarRadiusY = 52;
 
   try {
     const avatar = await loadImage(data.avatarUrl);
-
-    // 타원형 클리핑
     ctx.save();
     ctx.beginPath();
     ctx.ellipse(avatarCenterX, avatarCenterY, avatarRadiusX, avatarRadiusY, 0, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
-
-    // 아바타 그리기 (타원에 맞춤)
-    const avatarSize = Math.max(avatarRadiusX, avatarRadiusY) * 2.2;
+    const avatarSize = avatarRadiusY * 2.3;
     ctx.drawImage(
       avatar,
       avatarCenterX - avatarSize / 2,
@@ -106,110 +86,109 @@ export async function generateProfileCard(data: ProfileCardData): Promise<Buffer
     );
     ctx.restore();
   } catch {
-    // 아바타 로드 실패 시 기본 타원
-    ctx.fillStyle = COLORS.secondary;
+    ctx.fillStyle = COLORS.lightBrown;
     ctx.beginPath();
     ctx.ellipse(avatarCenterX, avatarCenterY, avatarRadiusX, avatarRadiusY, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 3. 닉네임 (오른쪽 상단)
-  const textStartX = 250;
-  const textStartY = 100;
+  // === 우측 상단 영역 (닉네임, 정보) ===
+  const rightX = 185;
+  let currentY = 75;
 
-  ctx.font = `bold 32px "${FONT_BOLD}"`;
-  ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText(data.displayName, textStartX, textStartY);
+  // 닉네임
+  ctx.font = `bold 28px "${FONT_BOLD}"`;
+  ctx.fillStyle = COLORS.darkBrown;
+  ctx.fillText(data.displayName, rightX, currentY);
 
-  // 4. 가입일 & 출석
-  ctx.font = `16px "${FONT_REGULAR}"`;
-  ctx.fillStyle = COLORS.textSecondary;
-  const joinDate = formatDate(data.joinedAt);
-  ctx.fillText(`${joinDate} 가입`, textStartX, textStartY + 35);
-  ctx.fillText(`출석 ${data.attendanceCount}회`, textStartX, textStartY + 58);
-
-  // 5. 부스트 배지
+  // 부스트 배지
   if (data.isPremium) {
-    ctx.font = `bold 14px "${FONT_BOLD}"`;
+    const nameWidth = ctx.measureText(data.displayName).width;
+    ctx.font = `bold 12px "${FONT_BOLD}"`;
     ctx.fillStyle = '#FF73FA';
-    ctx.fillText('BOOST', textStartX + 200, textStartY);
+    ctx.fillText('NITRO', rightX + nameWidth + 10, currentY - 8);
   }
 
-  // 6. 레벨 섹션 (오른쪽)
-  const levelY = 220;
+  // 가입일
+  currentY += 28;
+  ctx.font = `14px "${FONT_REGULAR}"`;
+  ctx.fillStyle = COLORS.mediumBrown;
+  ctx.fillText(`${formatDate(data.joinedAt)} 가입`, rightX, currentY);
 
-  // Voice 레벨
-  drawLevelBox(ctx, textStartX, levelY, 'VOICE', data.voiceLevel, '#9B59B6');
+  // 출석
+  currentY += 22;
+  ctx.fillText(`출석 ${data.attendanceCount}회`, rightX, currentY);
 
-  // Chat 레벨
-  drawLevelBox(ctx, textStartX + 160, levelY, 'CHAT', data.chatLevel, '#3498DB');
+  // === 레벨 박스 (우측) ===
+  currentY = 165;
+  drawImperialLevelBox(ctx, rightX, currentY, 'VOICE', data.voiceLevel, COLORS.royalPurple);
+  drawImperialLevelBox(ctx, rightX + 145, currentY, 'CHAT', data.chatLevel, COLORS.darkGold);
 
-  // 7. 구분선
-  ctx.strokeStyle = COLORS.accent;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(40, 340);
-  ctx.lineTo(OUTPUT_WIDTH - 40, 340);
-  ctx.stroke();
+  // === 중앙 구분선 (골드) ===
+  currentY = 255;
+  drawGoldDivider(ctx, 30, currentY, OUTPUT_WIDTH - 60);
 
-  // 8. 정보 섹션 (하단)
-  const infoY = 380;
-  const col1X = 60;
-  const col2X = 320;
+  // === 보유 자금 섹션 ===
+  currentY = 290;
 
-  // 섹션 타이틀
-  ctx.font = `bold 20px "${FONT_BOLD}"`;
-  ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText('보유 자금', col1X, infoY);
-  ctx.fillText('소속 클랜', col2X, infoY);
+  // 섹션 제목
+  ctx.font = `bold 18px "${FONT_BOLD}"`;
+  ctx.fillStyle = COLORS.darkBrown;
+  ctx.fillText('보유 자금', 50, currentY);
 
   // 토피
-  ctx.font = `18px "${FONT_REGULAR}"`;
-  ctx.fillStyle = COLORS.topy;
-  ctx.fillText(data.topyName, col1X, infoY + 40);
-  ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText(formatNumber(data.topyBalance), col1X + 80, infoY + 40);
+  currentY += 35;
+  ctx.font = `16px "${FONT_REGULAR}"`;
+  ctx.fillStyle = COLORS.gold;
+  ctx.fillText(`${data.topyName}`, 50, currentY);
+  ctx.fillStyle = COLORS.darkBrown;
+  ctx.font = `bold 16px "${FONT_BOLD}"`;
+  ctx.fillText(`${formatNumber(data.topyBalance)}`, 130, currentY);
 
   // 루비
-  ctx.fillStyle = COLORS.ruby;
-  ctx.fillText(data.rubyName, col1X, infoY + 70);
-  ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText(formatNumber(data.rubyBalance), col1X + 80, infoY + 70);
+  currentY += 28;
+  ctx.font = `16px "${FONT_REGULAR}"`;
+  ctx.fillStyle = COLORS.imperialRed;
+  ctx.fillText(`${data.rubyName}`, 50, currentY);
+  ctx.fillStyle = COLORS.darkBrown;
+  ctx.font = `bold 16px "${FONT_BOLD}"`;
+  ctx.fillText(`${formatNumber(data.rubyBalance)}`, 130, currentY);
 
-  // 클랜
-  ctx.font = `18px "${FONT_REGULAR}"`;
-  ctx.fillStyle = COLORS.textSecondary;
-  ctx.fillText(data.clanName ?? '없음', col2X, infoY + 40);
+  // === 소속 클랜 (우측) ===
+  ctx.font = `bold 18px "${FONT_BOLD}"`;
+  ctx.fillStyle = COLORS.darkBrown;
+  ctx.fillText('소속 클랜', 350, 290);
 
-  // 9. 구분선 2
-  ctx.strokeStyle = COLORS.accent;
-  ctx.beginPath();
-  ctx.moveTo(40, 500);
-  ctx.lineTo(OUTPUT_WIDTH - 40, 500);
-  ctx.stroke();
+  ctx.font = `16px "${FONT_REGULAR}"`;
+  ctx.fillStyle = data.clanName ? COLORS.darkBrown : COLORS.mediumBrown;
+  ctx.fillText(data.clanName ?? '소속 없음', 350, 325);
 
-  // 10. 상태 메시지
+  // === 구분선 2 ===
+  drawGoldDivider(ctx, 30, 400, OUTPUT_WIDTH - 60);
+
+  // === 상태 메시지 ===
   if (data.statusMessage) {
-    ctx.font = `14px "${FONT_REGULAR}"`;
-    ctx.fillStyle = COLORS.textSecondary;
-    const statusText = data.statusMessage.length > 40
-      ? data.statusMessage.substring(0, 40) + '...'
+    ctx.font = `italic 14px "${FONT_REGULAR}"`;
+    ctx.fillStyle = COLORS.mediumBrown;
+    const statusText = data.statusMessage.length > 45
+      ? data.statusMessage.substring(0, 45) + '...'
       : data.statusMessage;
-    ctx.fillText(`"${statusText}"`, col1X, 540);
+    ctx.fillText(`"${statusText}"`, 50, 435);
   }
 
-  // 11. 하단 아이템 배지들
-  const badgeY = 600;
-  let badgeX = 60;
+  // === 아이템 배지 ===
+  const badgeY = 480;
+  let badgeX = 50;
 
-  badgeX = drawBadge(ctx, badgeX, badgeY, '경고', data.warningCount.toString(), '#C0392B');
-  badgeX = drawBadge(ctx, badgeX + 20, badgeY, '경고차감권', data.warningRemovalCount.toString(), '#27AE60');
-  drawBadge(ctx, badgeX + 20, badgeY, '색상선택권', data.colorTicketCount.toString(), '#8E44AD');
+  badgeX = drawImperialBadge(ctx, badgeX, badgeY, '경고', data.warningCount, COLORS.imperialRed);
+  badgeX = drawImperialBadge(ctx, badgeX + 15, badgeY, '경고차감권', data.warningRemovalCount, COLORS.emerald);
+  drawImperialBadge(ctx, badgeX + 15, badgeY, '색상선택권', data.colorTicketCount, COLORS.royalPurple);
 
   return canvas.toBuffer('image/png');
 }
 
-function drawLevelBox(
+// 제국 스타일 레벨 박스
+function drawImperialLevelBox(
   ctx: SKRSContext2D,
   x: number,
   y: number,
@@ -217,59 +196,80 @@ function drawLevelBox(
   level: number,
   color: string
 ) {
-  const boxWidth = 140;
-  const boxHeight = 60;
+  const width = 130;
+  const height = 55;
 
-  // 배경 박스
-  ctx.fillStyle = color + '20';
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
+  // 배경 (살짝 투명)
+  ctx.fillStyle = color + '15';
   ctx.beginPath();
-  ctx.roundRect(x, y, boxWidth, boxHeight, 10);
+  ctx.roundRect(x, y, width, height, 6);
   ctx.fill();
+
+  // 테두리 (골드)
+  ctx.strokeStyle = COLORS.gold;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // 라벨
-  ctx.font = `bold 12px "${FONT_BOLD}"`;
+  // 상단 라벨
+  ctx.font = `bold 11px "${FONT_BOLD}"`;
   ctx.fillStyle = color;
-  ctx.fillText(label, x + 15, y + 22);
+  ctx.fillText(label, x + 12, y + 18);
 
   // 레벨
-  ctx.font = `bold 28px "${FONT_BOLD}"`;
-  ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText(`Lv ${level}`, x + 15, y + 50);
+  ctx.font = `bold 24px "${FONT_BOLD}"`;
+  ctx.fillStyle = COLORS.darkBrown;
+  ctx.fillText(`Lv ${level}`, x + 12, y + 45);
 }
 
-function drawBadge(
+// 골드 구분선
+function drawGoldDivider(ctx: SKRSContext2D, x: number, y: number, width: number) {
+  const gradient = ctx.createLinearGradient(x, y, x + width, y);
+  gradient.addColorStop(0, 'transparent');
+  gradient.addColorStop(0.1, COLORS.gold);
+  gradient.addColorStop(0.5, COLORS.darkGold);
+  gradient.addColorStop(0.9, COLORS.gold);
+  gradient.addColorStop(1, 'transparent');
+
+  ctx.strokeStyle = gradient;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + width, y);
+  ctx.stroke();
+}
+
+// 제국 스타일 배지
+function drawImperialBadge(
   ctx: SKRSContext2D,
   x: number,
   y: number,
   label: string,
-  value: string,
+  value: number,
   color: string
 ): number {
-  const padding = 15;
   const text = `${label}: ${value}`;
-
-  ctx.font = `14px "${FONT_REGULAR}"`;
+  ctx.font = `13px "${FONT_REGULAR}"`;
   const metrics = ctx.measureText(text);
-  const badgeWidth = metrics.width + padding * 2;
-  const badgeHeight = 32;
+  const padding = 12;
+  const width = metrics.width + padding * 2;
+  const height = 28;
 
   // 배경
-  ctx.fillStyle = color + '25';
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
+  ctx.fillStyle = color + '18';
   ctx.beginPath();
-  ctx.roundRect(x, y, badgeWidth, badgeHeight, 8);
+  ctx.roundRect(x, y, width, height, 5);
   ctx.fill();
+
+  // 테두리
+  ctx.strokeStyle = color + '60';
+  ctx.lineWidth = 1;
   ctx.stroke();
 
   // 텍스트
-  ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText(text, x + padding, y + 21);
+  ctx.fillStyle = COLORS.darkBrown;
+  ctx.fillText(text, x + padding, y + 18);
 
-  return x + badgeWidth;
+  return x + width;
 }
 
 function formatDate(date: Date): string {
