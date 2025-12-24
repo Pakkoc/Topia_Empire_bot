@@ -389,3 +389,43 @@ Badge를 사용하여 유형, 배율 등을 표시합니다.
 
 - XP 규칙: `/xp/rules` - 핫타임, 제외, 배율 목록 UI
 - 화폐 규칙: `/currency/rules` - 동일한 패턴 적용
+
+## 동적 화폐 이름 규칙
+
+화폐 이름(토피/루비)은 서버별로 커스텀 가능하므로, **하드코딩하지 않고 설정에서 가져와야 합니다.**
+
+### 사용법
+
+```tsx
+import { useCurrencySettings } from "@/hooks/queries";
+
+export default function MyPage() {
+  const params = useParams();
+  const guildId = params["guildId"] as string;
+  const { data: settings } = useCurrencySettings(guildId);
+
+  const topyName = settings?.topyName ?? "토피";
+  const rubyName = settings?.rubyName ?? "루비";
+
+  return (
+    <div>
+      <p>{topyName} 잔액: 1,000</p>
+      <p>{rubyName} 잔액: 5</p>
+    </div>
+  );
+}
+```
+
+### 적용 위치
+
+- 페이지 헤더/설명
+- 테이블 헤더
+- 필터 드롭다운 옵션
+- 안내 문구
+- 빈 상태 메시지
+- Badge 텍스트
+
+### 참고 페이지
+
+- `/currency/wallets` - 지갑 페이지
+- `/currency/transactions` - 거래 기록 페이지
