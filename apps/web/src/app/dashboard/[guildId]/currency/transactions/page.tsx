@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useCurrencyTransactions, useCurrencySettings, TransactionType, CurrencyType } from "@/hooks/queries";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,11 @@ export default function TransactionsPage() {
   const [userId, setUserId] = useState("");
   const [currencyType, setCurrencyType] = useState<CurrencyType | "all">("all");
   const [transactionType, setTransactionType] = useState<TransactionType | "all">("all");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useDebounce(
     () => {
@@ -137,43 +142,51 @@ export default function TransactionsPage() {
           </div>
 
           {/* Currency Type */}
-          <Select
-            value={currencyType}
-            onValueChange={(value) => {
-              setCurrencyType(value as CurrencyType | "all");
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="bg-white/5 border-white/10 text-white">
-              <SelectValue placeholder="화폐 유형" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체 화폐</SelectItem>
-              <SelectItem value="topy">{topyName}</SelectItem>
-              <SelectItem value="ruby">{rubyName}</SelectItem>
-            </SelectContent>
-          </Select>
+          {mounted ? (
+            <Select
+              value={currencyType}
+              onValueChange={(value) => {
+                setCurrencyType(value as CurrencyType | "all");
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                <SelectValue placeholder="화폐 유형" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 화폐</SelectItem>
+                <SelectItem value="topy">{topyName}</SelectItem>
+                <SelectItem value="ruby">{rubyName}</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="h-10 bg-white/5 border border-white/10 rounded-lg animate-pulse" />
+          )}
 
           {/* Transaction Type */}
-          <Select
-            value={transactionType}
-            onValueChange={(value) => {
-              setTransactionType(value as TransactionType | "all");
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="bg-white/5 border-white/10 text-white">
-              <SelectValue placeholder="거래 유형" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체 유형</SelectItem>
-              {Object.entries(TRANSACTION_TYPE_LABELS).map(([key, label]) => (
-                <SelectItem key={key} value={key}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {mounted ? (
+            <Select
+              value={transactionType}
+              onValueChange={(value) => {
+                setTransactionType(value as TransactionType | "all");
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                <SelectValue placeholder="거래 유형" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 유형</SelectItem>
+                {Object.entries(TRANSACTION_TYPE_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="h-10 bg-white/5 border border-white/10 rounded-lg animate-pulse" />
+          )}
 
           {/* Reset Button */}
           {hasFilters && (
