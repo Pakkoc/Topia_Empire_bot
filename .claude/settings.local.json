@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(implementation)",
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 이체 기능 구현\n\n- Core: calculateTransferFee, getMinTransferAmount 함수 추가\n- Service: transfer, transferTopy, transferRuby 메서드 추가\n- 토피 1.2% 수수료, 루비 수수료 면제\n- 거래 유형에 ''fee'' 추가\n- 웹 거래 기록 페이지에 수수료 타입 표시 추가\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}

@@ -429,3 +429,29 @@ export default function MyPage() {
 
 - `/currency/wallets` - 지갑 페이지
 - `/currency/transactions` - 거래 기록 페이지
+
+## /내정보 프로필 카드 (최후순위)
+
+**`/내정보` 명령어의 프로필 카드 UI는 모든 기능 구현 후 가장 마지막에 작업합니다.**
+
+### 이유
+
+- 프로필 카드에는 여러 시스템의 정보가 표시됨 (XP, 화폐, 출석, 경고 등)
+- 각 기능이 완성되어야 프로필 카드에 연동 가능
+- 디자인 작업은 데이터가 준비된 후에 진행하는 것이 효율적
+
+### 현재 상태
+
+`apps/bot/src/commands/my-info.ts`에 TODO로 표시:
+```typescript
+attendanceCount: 0, // TODO: 출석 시스템 구현 후 연동
+clanName: undefined, // TODO: 클랜 시스템 구현 후 연동
+warningCount: 0, // TODO: 경고 시스템 구현 후 연동
+```
+
+### 작업 시점
+
+모든 화폐 시스템(04~15) 구현 완료 후:
+1. 프로필 카드 디자인 리뉴얼
+2. 각 시스템 데이터 연동
+3. 캔버스 렌더링 최적화
