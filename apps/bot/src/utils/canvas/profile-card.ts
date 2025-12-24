@@ -9,6 +9,9 @@ GlobalFonts.registerFromPath(join(fontsDir, 'Pretendard-Bold.otf'), 'Pretendard 
 const FONT_REGULAR = 'Pretendard';
 const FONT_BOLD = 'Pretendard Bold';
 
+// 템플릿 경로
+const TEMPLATE_PATH = join(__dirname, 'template.png');
+
 export interface ProfileCardData {
   // 기본 정보
   avatarUrl: string;
@@ -39,170 +42,174 @@ export interface ProfileCardData {
   colorTicketCount: number;
 }
 
-// 색상 팔레트
+// 색상 팔레트 (골드 테마)
 const COLORS = {
-  background: '#1a1a2e',
-  cardBg: '#16213e',
-  primary: '#5865F2',
-  secondary: '#3d5a80',
-  accent: '#ffd700',
-  textPrimary: '#ffffff',
-  textSecondary: '#a0a0a0',
-  divider: '#2d3748',
-  topy: '#f59e0b',
-  ruby: '#ef4444',
+  primary: '#8B7355',      // 골드 브라운
+  secondary: '#A69076',    // 라이트 골드
+  accent: '#C4A574',       // 밝은 골드
+  textPrimary: '#4A3F35',  // 다크 브라운
+  textSecondary: '#7A6B5A', // 미디엄 브라운
+  topy: '#B8860B',         // 다크 골드
+  ruby: '#8B0000',         // 다크 레드
 };
 
-export async function generateProfileCard(data: ProfileCardData): Promise<Buffer> {
-  const width = 600;
-  const height = 400;
+// 출력 크기 (Discord 최적화)
+const OUTPUT_WIDTH = 600;
+const OUTPUT_HEIGHT = 856; // 비율 유지 (1728:2464 = 600:856)
 
-  const canvas = createCanvas(width, height);
+export async function generateProfileCard(data: ProfileCardData): Promise<Buffer> {
+  const canvas = createCanvas(OUTPUT_WIDTH, OUTPUT_HEIGHT);
   const ctx = canvas.getContext('2d');
 
-  // 배경 그라데이션
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, COLORS.background);
-  gradient.addColorStop(1, COLORS.cardBg);
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
+  // 1. 배경 템플릿 로드 및 그리기
+  try {
+    const template = await loadImage(TEMPLATE_PATH);
+    ctx.drawImage(template, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+  } catch (error) {
+    // 템플릿 로드 실패 시 단색 배경
+    ctx.fillStyle = '#F5F5DC';
+    ctx.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+  }
 
-  // 테두리
-  ctx.strokeStyle = COLORS.primary;
-  ctx.lineWidth = 3;
-  ctx.roundRect(10, 10, width - 20, height - 20, 15);
-  ctx.stroke();
+  // 2. 아바타 (액자 위치에 맞춤)
+  // 원본 기준 액자: x=135~465, y=115~530 -> 축소 비율 적용
+  const scale = OUTPUT_WIDTH / 1728;
+  const frameX = 135 * scale;
+  const frameY = 130 * scale;
+  const frameWidth = 330 * scale;
+  const frameHeight = 400 * scale;
 
-  // 아바타 로드 및 그리기
+  // 액자 내부 타원 영역
+  const avatarCenterX = frameX + frameWidth / 2;
+  const avatarCenterY = frameY + frameHeight / 2;
+  const avatarRadiusX = (frameWidth / 2) * 0.75;
+  const avatarRadiusY = (frameHeight / 2) * 0.7;
+
   try {
     const avatar = await loadImage(data.avatarUrl);
-    const avatarSize = 80;
-    const avatarX = 40;
-    const avatarY = 40;
 
-    // 원형 클리핑
+    // 타원형 클리핑
     ctx.save();
     ctx.beginPath();
-    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+    ctx.ellipse(avatarCenterX, avatarCenterY, avatarRadiusX, avatarRadiusY, 0, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore();
 
-    // 아바타 테두리
-    ctx.beginPath();
-    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 2, 0, Math.PI * 2);
-    ctx.strokeStyle = COLORS.primary;
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    // 아바타 그리기 (타원에 맞춤)
+    const avatarSize = Math.max(avatarRadiusX, avatarRadiusY) * 2.2;
+    ctx.drawImage(
+      avatar,
+      avatarCenterX - avatarSize / 2,
+      avatarCenterY - avatarSize / 2,
+      avatarSize,
+      avatarSize
+    );
+    ctx.restore();
   } catch {
-    // 아바타 로드 실패 시 기본 원 그리기
-    ctx.beginPath();
-    ctx.arc(80, 80, 40, 0, Math.PI * 2);
+    // 아바타 로드 실패 시 기본 타원
     ctx.fillStyle = COLORS.secondary;
+    ctx.beginPath();
+    ctx.ellipse(avatarCenterX, avatarCenterY, avatarRadiusX, avatarRadiusY, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 닉네임
-  ctx.font = `bold 24px "${FONT_BOLD}"`;
+  // 3. 닉네임 (오른쪽 상단)
+  const textStartX = 250;
+  const textStartY = 100;
+
+  ctx.font = `bold 32px "${FONT_BOLD}"`;
   ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText(data.displayName, 140, 65);
+  ctx.fillText(data.displayName, textStartX, textStartY);
 
-  // 가입일 및 출석
-  const joinDate = formatDate(data.joinedAt);
-  ctx.font = `14px "${FONT_REGULAR}"`;
+  // 4. 가입일 & 출석
+  ctx.font = `16px "${FONT_REGULAR}"`;
   ctx.fillStyle = COLORS.textSecondary;
-  ctx.fillText(`${joinDate} 가입 | 출석 ${data.attendanceCount}회`, 140, 90);
+  const joinDate = formatDate(data.joinedAt);
+  ctx.fillText(`${joinDate} 가입`, textStartX, textStartY + 35);
+  ctx.fillText(`출석 ${data.attendanceCount}회`, textStartX, textStartY + 58);
 
-  // 상태 메시지
-  if (data.statusMessage) {
-    ctx.font = `12px "${FONT_REGULAR}"`;
-    ctx.fillStyle = COLORS.textSecondary;
-    const statusText = data.statusMessage.length > 30
-      ? data.statusMessage.substring(0, 30) + '...'
-      : data.statusMessage;
-    ctx.fillText(`상태: ${statusText}`, 140, 110);
+  // 5. 부스트 배지
+  if (data.isPremium) {
+    ctx.font = `bold 14px "${FONT_BOLD}"`;
+    ctx.fillStyle = '#FF73FA';
+    ctx.fillText('BOOST', textStartX + 200, textStartY);
   }
 
-  // 구분선 1
-  ctx.beginPath();
-  ctx.moveTo(40, 140);
-  ctx.lineTo(width - 40, 140);
-  ctx.strokeStyle = COLORS.divider;
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // 레벨 섹션
-  const levelY = 175;
+  // 6. 레벨 섹션 (오른쪽)
+  const levelY = 220;
 
   // Voice 레벨
-  drawLevelBadge(ctx, 80, levelY, 'VOICE', data.voiceLevel, '#9b59b6');
+  drawLevelBox(ctx, textStartX, levelY, 'VOICE', data.voiceLevel, '#9B59B6');
 
   // Chat 레벨
-  drawLevelBadge(ctx, 280, levelY, 'CHAT', data.chatLevel, '#3498db');
+  drawLevelBox(ctx, textStartX + 160, levelY, 'CHAT', data.chatLevel, '#3498DB');
 
-  // 프리미엄 배지
-  if (data.isPremium) {
-    ctx.font = `bold 12px "${FONT_BOLD}"`;
-    ctx.fillStyle = COLORS.accent;
-    ctx.fillText('BOOST', 480, levelY);
-  }
-
-  // 구분선 2
-  ctx.beginPath();
-  ctx.moveTo(40, 210);
-  ctx.lineTo(width - 40, 210);
-  ctx.strokeStyle = COLORS.divider;
+  // 7. 구분선
+  ctx.strokeStyle = COLORS.accent;
   ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, 340);
+  ctx.lineTo(OUTPUT_WIDTH - 40, 340);
   ctx.stroke();
 
-  // 보유 자금 섹션
-  ctx.font = `bold 16px "${FONT_BOLD}"`;
-  ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText('보유 자금', 40, 245);
+  // 8. 정보 섹션 (하단)
+  const infoY = 380;
+  const col1X = 60;
+  const col2X = 320;
 
-  ctx.font = `bold 16px "${FONT_BOLD}"`;
+  // 섹션 타이틀
+  ctx.font = `bold 20px "${FONT_BOLD}"`;
   ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText('소속 클랜', 400, 245);
+  ctx.fillText('보유 자금', col1X, infoY);
+  ctx.fillText('소속 클랜', col2X, infoY);
 
   // 토피
-  ctx.font = `14px "${FONT_REGULAR}"`;
+  ctx.font = `18px "${FONT_REGULAR}"`;
   ctx.fillStyle = COLORS.topy;
-  ctx.fillText(`${data.topyName}`, 40, 275);
+  ctx.fillText(data.topyName, col1X, infoY + 40);
   ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText(`${formatNumber(data.topyBalance)}`, 120, 275);
+  ctx.fillText(formatNumber(data.topyBalance), col1X + 80, infoY + 40);
 
   // 루비
   ctx.fillStyle = COLORS.ruby;
-  ctx.fillText(`${data.rubyName}`, 40, 300);
+  ctx.fillText(data.rubyName, col1X, infoY + 70);
   ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText(`${formatNumber(data.rubyBalance)}`, 120, 300);
+  ctx.fillText(formatNumber(data.rubyBalance), col1X + 80, infoY + 70);
 
   // 클랜
-  ctx.font = `14px "${FONT_REGULAR}"`;
+  ctx.font = `18px "${FONT_REGULAR}"`;
   ctx.fillStyle = COLORS.textSecondary;
-  ctx.fillText(data.clanName ?? '없음', 400, 275);
+  ctx.fillText(data.clanName ?? '없음', col2X, infoY + 40);
 
-  // 구분선 3
+  // 9. 구분선 2
+  ctx.strokeStyle = COLORS.accent;
   ctx.beginPath();
-  ctx.moveTo(40, 325);
-  ctx.lineTo(width - 40, 325);
-  ctx.strokeStyle = COLORS.divider;
-  ctx.lineWidth = 1;
+  ctx.moveTo(40, 500);
+  ctx.lineTo(OUTPUT_WIDTH - 40, 500);
   ctx.stroke();
 
-  // 하단 아이템 배지들
-  const badgeY = 355;
-  let badgeX = 40;
+  // 10. 상태 메시지
+  if (data.statusMessage) {
+    ctx.font = `14px "${FONT_REGULAR}"`;
+    ctx.fillStyle = COLORS.textSecondary;
+    const statusText = data.statusMessage.length > 40
+      ? data.statusMessage.substring(0, 40) + '...'
+      : data.statusMessage;
+    ctx.fillText(`"${statusText}"`, col1X, 540);
+  }
 
-  badgeX = drawBadge(ctx, badgeX, badgeY, '경고', data.warningCount.toString(), '#e74c3c');
-  badgeX = drawBadge(ctx, badgeX + 15, badgeY, '경고차감권', data.warningRemovalCount.toString(), '#2ecc71');
-  drawBadge(ctx, badgeX + 15, badgeY, '색상선택권', data.colorTicketCount.toString(), '#9b59b6');
+  // 11. 하단 아이템 배지들
+  const badgeY = 600;
+  let badgeX = 60;
+
+  badgeX = drawBadge(ctx, badgeX, badgeY, '경고', data.warningCount.toString(), '#C0392B');
+  badgeX = drawBadge(ctx, badgeX + 20, badgeY, '경고차감권', data.warningRemovalCount.toString(), '#27AE60');
+  drawBadge(ctx, badgeX + 20, badgeY, '색상선택권', data.colorTicketCount.toString(), '#8E44AD');
 
   return canvas.toBuffer('image/png');
 }
 
-function drawLevelBadge(
+function drawLevelBox(
   ctx: SKRSContext2D,
   x: number,
   y: number,
@@ -210,20 +217,27 @@ function drawLevelBadge(
   level: number,
   color: string
 ) {
-  // 배경
-  ctx.fillStyle = color + '33'; // 20% opacity
-  ctx.roundRect(x - 30, y - 20, 120, 35, 8);
+  const boxWidth = 140;
+  const boxHeight = 60;
+
+  // 배경 박스
+  ctx.fillStyle = color + '20';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, boxWidth, boxHeight, 10);
   ctx.fill();
+  ctx.stroke();
 
   // 라벨
   ctx.font = `bold 12px "${FONT_BOLD}"`;
   ctx.fillStyle = color;
-  ctx.fillText(label, x - 20, y - 3);
+  ctx.fillText(label, x + 15, y + 22);
 
   // 레벨
-  ctx.font = `bold 18px "${FONT_BOLD}"`;
+  ctx.font = `bold 28px "${FONT_BOLD}"`;
   ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText(`Lv ${level}`, x + 30, y);
+  ctx.fillText(`Lv ${level}`, x + 15, y + 50);
 }
 
 function drawBadge(
@@ -234,21 +248,26 @@ function drawBadge(
   value: string,
   color: string
 ): number {
-  const padding = 10;
+  const padding = 15;
   const text = `${label}: ${value}`;
 
-  ctx.font = `12px "${FONT_REGULAR}"`;
+  ctx.font = `14px "${FONT_REGULAR}"`;
   const metrics = ctx.measureText(text);
   const badgeWidth = metrics.width + padding * 2;
+  const badgeHeight = 32;
 
   // 배경
-  ctx.fillStyle = color + '33';
-  ctx.roundRect(x, y - 15, badgeWidth, 25, 5);
+  ctx.fillStyle = color + '25';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(x, y, badgeWidth, badgeHeight, 8);
   ctx.fill();
+  ctx.stroke();
 
   // 텍스트
   ctx.fillStyle = COLORS.textPrimary;
-  ctx.fillText(text, x + padding, y + 2);
+  ctx.fillText(text, x + padding, y + 21);
 
   return x + badgeWidth;
 }
