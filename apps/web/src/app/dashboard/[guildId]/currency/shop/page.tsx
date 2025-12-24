@@ -292,10 +292,10 @@ export default function ShopPage() {
       setNewColorRoleId("");
       setNewColorPrice(0);
       toast({ title: "색상 추가 완료" });
-    } catch {
+    } catch (err) {
       toast({
         title: "오류 발생",
-        description: "색상 추가 중 오류가 발생했습니다.",
+        description: err instanceof Error ? err.message : "색상 추가 중 오류가 발생했습니다.",
         variant: "destructive",
       });
     }
@@ -835,6 +835,7 @@ export default function ShopPage() {
                 </div>
               </div>
               <Button
+                type="button"
                 onClick={handleAddColorOption}
                 className="bg-gradient-to-r from-amber-600 to-orange-600"
               >
