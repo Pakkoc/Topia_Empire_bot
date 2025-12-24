@@ -10,7 +10,7 @@
 
 - [x] DB 테이블: `topy_wallets`, `ruby_wallets`, `currency_transactions`
 - [x] Service: transfer 메서드
-- [ ] Bot: 이체 버튼/모달 (UI 마지막에)
+- [x] Bot: `/이체` 명령어
 
 ## 수치/규칙
 
