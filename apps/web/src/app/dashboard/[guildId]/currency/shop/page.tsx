@@ -836,7 +836,6 @@ export default function ShopPage() {
               </div>
               <Button
                 onClick={handleAddColorOption}
-                disabled={createColorOption.isPending}
                 className="bg-gradient-to-r from-amber-600 to-orange-600"
               >
                 <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
@@ -885,7 +884,6 @@ export default function ShopPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDeleteColorOption(option.id)}
-                          disabled={deleteColorOption.isPending}
                         >
                           <Icon icon="solar:trash-bin-2-linear" className="h-4 w-4 text-red-400" />
                         </Button>
