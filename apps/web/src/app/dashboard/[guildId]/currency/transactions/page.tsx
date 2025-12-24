@@ -27,6 +27,7 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   transfer_out: "송금 보냄",
   shop_purchase: "상점 구매",
   tax: "세금",
+  fee: "수수료",
   admin_add: "관리자 추가",
   admin_remove: "관리자 차감",
 };
@@ -39,6 +40,7 @@ const TRANSACTION_TYPE_ICONS: Record<TransactionType, string> = {
   transfer_out: "solar:arrow-up-bold",
   shop_purchase: "solar:bag-bold",
   tax: "solar:bill-bold",
+  fee: "solar:hand-money-bold",
   admin_add: "solar:add-circle-bold",
   admin_remove: "solar:minus-circle-bold",
 };
@@ -51,6 +53,7 @@ const TRANSACTION_TYPE_COLORS: Record<TransactionType, string> = {
   transfer_out: "text-orange-400",
   shop_purchase: "text-purple-400",
   tax: "text-red-400",
+  fee: "text-yellow-400",
   admin_add: "text-cyan-400",
   admin_remove: "text-red-400",
 };
@@ -91,7 +94,7 @@ export default function TransactionsPage() {
 
   const formatAmount = (amount: string, type: TransactionType) => {
     const value = BigInt(amount);
-    const isNegative = type === "transfer_out" || type === "shop_purchase" || type === "tax" || type === "admin_remove";
+    const isNegative = type === "transfer_out" || type === "shop_purchase" || type === "tax" || type === "fee" || type === "admin_remove";
     return `${isNegative ? "-" : "+"}${value.toLocaleString()}`;
   };
 
@@ -295,6 +298,7 @@ export default function TransactionsPage() {
                     tx.transactionType === "transfer_out" ||
                     tx.transactionType === "shop_purchase" ||
                     tx.transactionType === "tax" ||
+                    tx.transactionType === "fee" ||
                     tx.transactionType === "admin_remove"
                       ? "text-red-400"
                       : "text-green-400"

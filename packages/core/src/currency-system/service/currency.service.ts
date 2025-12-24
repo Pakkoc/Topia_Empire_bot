@@ -15,6 +15,7 @@ import { checkCooldown } from '../functions/check-cooldown';
 import { checkDailyLimit, calculateActualEarning } from '../functions/check-daily-limit';
 import { generateRandomCurrency, applyMultiplier } from '../functions/generate-random-currency';
 import { checkHotTime, formatTimeForHotTime } from '../functions/check-hot-time';
+import { calculateTransferFee, getMinTransferAmount } from '../functions/calculate-transfer-fee';
 
 export interface CurrencyGrantResult {
   granted: boolean;
@@ -22,6 +23,13 @@ export interface CurrencyGrantResult {
   totalBalance?: bigint;
   dailyEarned?: number;
   reason?: 'no_settings' | 'disabled' | 'cooldown' | 'excluded_channel' | 'excluded_role' | 'daily_limit' | 'message_too_short';
+}
+
+export interface TransferResult {
+  amount: bigint;
+  fee: bigint;
+  fromBalance: bigint;
+  toBalance: bigint;
 }
 
 export class CurrencyService {
@@ -497,5 +505,174 @@ export class CurrencyService {
       return Result.err({ type: 'REPOSITORY_ERROR', cause: result.error });
     }
     return Result.ok(result.data);
+  }
+
+  /**
+   * 화폐 이체
+   */
+  async transfer(
+    guildId: string,
+    fromUserId: string,
+    toUserId: string,
+    amount: bigint,
+    currencyType: CurrencyType
+  ): Promise<Result<TransferResult, CurrencyError>> {
+    // 1. 자기 자신에게 이체 불가
+    if (fromUserId === toUserId) {
+      return Result.err({ type: 'SELF_TRANSFER' });
+    }
+
+    // 2. 최소 금액 확인
+    const minAmount = getMinTransferAmount(currencyType);
+    if (amount < minAmount) {
+      return Result.err({
+        type: 'INVALID_AMOUNT',
+        message: `최소 이체 금액은 ${minAmount}입니다.`,
+      });
+    }
+
+    // 3. 수수료 계산
+    const fee = calculateTransferFee(amount, currencyType);
+    const totalRequired = amount + fee;
+
+    if (currencyType === 'topy') {
+      return this.transferTopy(guildId, fromUserId, toUserId, amount, fee, totalRequired);
+    } else {
+      return this.transferRuby(guildId, fromUserId, toUserId, amount);
+    }
+  }
+
+  private async transferTopy(
+    guildId: string,
+    fromUserId: string,
+    toUserId: string,
+    amount: bigint,
+    fee: bigint,
+    totalRequired: bigint
+  ): Promise<Result<TransferResult, CurrencyError>> {
+    // 송금자 지갑 확인
+    const fromWalletResult = await this.topyWalletRepo.findByUser(guildId, fromUserId);
+    if (!fromWalletResult.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: fromWalletResult.error });
+    }
+    if (!fromWalletResult.data) {
+      return Result.err({ type: 'INSUFFICIENT_BALANCE', required: totalRequired, available: BigInt(0) });
+    }
+
+    const fromWallet = fromWalletResult.data;
+    if (fromWallet.balance < totalRequired) {
+      return Result.err({ type: 'INSUFFICIENT_BALANCE', required: totalRequired, available: fromWallet.balance });
+    }
+
+    // 수신자 지갑 확인/생성
+    const toWalletResult = await this.topyWalletRepo.findByUser(guildId, toUserId);
+    if (!toWalletResult.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: toWalletResult.error });
+    }
+
+    // 송금자 잔액 차감
+    const subtractResult = await this.topyWalletRepo.updateBalance(guildId, fromUserId, totalRequired, 'subtract');
+    if (!subtractResult.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: subtractResult.error });
+    }
+
+    // 수신자 잔액 증가
+    const addResult = await this.topyWalletRepo.updateBalance(guildId, toUserId, amount, 'add');
+    if (!addResult.success) {
+      // 롤백: 송금자 잔액 복구
+      await this.topyWalletRepo.updateBalance(guildId, fromUserId, totalRequired, 'add');
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: addResult.error });
+    }
+
+    const fromBalance = subtractResult.data.balance;
+    const toBalance = addResult.data.balance;
+
+    // 거래 기록 저장
+    await this.transactionRepo.save(
+      createTransaction(guildId, fromUserId, 'topy', 'transfer_out', amount, fromBalance + fee, {
+        fee,
+        relatedUserId: toUserId,
+      })
+    );
+
+    await this.transactionRepo.save(
+      createTransaction(guildId, toUserId, 'topy', 'transfer_in', amount, toBalance, {
+        relatedUserId: fromUserId,
+      })
+    );
+
+    // 수수료 기록 (수수료가 있는 경우)
+    if (fee > BigInt(0)) {
+      await this.transactionRepo.save(
+        createTransaction(guildId, fromUserId, 'topy', 'fee', fee, fromBalance, {
+          description: '이체 수수료',
+        })
+      );
+    }
+
+    return Result.ok({
+      amount,
+      fee,
+      fromBalance,
+      toBalance,
+    });
+  }
+
+  private async transferRuby(
+    guildId: string,
+    fromUserId: string,
+    toUserId: string,
+    amount: bigint
+  ): Promise<Result<TransferResult, CurrencyError>> {
+    // 송금자 지갑 확인
+    const fromWalletResult = await this.rubyWalletRepo.findByUser(guildId, fromUserId);
+    if (!fromWalletResult.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: fromWalletResult.error });
+    }
+    if (!fromWalletResult.data) {
+      return Result.err({ type: 'INSUFFICIENT_BALANCE', required: amount, available: BigInt(0) });
+    }
+
+    const fromWallet = fromWalletResult.data;
+    if (fromWallet.balance < amount) {
+      return Result.err({ type: 'INSUFFICIENT_BALANCE', required: amount, available: fromWallet.balance });
+    }
+
+    // 송금자 잔액 차감
+    const subtractResult = await this.rubyWalletRepo.updateBalance(guildId, fromUserId, amount, 'subtract');
+    if (!subtractResult.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: subtractResult.error });
+    }
+
+    // 수신자 잔액 증가
+    const addResult = await this.rubyWalletRepo.updateBalance(guildId, toUserId, amount, 'add');
+    if (!addResult.success) {
+      // 롤백: 송금자 잔액 복구
+      await this.rubyWalletRepo.updateBalance(guildId, fromUserId, amount, 'add');
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: addResult.error });
+    }
+
+    const fromBalance = subtractResult.data.balance;
+    const toBalance = addResult.data.balance;
+
+    // 거래 기록 저장
+    await this.transactionRepo.save(
+      createTransaction(guildId, fromUserId, 'ruby', 'transfer_out', amount, fromBalance, {
+        relatedUserId: toUserId,
+      })
+    );
+
+    await this.transactionRepo.save(
+      createTransaction(guildId, toUserId, 'ruby', 'transfer_in', amount, toBalance, {
+        relatedUserId: fromUserId,
+      })
+    );
+
+    return Result.ok({
+      amount,
+      fee: BigInt(0),
+      fromBalance,
+      toBalance,
+    });
   }
 }

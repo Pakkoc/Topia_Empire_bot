@@ -14,4 +14,6 @@ export type CurrencyError =
   | { type: 'DAILY_LIMIT_REACHED'; limit: number }
   | { type: 'INSUFFICIENT_BALANCE'; required: bigint; available: bigint }
   | { type: 'INVALID_AMOUNT'; message: string }
-  | { type: 'MESSAGE_TOO_SHORT'; minLength: number; actualLength: number };
+  | { type: 'MESSAGE_TOO_SHORT'; minLength: number; actualLength: number }
+  | { type: 'SELF_TRANSFER' }
+  | { type: 'USER_NOT_FOUND'; userId: string };

@@ -11,6 +11,7 @@ export type TransactionType =
   | "transfer_out"
   | "shop_purchase"
   | "tax"
+  | "fee"
   | "admin_add"
   | "admin_remove";
 

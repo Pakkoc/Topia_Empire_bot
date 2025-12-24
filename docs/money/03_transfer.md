@@ -9,7 +9,7 @@
 ## 현재 상태
 
 - [x] DB 테이블: `topy_wallets`, `ruby_wallets`, `currency_transactions`
-- [ ] Service: transfer 메서드
+- [x] Service: transfer 메서드
 - [ ] Bot: 이체 버튼/모달 (UI 마지막에)
 
 ## 수치/규칙

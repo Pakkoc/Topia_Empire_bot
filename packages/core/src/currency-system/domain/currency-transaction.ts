@@ -14,6 +14,7 @@ export type TransactionType =
   | 'transfer_out'   // 송금 보냄
   | 'shop_purchase'  // 상점 구매
   | 'tax'            // 세금
+  | 'fee'            // 수수료
   | 'admin_add'      // 관리자 추가
   | 'admin_remove';  // 관리자 제거
 
