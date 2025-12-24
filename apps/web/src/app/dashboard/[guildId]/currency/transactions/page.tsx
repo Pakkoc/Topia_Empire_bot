@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { useCurrencyTransactions, TransactionType, CurrencyType } from "@/hooks/queries";
+import { useCurrencyTransactions, useCurrencySettings, TransactionType, CurrencyType } from "@/hooks/queries";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,10 @@ export default function TransactionsPage() {
     currencyType: currencyType === "all" ? undefined : currencyType,
     transactionType: transactionType === "all" ? undefined : transactionType,
   });
+  const { data: settings } = useCurrencySettings(guildId);
+
+  const topyName = settings?.topyName ?? "토피";
+  const rubyName = settings?.rubyName ?? "루비";
 
   const formatAmount = (amount: string, type: TransactionType) => {
     const value = BigInt(amount);
@@ -104,7 +108,7 @@ export default function TransactionsPage() {
       {/* Page Header */}
       <div className="animate-fade-up">
         <h1 className="text-2xl md:text-3xl font-bold text-white">거래 기록</h1>
-        <p className="text-white/50 mt-1">서버의 토피/루비 거래 내역을 확인합니다</p>
+        <p className="text-white/50 mt-1">서버의 {topyName}/{rubyName} 거래 내역을 확인합니다</p>
       </div>
 
       {/* Filters */}
@@ -144,8 +148,8 @@ export default function TransactionsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">전체 화폐</SelectItem>
-              <SelectItem value="topy">토피</SelectItem>
-              <SelectItem value="ruby">루비</SelectItem>
+              <SelectItem value="topy">{topyName}</SelectItem>
+              <SelectItem value="ruby">{rubyName}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -215,7 +219,7 @@ export default function TransactionsPage() {
           <p className="text-sm text-white/30">
             {hasFilters
               ? "필터 조건에 맞는 거래 기록이 없습니다."
-              : "활동을 통해 토피를 획득하면 여기에 표시됩니다."}
+              : `활동을 통해 ${topyName}를 획득하면 여기에 표시됩니다.`}
           </p>
         </div>
       )}
@@ -252,7 +256,7 @@ export default function TransactionsPage() {
                       variant="outline"
                       className={`text-xs ${tx.currencyType === "topy" ? "border-amber-500/30 text-amber-400" : "border-pink-500/30 text-pink-400"}`}
                     >
-                      {tx.currencyType === "topy" ? "토피" : "루비"}
+                      {tx.currencyType === "topy" ? topyName : rubyName}
                     </Badge>
                   </div>
                 </div>
