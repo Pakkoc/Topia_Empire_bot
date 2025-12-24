@@ -6,6 +6,7 @@ import { useCurrencyTransactions, useCurrencySettings, TransactionType, Currency
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -262,8 +263,17 @@ export default function TransactionsPage() {
                 </div>
 
                 {/* User */}
-                <div className="col-span-3 flex items-center">
-                  <p className="text-white/70 text-sm truncate">{tx.userId}</p>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src={tx.avatar ?? undefined} />
+                    <AvatarFallback className="bg-white/10 text-white/70 text-xs">
+                      {tx.displayName[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{tx.displayName}</p>
+                    <p className="text-white/40 text-xs truncate">@{tx.username}</p>
+                  </div>
                 </div>
 
                 {/* Amount */}

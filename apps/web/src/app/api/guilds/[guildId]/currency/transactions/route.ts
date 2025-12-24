@@ -19,6 +19,41 @@ interface TransactionRow extends RowDataPacket {
   created_at: Date;
 }
 
+interface UserInfo {
+  id: string;
+  username: string;
+  displayName: string;
+  avatar: string | null;
+}
+
+async function fetchUserInfo(userId: string, botToken: string): Promise<UserInfo> {
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/users/${userId}`,
+      { headers: { Authorization: `Bot ${botToken}` } }
+    );
+    if (response.ok) {
+      const userData = await response.json();
+      return {
+        id: userId,
+        username: userData.username,
+        displayName: userData.global_name || userData.username,
+        avatar: userData.avatar
+          ? `https://cdn.discordapp.com/avatars/${userId}/${userData.avatar}.png`
+          : null,
+      };
+    }
+  } catch {
+    // Ignore errors
+  }
+  return {
+    id: userId,
+    username: `User ${userId.slice(-4)}`,
+    displayName: `User ${userId.slice(-4)}`,
+    avatar: null,
+  };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ guildId: string }> }
@@ -74,18 +109,36 @@ export async function GET(
       [...queryParams, limit, offset]
     );
 
-    const transactions = rows.map((row) => ({
-      id: row.id,
-      userId: row.user_id,
-      currencyType: row.currency_type,
-      transactionType: row.transaction_type,
-      amount: row.amount,
-      balanceAfter: row.balance_after,
-      fee: row.fee,
-      relatedUserId: row.related_user_id,
-      description: row.description,
-      createdAt: row.created_at,
-    }));
+    // 유저 정보 조회
+    const botToken = process.env["DISCORD_TOKEN"];
+    const userIds = [...new Set(rows.map((row) => row.user_id))];
+    const userMap = new Map<string, UserInfo>();
+
+    if (botToken && userIds.length > 0) {
+      const userInfos = await Promise.all(
+        userIds.map((id) => fetchUserInfo(id, botToken))
+      );
+      userInfos.forEach((info) => userMap.set(info.id, info));
+    }
+
+    const transactions = rows.map((row) => {
+      const userInfo = userMap.get(row.user_id);
+      return {
+        id: row.id,
+        userId: row.user_id,
+        username: userInfo?.username ?? `User ${row.user_id.slice(-4)}`,
+        displayName: userInfo?.displayName ?? `User ${row.user_id.slice(-4)}`,
+        avatar: userInfo?.avatar ?? null,
+        currencyType: row.currency_type,
+        transactionType: row.transaction_type,
+        amount: row.amount,
+        balanceAfter: row.balance_after,
+        fee: row.fee,
+        relatedUserId: row.related_user_id,
+        description: row.description,
+        createdAt: row.created_at,
+      };
+    });
 
     return NextResponse.json({
       transactions,

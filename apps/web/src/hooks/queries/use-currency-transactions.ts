@@ -17,6 +17,9 @@ export type TransactionType =
 export interface CurrencyTransaction {
   id: string;
   userId: string;
+  username: string;
+  displayName: string;
+  avatar: string | null;
   currencyType: CurrencyType;
   transactionType: TransactionType;
   amount: string;
