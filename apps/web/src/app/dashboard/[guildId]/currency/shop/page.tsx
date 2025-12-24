@@ -81,6 +81,20 @@ export default function ShopPage() {
   const [newColorRoleId, setNewColorRoleId] = useState("");
   const [newColorPrice, setNewColorPrice] = useState(0);
 
+  // 새 아이템 생성 시 임시 색상 옵션 목록
+  interface PendingColorOption {
+    id: number;
+    color: string;
+    name: string;
+    roleId: string;
+    price: number;
+  }
+  const [pendingColors, setPendingColors] = useState<PendingColorOption[]>([]);
+  const [pendingColorName, setPendingColorName] = useState("");
+  const [pendingColorHex, setPendingColorHex] = useState("#FF0000");
+  const [pendingColorRoleId, setPendingColorRoleId] = useState("");
+  const [pendingColorPrice, setPendingColorPrice] = useState(0);
+
   const { data: items, isLoading } = useShopItems(guildId);
   const { data: roles } = useRoles(guildId);
   const { data: colorOptions } = useColorOptions(guildId, colorManageItem?.id ?? null);
@@ -107,6 +121,39 @@ export default function ShopPage() {
 
   // 현재 선택된 아이템 타입 감시
   const watchedItemType = form.watch("itemType");
+  const watchedCurrencyType = form.watch("currencyType");
+
+  // 임시 색상 추가
+  const handleAddPendingColor = () => {
+    if (!pendingColorName || !pendingColorHex || !pendingColorRoleId) {
+      toast({
+        title: "입력 오류",
+        description: "모든 필드를 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPendingColors([
+      ...pendingColors,
+      {
+        id: Date.now(),
+        color: pendingColorHex.toUpperCase(),
+        name: pendingColorName,
+        roleId: pendingColorRoleId,
+        price: pendingColorPrice,
+      },
+    ]);
+    setPendingColorName("");
+    setPendingColorHex("#FF0000");
+    setPendingColorRoleId("");
+    setPendingColorPrice(0);
+  };
+
+  // 임시 색상 삭제
+  const handleRemovePendingColor = (id: number) => {
+    setPendingColors(pendingColors.filter((c) => c.id !== id));
+  };
 
   const onSubmit = async (data: ShopItemFormValues) => {
     try {
@@ -124,14 +171,37 @@ export default function ShopPage() {
         toast({ title: "아이템 수정 완료", description: "상점 아이템이 수정되었습니다." });
         setEditingItem(null);
       } else {
+        // 색상 변경권인데 색상이 없으면 경고
+        if (data.itemType === "color" && pendingColors.length === 0) {
+          toast({
+            title: "색상을 추가하세요",
+            description: "색상 변경권은 최소 1개 이상의 색상이 필요합니다.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         const newItem = await createItem.mutateAsync(data);
+
+        // 색상 변경권이면 색상 옵션 일괄 생성
+        if (data.itemType === "color" && pendingColors.length > 0) {
+          for (const color of pendingColors) {
+            await fetch(`/api/guilds/${guildId}/shop/items/${newItem.id}/colors`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                color: color.color,
+                name: color.name,
+                roleId: color.roleId,
+                price: color.price,
+              }),
+            });
+          }
+          setPendingColors([]);
+        }
+
         toast({ title: "아이템 생성 완료", description: "새 상점 아이템이 추가되었습니다." });
         setIsCreateOpen(false);
-
-        // 색상 변경권이면 바로 색상 관리 다이얼로그 열기
-        if (data.itemType === "color") {
-          setColorManageItem(newItem);
-        }
       }
       form.reset();
     } catch {
@@ -366,6 +436,132 @@ export default function ShopPage() {
           />
         )}
 
+        {/* 색상 변경권일 때 색상 관리 (새 아이템 생성 시만) */}
+        {watchedItemType === "color" && !editingItem && (
+          <div className="space-y-4 p-4 bg-white/5 rounded-xl border border-white/10">
+            <h4 className="text-sm font-medium text-white flex items-center gap-2">
+              <Icon icon="solar:palette-linear" className="h-4 w-4" />
+              색상 옵션 관리
+            </h4>
+
+            {/* 색상 추가 폼 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">색상 이름</label>
+                <Input
+                  placeholder="빨강"
+                  value={pendingColorName}
+                  onChange={(e) => setPendingColorName(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">색상 코드</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={pendingColorHex}
+                    onChange={(e) => setPendingColorHex(e.target.value)}
+                    className="w-10 h-10 rounded cursor-pointer"
+                  />
+                  <Input
+                    placeholder="#FF0000"
+                    value={pendingColorHex}
+                    onChange={(e) => setPendingColorHex(e.target.value)}
+                    className="bg-white/5 border-white/10 text-white flex-1"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">역할</label>
+                <Select onValueChange={setPendingColorRoleId} value={pendingColorRoleId}>
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                    <SelectValue placeholder="역할 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles?.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: `#${role.color.toString(16).padStart(6, "0")}` }}
+                          />
+                          {role.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">가격</label>
+                <Input
+                  type="number"
+                  placeholder="1000"
+                  value={pendingColorPrice || ""}
+                  onChange={(e) => setPendingColorPrice(Number(e.target.value))}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+            </div>
+            <Button
+              type="button"
+              onClick={handleAddPendingColor}
+              size="sm"
+              className="bg-gradient-to-r from-amber-600 to-orange-600"
+            >
+              <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
+              색상 추가
+            </Button>
+
+            {/* 추가된 색상 목록 */}
+            {pendingColors.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <label className="text-xs text-white/50">추가된 색상 ({pendingColors.length}개)</label>
+                {pendingColors.map((color) => {
+                  const role = roles?.find((r) => r.id === color.roleId);
+                  return (
+                    <div
+                      key={color.id}
+                      className="flex items-center justify-between p-2 bg-white/5 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-6 h-6 rounded border border-white/10"
+                          style={{ backgroundColor: color.color }}
+                        />
+                        <span className="text-white text-sm">{color.name}</span>
+                        <span className="text-white/40 text-xs">{color.color}</span>
+                        <span className="text-amber-400 text-sm">
+                          {color.price.toLocaleString()} {watchedCurrencyType === "ruby" ? "루비" : "토피"}
+                        </span>
+                        {role && (
+                          <span className="text-white/50 text-xs">→ @{role.name}</span>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemovePendingColor(color.id)}
+                        className="h-6 w-6"
+                      >
+                        <Icon icon="solar:trash-bin-2-linear" className="h-3 w-3 text-red-400" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {pendingColors.length === 0 && (
+              <p className="text-xs text-white/30 mt-2">
+                색상을 최소 1개 이상 추가해야 합니다.
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -445,6 +641,11 @@ export default function ShopPage() {
               setIsCreateOpen(false);
               setEditingItem(null);
               form.reset();
+              setPendingColors([]);
+              setPendingColorName("");
+              setPendingColorHex("#FF0000");
+              setPendingColorRoleId("");
+              setPendingColorPrice(0);
             }}
           >
             취소
