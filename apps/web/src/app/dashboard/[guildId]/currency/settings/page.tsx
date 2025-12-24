@@ -40,6 +40,8 @@ const currencySettingsFormSchema = z.object({
   voiceDailyLimit: z.coerce.number().min(0).max(1000000),
   minTransferTopy: z.coerce.number().min(0).max(1000000),
   minTransferRuby: z.coerce.number().min(0).max(1000000),
+  transferFeeTopyPercent: z.coerce.number().min(0).max(100),
+  transferFeeRubyPercent: z.coerce.number().min(0).max(100),
 });
 
 type CurrencySettingsFormValues = z.infer<typeof currencySettingsFormSchema>;
@@ -73,6 +75,8 @@ export default function CurrencySettingsPage() {
       voiceDailyLimit: 2000,
       minTransferTopy: 100,
       minTransferRuby: 1,
+      transferFeeTopyPercent: 1.2,
+      transferFeeRubyPercent: 0,
     },
   });
 
@@ -102,6 +106,8 @@ export default function CurrencySettingsPage() {
         voiceDailyLimit: settings.voiceDailyLimit,
         minTransferTopy: settings.minTransferTopy ?? 100,
         minTransferRuby: settings.minTransferRuby ?? 1,
+        transferFeeTopyPercent: settings.transferFeeTopyPercent ?? 1.2,
+        transferFeeRubyPercent: settings.transferFeeRubyPercent ?? 0,
       });
     }
   }, [settings, form]);
@@ -580,14 +586,60 @@ export default function CurrencySettingsPage() {
                 />
               </div>
 
-              {/* Info about transfer fee */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="transferFeeTopyPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70 text-sm">토피 이체 수수료 (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          {...field}
+                          className="bg-white/5 border-white/10 text-white focus:border-cyan-500/50"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-white/40">
+                        토피 이체 시 부과되는 수수료 (기본: 1.2%)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="transferFeeRubyPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70 text-sm">루비 이체 수수료 (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          {...field}
+                          className="bg-white/5 border-white/10 text-white focus:border-cyan-500/50"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-white/40">
+                        루비 이체 시 부과되는 수수료 (기본: 0%)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Info about transfer */}
               <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <Icon icon="solar:info-circle-linear" className="w-5 h-5 text-cyan-400 mt-0.5" />
                   <div>
-                    <p className="text-sm text-cyan-300 font-medium">이체 수수료</p>
+                    <p className="text-sm text-cyan-300 font-medium">이체 안내</p>
                     <p className="text-xs text-cyan-300/70 mt-1">
-                      토피 이체 시 1.2% 수수료가 부과됩니다. 루비는 수수료가 없습니다.
+                      수수료는 이체 금액에서 별도로 차감됩니다. 0%로 설정하면 수수료가 부과되지 않습니다.
                     </p>
                   </div>
                 </div>

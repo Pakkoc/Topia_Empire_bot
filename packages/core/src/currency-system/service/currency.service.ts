@@ -18,7 +18,6 @@ import { checkCooldown } from '../functions/check-cooldown';
 import { checkDailyLimit, calculateActualEarning } from '../functions/check-daily-limit';
 import { generateRandomCurrency, applyMultiplier } from '../functions/generate-random-currency';
 import { checkHotTime, formatTimeForHotTime } from '../functions/check-hot-time';
-import { calculateTransferFee } from '../functions/calculate-transfer-fee';
 import { CURRENCY_DEFAULTS } from '@topia/shared';
 
 export interface CurrencyGrantResult {
@@ -542,7 +541,7 @@ export class CurrencyService {
       return Result.err({ type: 'SELF_TRANSFER' });
     }
 
-    // 2. 설정 조회하여 최소 금액 확인
+    // 2. 설정 조회하여 최소 금액 및 수수료 확인
     const settingsResult = await this.settingsRepo.findByGuild(guildId);
     const settings = settingsResult.success ? settingsResult.data : null;
 
@@ -557,8 +556,13 @@ export class CurrencyService {
       });
     }
 
-    // 3. 수수료 계산
-    const fee = calculateTransferFee(amount, currencyType);
+    // 3. 수수료 계산 (설정 기반)
+    const feePercent = currencyType === 'topy'
+      ? (settings?.transferFeeTopyPercent ?? CURRENCY_DEFAULTS.TRANSFER_FEE_TOPY_PERCENT)
+      : (settings?.transferFeeRubyPercent ?? CURRENCY_DEFAULTS.TRANSFER_FEE_RUBY_PERCENT);
+
+    // 수수료 = 금액 * 퍼센트 / 100
+    const fee = feePercent > 0 ? (amount * BigInt(Math.round(feePercent * 10))) / BigInt(1000) : BigInt(0);
     const totalRequired = amount + fee;
 
     if (currencyType === 'topy') {

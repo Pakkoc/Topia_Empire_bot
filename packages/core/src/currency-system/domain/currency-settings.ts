@@ -30,6 +30,8 @@ export interface CurrencySettings {
   // 이체 설정
   minTransferTopy: number;
   minTransferRuby: number;
+  transferFeeTopyPercent: number;
+  transferFeeRubyPercent: number;
 
   createdAt: Date;
   updatedAt: Date;
@@ -60,6 +62,8 @@ export function createDefaultCurrencySettings(guildId: string): CurrencySettings
 
     minTransferTopy: CURRENCY_DEFAULTS.MIN_TRANSFER_TOPY,
     minTransferRuby: CURRENCY_DEFAULTS.MIN_TRANSFER_RUBY,
+    transferFeeTopyPercent: CURRENCY_DEFAULTS.TRANSFER_FEE_TOPY_PERCENT,
+    transferFeeRubyPercent: CURRENCY_DEFAULTS.TRANSFER_FEE_RUBY_PERCENT,
 
     createdAt: now,
     updatedAt: now,

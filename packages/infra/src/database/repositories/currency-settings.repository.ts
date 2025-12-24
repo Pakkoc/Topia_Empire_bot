@@ -30,6 +30,8 @@ interface CurrencySettingsRow extends RowDataPacket {
   voice_daily_limit: number;
   min_transfer_topy: number;
   min_transfer_ruby: number;
+  transfer_fee_topy_percent: string;
+  transfer_fee_ruby_percent: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -94,6 +96,8 @@ function toCurrencySettings(row: CurrencySettingsRow): CurrencySettings {
     voiceDailyLimit: row.voice_daily_limit,
     minTransferTopy: row.min_transfer_topy ?? 100,
     minTransferRuby: row.min_transfer_ruby ?? 1,
+    transferFeeTopyPercent: parseFloat(row.transfer_fee_topy_percent) || 1.2,
+    transferFeeRubyPercent: parseFloat(row.transfer_fee_ruby_percent) || 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -131,8 +135,9 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           text_earn_enabled, text_earn_min, text_earn_max,
           text_min_length, text_cooldown_seconds, text_max_per_cooldown, text_daily_limit,
           voice_earn_enabled, voice_earn_min, voice_earn_max, voice_cooldown_seconds,
-          voice_daily_limit, min_transfer_topy, min_transfer_ruby, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          voice_daily_limit, min_transfer_topy, min_transfer_ruby,
+          transfer_fee_topy_percent, transfer_fee_ruby_percent, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          enabled = VALUES(enabled),
          topy_name = VALUES(topy_name),
@@ -151,6 +156,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
          voice_daily_limit = VALUES(voice_daily_limit),
          min_transfer_topy = VALUES(min_transfer_topy),
          min_transfer_ruby = VALUES(min_transfer_ruby),
+         transfer_fee_topy_percent = VALUES(transfer_fee_topy_percent),
+         transfer_fee_ruby_percent = VALUES(transfer_fee_ruby_percent),
          updated_at = VALUES(updated_at)`,
         [
           settings.guildId,
@@ -171,6 +178,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           settings.voiceDailyLimit,
           settings.minTransferTopy,
           settings.minTransferRuby,
+          settings.transferFeeTopyPercent,
+          settings.transferFeeRubyPercent,
           settings.createdAt,
           settings.updatedAt,
         ]

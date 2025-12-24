@@ -25,6 +25,8 @@ interface CurrencySettingsRow extends RowDataPacket {
   voice_daily_limit: number;
   min_transfer_topy: number;
   min_transfer_ruby: number;
+  transfer_fee_topy_percent: string;
+  transfer_fee_ruby_percent: string;
 }
 
 function rowToSettings(row: CurrencySettingsRow) {
@@ -47,6 +49,8 @@ function rowToSettings(row: CurrencySettingsRow) {
     voiceDailyLimit: row.voice_daily_limit,
     minTransferTopy: row.min_transfer_topy ?? 100,
     minTransferRuby: row.min_transfer_ruby ?? 1,
+    transferFeeTopyPercent: parseFloat(row.transfer_fee_topy_percent) || 1.2,
+    transferFeeRubyPercent: parseFloat(row.transfer_fee_ruby_percent) || 0,
   };
 }
 
@@ -117,6 +121,8 @@ export async function PATCH(
       voiceDailyLimit: "voice_daily_limit",
       minTransferTopy: "min_transfer_topy",
       minTransferRuby: "min_transfer_ruby",
+      transferFeeTopyPercent: "transfer_fee_topy_percent",
+      transferFeeRubyPercent: "transfer_fee_ruby_percent",
     };
 
     const updates: string[] = [];
