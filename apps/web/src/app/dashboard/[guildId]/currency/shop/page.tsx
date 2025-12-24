@@ -332,25 +332,50 @@ export default function ShopPage() {
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white/70">가격</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    {...field}
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* 색상 변경권이 아닐 때만 가격 표시 */}
+        {watchedItemType !== "color" ? (
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white/70">가격</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      {...field}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
+            <FormField
+              control={form.control}
+              name="currencyType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white/70">화폐 종류</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="topy">토피</SelectItem>
+                      <SelectItem value="ruby">루비</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        ) : (
           <FormField
             control={form.control}
             name="currencyType"
@@ -368,11 +393,14 @@ export default function ShopPage() {
                     <SelectItem value="ruby">루비</SelectItem>
                   </SelectContent>
                 </Select>
+                <FormDescription className="text-xs text-white/40">
+                  색상별 가격은 아래에서 설정합니다
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
-        </div>
+        )}
 
         <FormField
           control={form.control}
@@ -494,7 +522,9 @@ export default function ShopPage() {
                 </Select>
               </div>
               <div>
-                <label className="text-xs text-white/50 mb-1 block">가격</label>
+                <label className="text-xs text-white/50 mb-1 block">
+                  가격 ({watchedCurrencyType === "ruby" ? "루비" : "토피"})
+                </label>
                 <Input
                   type="number"
                   placeholder="1000"
