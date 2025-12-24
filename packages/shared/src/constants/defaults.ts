@@ -43,6 +43,10 @@ export const CURRENCY_DEFAULTS = {
   VOICE_COOLDOWN_SECONDS: 60,
   VOICE_DAILY_LIMIT: 2000,
 
+  // 이체 설정
+  MIN_TRANSFER_TOPY: 100,
+  MIN_TRANSFER_RUBY: 1,
+
   // 채널 카테고리별 배율
   CHANNEL_CATEGORY_MULTIPLIERS: {
     normal: 1.0,    // 일반 통화방

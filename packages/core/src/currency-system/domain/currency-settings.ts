@@ -27,6 +27,10 @@ export interface CurrencySettings {
   voiceCooldownSeconds: number;
   voiceDailyLimit: number;
 
+  // 이체 설정
+  minTransferTopy: number;
+  minTransferRuby: number;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +57,9 @@ export function createDefaultCurrencySettings(guildId: string): CurrencySettings
     voiceEarnMax: CURRENCY_DEFAULTS.VOICE_EARN_MAX,
     voiceCooldownSeconds: CURRENCY_DEFAULTS.VOICE_COOLDOWN_SECONDS,
     voiceDailyLimit: CURRENCY_DEFAULTS.VOICE_DAILY_LIMIT,
+
+    minTransferTopy: CURRENCY_DEFAULTS.MIN_TRANSFER_TOPY,
+    minTransferRuby: CURRENCY_DEFAULTS.MIN_TRANSFER_RUBY,
 
     createdAt: now,
     updatedAt: now,

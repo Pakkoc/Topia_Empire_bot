@@ -23,6 +23,8 @@ interface CurrencySettingsRow extends RowDataPacket {
   voice_earn_max: number;
   voice_cooldown_seconds: number;
   voice_daily_limit: number;
+  min_transfer_topy: number;
+  min_transfer_ruby: number;
 }
 
 function rowToSettings(row: CurrencySettingsRow) {
@@ -43,6 +45,8 @@ function rowToSettings(row: CurrencySettingsRow) {
     voiceEarnMax: row.voice_earn_max,
     voiceCooldownSeconds: row.voice_cooldown_seconds,
     voiceDailyLimit: row.voice_daily_limit,
+    minTransferTopy: row.min_transfer_topy ?? 100,
+    minTransferRuby: row.min_transfer_ruby ?? 1,
   };
 }
 
@@ -111,6 +115,8 @@ export async function PATCH(
       voiceEarnMax: "voice_earn_max",
       voiceCooldownSeconds: "voice_cooldown_seconds",
       voiceDailyLimit: "voice_daily_limit",
+      minTransferTopy: "min_transfer_topy",
+      minTransferRuby: "min_transfer_ruby",
     };
 
     const updates: string[] = [];

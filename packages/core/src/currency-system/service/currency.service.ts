@@ -18,7 +18,8 @@ import { checkCooldown } from '../functions/check-cooldown';
 import { checkDailyLimit, calculateActualEarning } from '../functions/check-daily-limit';
 import { generateRandomCurrency, applyMultiplier } from '../functions/generate-random-currency';
 import { checkHotTime, formatTimeForHotTime } from '../functions/check-hot-time';
-import { calculateTransferFee, getMinTransferAmount } from '../functions/calculate-transfer-fee';
+import { calculateTransferFee } from '../functions/calculate-transfer-fee';
+import { CURRENCY_DEFAULTS } from '@topia/shared';
 
 export interface CurrencyGrantResult {
   granted: boolean;
@@ -541,8 +542,14 @@ export class CurrencyService {
       return Result.err({ type: 'SELF_TRANSFER' });
     }
 
-    // 2. 최소 금액 확인
-    const minAmount = getMinTransferAmount(currencyType);
+    // 2. 설정 조회하여 최소 금액 확인
+    const settingsResult = await this.settingsRepo.findByGuild(guildId);
+    const settings = settingsResult.success ? settingsResult.data : null;
+
+    const minAmount = currencyType === 'topy'
+      ? BigInt(settings?.minTransferTopy ?? CURRENCY_DEFAULTS.MIN_TRANSFER_TOPY)
+      : BigInt(settings?.minTransferRuby ?? CURRENCY_DEFAULTS.MIN_TRANSFER_RUBY);
+
     if (amount < minAmount) {
       return Result.err({
         type: 'INVALID_AMOUNT',

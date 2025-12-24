@@ -38,6 +38,8 @@ const currencySettingsFormSchema = z.object({
   voiceEarnMax: z.coerce.number().min(0).max(10000),
   voiceCooldownSeconds: z.coerce.number().min(0).max(3600),
   voiceDailyLimit: z.coerce.number().min(0).max(1000000),
+  minTransferTopy: z.coerce.number().min(0).max(1000000),
+  minTransferRuby: z.coerce.number().min(0).max(1000000),
 });
 
 type CurrencySettingsFormValues = z.infer<typeof currencySettingsFormSchema>;
@@ -69,6 +71,8 @@ export default function CurrencySettingsPage() {
       voiceEarnMax: 1,
       voiceCooldownSeconds: 60,
       voiceDailyLimit: 2000,
+      minTransferTopy: 100,
+      minTransferRuby: 1,
     },
   });
 
@@ -96,6 +100,8 @@ export default function CurrencySettingsPage() {
         voiceEarnMax: settings.voiceEarnMax,
         voiceCooldownSeconds: settings.voiceCooldownSeconds,
         voiceDailyLimit: settings.voiceDailyLimit,
+        minTransferTopy: settings.minTransferTopy ?? 100,
+        minTransferRuby: settings.minTransferRuby ?? 1,
       });
     }
   }, [settings, form]);
@@ -510,6 +516,79 @@ export default function CurrencySettingsPage() {
                         음성 채널 유형별 배율은 화폐 규칙에서 설정할 수 있습니다.
                       </p>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 이체 설정 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
+            <div className="p-6 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+                  <Icon icon="solar:transfer-horizontal-linear" className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">이체 설정</h3>
+                  <p className="text-white/50 text-sm">유저 간 화폐 이체 최소 금액</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="minTransferTopy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70 text-sm">토피 최소 이체 금액</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          {...field}
+                          className="bg-white/5 border-white/10 text-white focus:border-cyan-500/50"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-white/40">
+                        토피 이체 시 최소 금액 (기본: 100)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="minTransferRuby"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70 text-sm">루비 최소 이체 금액</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          {...field}
+                          className="bg-white/5 border-white/10 text-white focus:border-cyan-500/50"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-white/40">
+                        루비 이체 시 최소 금액 (기본: 1)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Info about transfer fee */}
+              <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <Icon icon="solar:info-circle-linear" className="w-5 h-5 text-cyan-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-cyan-300 font-medium">이체 수수료</p>
+                    <p className="text-xs text-cyan-300/70 mt-1">
+                      토피 이체 시 1.2% 수수료가 부과됩니다. 루비는 수수료가 없습니다.
+                    </p>
                   </div>
                 </div>
               </div>

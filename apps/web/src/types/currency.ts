@@ -18,6 +18,8 @@ export const currencySettingsSchema = z.object({
   voiceEarnMax: z.number().min(0).max(10000),
   voiceCooldownSeconds: z.number().min(0).max(3600),
   voiceDailyLimit: z.number().min(0).max(1000000),
+  minTransferTopy: z.number().min(0).max(1000000),
+  minTransferRuby: z.number().min(0).max(1000000),
 });
 
 export type CurrencySettings = z.infer<typeof currencySettingsSchema>;
@@ -102,6 +104,8 @@ export const DEFAULT_CURRENCY_SETTINGS: Omit<CurrencySettings, "guildId"> = {
   voiceEarnMax: 1,
   voiceCooldownSeconds: 60,
   voiceDailyLimit: 2000,
+  minTransferTopy: 100,
+  minTransferRuby: 1,
 };
 
 export const CHANNEL_CATEGORY_LABELS: Record<string, string> = {

@@ -28,6 +28,8 @@ interface CurrencySettingsRow extends RowDataPacket {
   voice_earn_max: number;
   voice_cooldown_seconds: number;
   voice_daily_limit: number;
+  min_transfer_topy: number;
+  min_transfer_ruby: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -90,6 +92,8 @@ function toCurrencySettings(row: CurrencySettingsRow): CurrencySettings {
     voiceEarnMax: row.voice_earn_max,
     voiceCooldownSeconds: row.voice_cooldown_seconds,
     voiceDailyLimit: row.voice_daily_limit,
+    minTransferTopy: row.min_transfer_topy ?? 100,
+    minTransferRuby: row.min_transfer_ruby ?? 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -127,8 +131,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           text_earn_enabled, text_earn_min, text_earn_max,
           text_min_length, text_cooldown_seconds, text_max_per_cooldown, text_daily_limit,
           voice_earn_enabled, voice_earn_min, voice_earn_max, voice_cooldown_seconds,
-          voice_daily_limit, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          voice_daily_limit, min_transfer_topy, min_transfer_ruby, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          enabled = VALUES(enabled),
          topy_name = VALUES(topy_name),
@@ -145,6 +149,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
          voice_earn_max = VALUES(voice_earn_max),
          voice_cooldown_seconds = VALUES(voice_cooldown_seconds),
          voice_daily_limit = VALUES(voice_daily_limit),
+         min_transfer_topy = VALUES(min_transfer_topy),
+         min_transfer_ruby = VALUES(min_transfer_ruby),
          updated_at = VALUES(updated_at)`,
         [
           settings.guildId,
@@ -163,6 +169,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           settings.voiceEarnMax,
           settings.voiceCooldownSeconds,
           settings.voiceDailyLimit,
+          settings.minTransferTopy,
+          settings.minTransferRuby,
           settings.createdAt,
           settings.updatedAt,
         ]
