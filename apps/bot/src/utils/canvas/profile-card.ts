@@ -1,7 +1,13 @@
 import { createCanvas, loadImage, GlobalFonts, type SKRSContext2D } from '@napi-rs/canvas';
+import { join } from 'path';
 
-// 폰트 등록 (Pretendard 사용 시 등록 필요)
-// GlobalFonts.registerFromPath(join(__dirname, 'fonts', 'Pretendard-Regular.otf'), 'Pretendard');
+// 폰트 등록
+const fontsDir = join(__dirname, 'fonts');
+GlobalFonts.registerFromPath(join(fontsDir, 'Pretendard-Regular.otf'), 'Pretendard');
+GlobalFonts.registerFromPath(join(fontsDir, 'Pretendard-Bold.otf'), 'Pretendard Bold');
+
+const FONT_REGULAR = 'Pretendard';
+const FONT_BOLD = 'Pretendard Bold';
 
 export interface ProfileCardData {
   // 기본 정보
@@ -98,19 +104,19 @@ export async function generateProfileCard(data: ProfileCardData): Promise<Buffer
   }
 
   // 닉네임
-  ctx.font = 'bold 24px sans-serif';
+  ctx.font = `bold 24px "${FONT_BOLD}"`;
   ctx.fillStyle = COLORS.textPrimary;
   ctx.fillText(data.displayName, 140, 65);
 
   // 가입일 및 출석
   const joinDate = formatDate(data.joinedAt);
-  ctx.font = '14px sans-serif';
+  ctx.font = `14px "${FONT_REGULAR}"`;
   ctx.fillStyle = COLORS.textSecondary;
   ctx.fillText(`${joinDate} 가입 | 출석 ${data.attendanceCount}회`, 140, 90);
 
   // 상태 메시지
   if (data.statusMessage) {
-    ctx.font = '12px sans-serif';
+    ctx.font = `12px "${FONT_REGULAR}"`;
     ctx.fillStyle = COLORS.textSecondary;
     const statusText = data.statusMessage.length > 30
       ? data.statusMessage.substring(0, 30) + '...'
@@ -137,7 +143,7 @@ export async function generateProfileCard(data: ProfileCardData): Promise<Buffer
 
   // 프리미엄 배지
   if (data.isPremium) {
-    ctx.font = 'bold 12px sans-serif';
+    ctx.font = `bold 12px "${FONT_BOLD}"`;
     ctx.fillStyle = COLORS.accent;
     ctx.fillText('BOOST', 480, levelY);
   }
@@ -151,16 +157,16 @@ export async function generateProfileCard(data: ProfileCardData): Promise<Buffer
   ctx.stroke();
 
   // 보유 자금 섹션
-  ctx.font = 'bold 16px sans-serif';
+  ctx.font = `bold 16px "${FONT_BOLD}"`;
   ctx.fillStyle = COLORS.textPrimary;
   ctx.fillText('보유 자금', 40, 245);
 
-  ctx.font = 'bold 16px sans-serif';
+  ctx.font = `bold 16px "${FONT_BOLD}"`;
   ctx.fillStyle = COLORS.textPrimary;
   ctx.fillText('소속 클랜', 400, 245);
 
   // 토피
-  ctx.font = '14px sans-serif';
+  ctx.font = `14px "${FONT_REGULAR}"`;
   ctx.fillStyle = COLORS.topy;
   ctx.fillText(`${data.topyName}`, 40, 275);
   ctx.fillStyle = COLORS.textPrimary;
@@ -173,7 +179,7 @@ export async function generateProfileCard(data: ProfileCardData): Promise<Buffer
   ctx.fillText(`${formatNumber(data.rubyBalance)}`, 120, 300);
 
   // 클랜
-  ctx.font = '14px sans-serif';
+  ctx.font = `14px "${FONT_REGULAR}"`;
   ctx.fillStyle = COLORS.textSecondary;
   ctx.fillText(data.clanName ?? '없음', 400, 275);
 
@@ -210,12 +216,12 @@ function drawLevelBadge(
   ctx.fill();
 
   // 라벨
-  ctx.font = 'bold 12px sans-serif';
+  ctx.font = `bold 12px "${FONT_BOLD}"`;
   ctx.fillStyle = color;
   ctx.fillText(label, x - 20, y - 3);
 
   // 레벨
-  ctx.font = 'bold 18px sans-serif';
+  ctx.font = `bold 18px "${FONT_BOLD}"`;
   ctx.fillStyle = COLORS.textPrimary;
   ctx.fillText(`Lv ${level}`, x + 30, y);
 }
@@ -231,7 +237,7 @@ function drawBadge(
   const padding = 10;
   const text = `${label}: ${value}`;
 
-  ctx.font = '12px sans-serif';
+  ctx.font = `12px "${FONT_REGULAR}"`;
   const metrics = ctx.measureText(text);
   const badgeWidth = metrics.width + padding * 2;
 
