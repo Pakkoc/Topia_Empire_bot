@@ -124,9 +124,14 @@ export default function ShopPage() {
         toast({ title: "아이템 수정 완료", description: "상점 아이템이 수정되었습니다." });
         setEditingItem(null);
       } else {
-        await createItem.mutateAsync(data);
+        const newItem = await createItem.mutateAsync(data);
         toast({ title: "아이템 생성 완료", description: "새 상점 아이템이 추가되었습니다." });
         setIsCreateOpen(false);
+
+        // 색상 변경권이면 바로 색상 관리 다이얼로그 열기
+        if (data.itemType === "color") {
+          setColorManageItem(newItem);
+        }
       }
       form.reset();
     } catch {
