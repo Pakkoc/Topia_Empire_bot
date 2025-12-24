@@ -285,7 +285,7 @@ export default function ShopPage() {
       }
 
       // Refresh color options
-      queryClient.invalidateQueries({ queryKey: ["color-options", guildId, colorManageItem.id] });
+      await queryClient.refetchQueries({ queryKey: ["color-options", guildId, colorManageItem.id] });
 
       setNewColorName("");
       setNewColorHex("#FF0000");
@@ -314,7 +314,7 @@ export default function ShopPage() {
         throw new Error(error.error || "Failed to delete color option");
       }
 
-      queryClient.invalidateQueries({ queryKey: ["color-options", guildId, colorManageItem.id] });
+      await queryClient.refetchQueries({ queryKey: ["color-options", guildId, colorManageItem.id] });
       toast({ title: "색상 삭제 완료" });
     } catch {
       toast({
