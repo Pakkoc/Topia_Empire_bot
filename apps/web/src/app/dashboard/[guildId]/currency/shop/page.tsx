@@ -165,7 +165,7 @@ export default function ShopPage() {
     }
   };
 
-  const ItemFormContent = () => (
+  const formContent = (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
@@ -221,7 +221,7 @@ export default function ShopPage() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-white/70">화폐 종류</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger className="bg-white/5 border-white/10 text-white">
                       <SelectValue />
@@ -244,7 +244,7 @@ export default function ShopPage() {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-white/70">아이템 타입</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
                     <SelectValue />
@@ -389,7 +389,7 @@ export default function ShopPage() {
             <DialogHeader>
               <DialogTitle className="text-white">새 아이템 추가</DialogTitle>
             </DialogHeader>
-            <ItemFormContent />
+            {formContent}
           </DialogContent>
         </Dialog>
       </div>
@@ -400,7 +400,7 @@ export default function ShopPage() {
           <DialogHeader>
             <DialogTitle className="text-white">아이템 수정</DialogTitle>
           </DialogHeader>
-          <ItemFormContent />
+          {formContent}
         </DialogContent>
       </Dialog>
 
