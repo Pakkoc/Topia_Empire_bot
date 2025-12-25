@@ -76,21 +76,36 @@ export async function POST(
 
   const { color, name, roleId, price } = validation.data;
 
-  const container = createContainer();
-  const result = await container.shopService.addColorOption(
-    itemId,
-    color,
-    name,
-    roleId,
-    BigInt(price)
-  );
+  try {
+    const container = createContainer();
+    const result = await container.shopService.addColorOption(
+      itemId,
+      color,
+      name,
+      roleId,
+      BigInt(price)
+    );
 
-  if (!result.success) {
+    if (!result.success) {
+      console.error("addColorOption failed:", result.error);
+      return NextResponse.json(
+        { error: result.error.message || "Failed to add color option" },
+        { status: 500 }
+      );
+    }
+
+    // bigint를 number로 변환 (JSON 직렬화를 위해)
+    const data = {
+      ...result.data,
+      price: Number(result.data.price),
+    };
+
+    return NextResponse.json(data, { status: 201 });
+  } catch (error) {
+    console.error("addColorOption exception:", error);
     return NextResponse.json(
-      { error: "Failed to add color option" },
+      { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
   }
-
-  return NextResponse.json(result.data, { status: 201 });
 }

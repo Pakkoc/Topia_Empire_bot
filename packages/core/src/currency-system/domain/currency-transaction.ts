@@ -13,6 +13,8 @@ export type TransactionType =
   | 'transfer_in'    // 송금 받음
   | 'transfer_out'   // 송금 보냄
   | 'shop_purchase'  // 상점 구매
+  | 'market_buy'     // 장터 구매
+  | 'market_sell'    // 장터 판매
   | 'tax'            // 세금
   | 'fee'            // 수수료
   | 'admin_add'      // 관리자 추가

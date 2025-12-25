@@ -256,9 +256,17 @@ export default function ShopPage() {
   };
 
   const handleAddColorOption = async () => {
-    if (!colorManageItem) return;
+    console.log("handleAddColorOption called");
+    console.log("colorManageItem:", colorManageItem);
+    console.log("newColorName:", newColorName, "newColorHex:", newColorHex, "newColorRoleId:", newColorRoleId);
+
+    if (!colorManageItem) {
+      console.log("colorManageItem is null, returning");
+      return;
+    }
 
     if (!newColorName || !newColorHex || !newColorRoleId) {
+      console.log("validation failed");
       toast({
         title: "입력 오류",
         description: "모든 필드를 입력해주세요.",
@@ -268,6 +276,7 @@ export default function ShopPage() {
     }
 
     try {
+      console.log("making API call...");
       const res = await fetch(`/api/guilds/${guildId}/shop/items/${colorManageItem.id}/colors`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
