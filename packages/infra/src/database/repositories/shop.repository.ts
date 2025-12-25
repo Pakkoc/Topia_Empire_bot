@@ -592,4 +592,49 @@ export class ShopRepository implements ShopRepositoryPort {
       });
     }
   }
+
+  async findAllColorOptionsByGuild(guildId: string): Promise<Result<ColorOption[], RepositoryError>> {
+    try {
+      const [rows] = await this.pool.execute<ColorOptionRow[]>(
+        `SELECT sco.* FROM shop_color_options sco
+         JOIN shop_items si ON sco.item_id = si.id
+         WHERE si.guild_id = ?
+         ORDER BY sco.id ASC`,
+        [guildId]
+      );
+      return Result.ok(rows.map(toColorOption));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async findColorOptionByColor(
+    guildId: string,
+    color: string
+  ): Promise<Result<ColorOption | null, RepositoryError>> {
+    try {
+      const [rows] = await this.pool.execute<ColorOptionRow[]>(
+        `SELECT sco.* FROM shop_color_options sco
+         JOIN shop_items si ON sco.item_id = si.id
+         WHERE si.guild_id = ? AND sco.color = ?
+         LIMIT 1`,
+        [guildId, color.toUpperCase()]
+      );
+
+      const firstRow = rows[0];
+      if (!firstRow) {
+        return Result.ok(null);
+      }
+
+      return Result.ok(toColorOption(firstRow));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
 }

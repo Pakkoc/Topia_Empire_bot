@@ -148,4 +148,14 @@ export interface ShopRepositoryPort {
    * 아이템의 모든 색상 옵션 삭제
    */
   deleteColorOptionsByItemId(itemId: number): Promise<Result<void, RepositoryError>>;
+
+  /**
+   * 길드의 모든 색상 옵션 조회
+   */
+  findAllColorOptionsByGuild(guildId: string): Promise<Result<ColorOption[], RepositoryError>>;
+
+  /**
+   * 색상 코드로 색상 옵션 조회 (길드 내에서)
+   */
+  findColorOptionByColor(guildId: string, color: string): Promise<Result<ColorOption | null, RepositoryError>>;
 }

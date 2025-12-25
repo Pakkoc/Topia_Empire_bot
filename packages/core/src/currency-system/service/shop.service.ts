@@ -726,4 +726,107 @@ export class ShopService {
     }
     return Result.ok(undefined);
   }
+
+  // ========== Color Application ==========
+
+  /**
+   * 유저의 보유 색상 목록 조회
+   * user_items에서 color_ prefix가 붙은 아이템을 필터링하여 ColorOption 정보와 함께 반환
+   */
+  async getOwnedColors(
+    guildId: string,
+    userId: string
+  ): Promise<Result<Array<{ colorCode: string; colorOption: ColorOption | null; quantity: number; expiresAt: Date | null }>, CurrencyError>> {
+    // 1. 유저의 모든 아이템 조회
+    const userItemsResult = await this.shopRepo.findUserItems(guildId, userId);
+    if (!userItemsResult.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: userItemsResult.error });
+    }
+
+    // 2. color_ prefix가 붙은 아이템만 필터링
+    const colorItems = userItemsResult.data.filter(
+      (item) => item.itemType.startsWith('color_') && item.quantity > 0
+    );
+
+    // 3. 각 색상에 대한 ColorOption 정보 조회
+    const ownedColors: Array<{ colorCode: string; colorOption: ColorOption | null; quantity: number; expiresAt: Date | null }> = [];
+
+    for (const item of colorItems) {
+      // item_type 형식: color_#FF0000
+      const colorCode = item.itemType.replace('color_', '');
+
+      // 만료 확인
+      if (item.expiresAt && item.expiresAt < this.clock.now()) {
+        continue; // 만료된 아이템은 건너뜀
+      }
+
+      const colorOptionResult = await this.shopRepo.findColorOptionByColor(guildId, colorCode);
+      const colorOption = colorOptionResult.success ? colorOptionResult.data : null;
+
+      ownedColors.push({
+        colorCode,
+        colorOption,
+        quantity: item.quantity,
+        expiresAt: item.expiresAt,
+      });
+    }
+
+    return Result.ok(ownedColors);
+  }
+
+  /**
+   * 길드의 모든 색상 역할 ID 조회 (기존 색상 역할 제거용)
+   */
+  async getAllColorRoleIds(guildId: string): Promise<Result<string[], CurrencyError>> {
+    const result = await this.shopRepo.findAllColorOptionsByGuild(guildId);
+    if (!result.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: result.error });
+    }
+
+    const roleIds = result.data.map((option) => option.roleId);
+    return Result.ok([...new Set(roleIds)]); // 중복 제거
+  }
+
+  /**
+   * 색상 적용 (역할 부여 정보 반환)
+   * 실제 역할 부여/제거는 Bot에서 수행
+   */
+  async applyColor(
+    guildId: string,
+    userId: string,
+    colorCode: string
+  ): Promise<Result<{ roleIdToAdd: string; roleIdsToRemove: string[] }, CurrencyError>> {
+    // 1. 해당 색상을 보유하고 있는지 확인
+    const ownedColorsResult = await this.getOwnedColors(guildId, userId);
+    if (!ownedColorsResult.success) {
+      return Result.err(ownedColorsResult.error);
+    }
+
+    const ownedColor = ownedColorsResult.data.find(
+      (c) => c.colorCode.toUpperCase() === colorCode.toUpperCase()
+    );
+
+    if (!ownedColor) {
+      return Result.err({ type: 'COLOR_NOT_OWNED' });
+    }
+
+    if (!ownedColor.colorOption) {
+      return Result.err({ type: 'COLOR_OPTION_NOT_FOUND' });
+    }
+
+    // 2. 부여할 역할 ID
+    const roleIdToAdd = ownedColor.colorOption.roleId;
+
+    // 3. 제거할 역할 ID 목록 (다른 모든 색상 역할)
+    const allColorRoleIdsResult = await this.getAllColorRoleIds(guildId);
+    if (!allColorRoleIdsResult.success) {
+      return Result.err(allColorRoleIdsResult.error);
+    }
+
+    const roleIdsToRemove = allColorRoleIdsResult.data.filter(
+      (roleId) => roleId !== roleIdToAdd
+    );
+
+    return Result.ok({ roleIdToAdd, roleIdsToRemove });
+  }
 }

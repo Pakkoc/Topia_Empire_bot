@@ -34,4 +34,7 @@ export type CurrencyError =
   | { type: 'INVALID_PRICE'; minPrice: bigint }
   | { type: 'MAX_LISTINGS_REACHED'; maxListings: number }
   // 뱅크 관련 에러
-  | { type: 'BANK_SERVICE_NOT_AVAILABLE' };
+  | { type: 'BANK_SERVICE_NOT_AVAILABLE' }
+  // 색상 관련 에러
+  | { type: 'COLOR_NOT_OWNED' }
+  | { type: 'COLOR_OPTION_NOT_FOUND' };
