@@ -4,6 +4,12 @@ import { Client, GatewayIntentBits, Events, VoiceState, REST, Routes, Collection
 import { createPool, createRedisClient, createContainer, getPool, type Container } from '@topia/infra';
 import { createXpHandler } from './handlers/xp.handler';
 import { createCurrencyHandler } from './handlers/currency.handler';
+import {
+  handleMarketPanelList,
+  handleMarketPanelRegister,
+  handleMarketPanelRegisterModal,
+  handleMarketPanelMy,
+} from './handlers/market-panel';
 import { commands, type Command } from './commands';
 
 const client = new Client({
@@ -307,28 +313,104 @@ async function main() {
     }
   }, VOICE_XP_INTERVAL);
 
-  // Slash command handler
+  // Interaction handler (commands, buttons, modals)
   client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
+    // Slash command handler
+    if (interaction.isChatInputCommand()) {
+      const command = commandCollection.get(interaction.commandName);
+      if (!command) return;
 
-    const command = commandCollection.get(interaction.commandName);
-    if (!command) return;
+      try {
+        await command.execute(interaction, container);
+      } catch (error) {
+        console.error(`[COMMAND] Error executing ${interaction.commandName}:`, error);
 
-    try {
-      await command.execute(interaction, container);
-    } catch (error) {
-      console.error(`[COMMAND] Error executing ${interaction.commandName}:`, error);
+        const reply = {
+          content: '명령어 실행 중 오류가 발생했습니다.',
+          ephemeral: true,
+        };
 
-      const reply = {
-        content: '명령어 실행 중 오류가 발생했습니다.',
-        ephemeral: true,
-      };
-
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(reply);
-      } else {
-        await interaction.reply(reply);
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp(reply);
+        } else {
+          await interaction.reply(reply);
+        }
       }
+      return;
+    }
+
+    // Button handler
+    if (interaction.isButton()) {
+      const customId = interaction.customId;
+
+      try {
+        // 장터 패널 버튼
+        if (customId === 'market_panel_list') {
+          await handleMarketPanelList(interaction, container);
+          return;
+        }
+        if (customId === 'market_panel_register') {
+          await handleMarketPanelRegister(interaction, container);
+          return;
+        }
+        if (customId === 'market_panel_my') {
+          await handleMarketPanelMy(interaction, container);
+          return;
+        }
+      } catch (error) {
+        console.error(`[BUTTON] Error handling ${customId}:`, error);
+
+        const reply = {
+          content: '버튼 처리 중 오류가 발생했습니다.',
+          ephemeral: true,
+        };
+
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp(reply);
+        } else {
+          await interaction.reply(reply);
+        }
+      }
+      return;
+    }
+
+    // Modal submit handler
+    if (interaction.isModalSubmit()) {
+      const customId = interaction.customId;
+
+      try {
+        // 장터 등록 모달
+        if (customId.startsWith('market_panel_register_modal_')) {
+          await handleMarketPanelRegisterModal(interaction, container);
+          return;
+        }
+      } catch (error) {
+        console.error(`[MODAL] Error handling ${customId}:`, error);
+
+        const reply = {
+          content: '모달 처리 중 오류가 발생했습니다.',
+          ephemeral: true,
+        };
+
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp(reply);
+        } else {
+          await interaction.reply(reply);
+        }
+      }
+      return;
+    }
+
+    // Select menu handler (for future use)
+    if (interaction.isStringSelectMenu()) {
+      const customId = interaction.customId;
+
+      try {
+        // 장터 목록 선택 - 상품 상세 보기 등 추가 핸들러 필요시 여기에 추가
+      } catch (error) {
+        console.error(`[SELECT] Error handling ${customId}:`, error);
+      }
+      return;
     }
   });
 
