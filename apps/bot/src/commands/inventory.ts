@@ -439,9 +439,19 @@ export const inventoryCommand: Command = {
           if (result.expiresAt) {
             const daysLeft = Math.ceil((new Date(result.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
             successEmbed.addFields({
-              name: '⏰ 유효기간',
+              name: '📦 아이템 유효기간',
               value: `${daysLeft}일 남음`,
               inline: true,
+            });
+          }
+
+          // 역할 효과 만료 시각 표시
+          if (result.roleExpiresAt) {
+            const roleExpireTimestamp = Math.floor(new Date(result.roleExpiresAt).getTime() / 1000);
+            successEmbed.addFields({
+              name: '⏰ 역할 효과 만료',
+              value: `<t:${roleExpireTimestamp}:R> (<t:${roleExpireTimestamp}:F>)`,
+              inline: false,
             });
           }
 

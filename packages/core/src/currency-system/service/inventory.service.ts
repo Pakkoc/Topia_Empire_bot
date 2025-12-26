@@ -7,7 +7,7 @@ import type { TicketRoleOption } from '../domain/ticket-role-option';
 import type { UserItemV2 } from '../domain/user-item-v2';
 import type { ShopItemV2 } from '../domain/shop-item-v2';
 import { Result } from '../../shared/types/result';
-import { isPeriodTicket } from '../domain/role-ticket';
+import { isPeriodTicket, calculateRoleExpiresAt } from '../domain/role-ticket';
 import { isItemV2Expired } from '../domain/user-item-v2';
 
 export interface AvailableTicket {
@@ -21,6 +21,7 @@ export interface ExchangeRoleResult {
   removedRoleIds: string[];
   remainingQuantity: number;
   expiresAt: Date | null;
+  roleExpiresAt: Date | null;
   isPeriod: boolean;
 }
 
@@ -174,15 +175,23 @@ export class InventoryService {
       removedRoleIds.push(...allRoleIds.filter((id) => id !== roleOption.roleId));
     }
 
-    // 7. 현재 적용 역할 업데이트 (기간제용)
+    // 7. 역할 효과 만료 시각 계산
+    const roleExpiresAt = calculateRoleExpiresAt(ticket, now);
+
+    // 8. 현재 적용 역할 업데이트 (기간제용)
     if (isPeriod) {
-      const updateResult = await this.shopRepo.updateCurrentRole(userItem.id, roleOption.roleId, now);
+      const updateResult = await this.shopRepo.updateCurrentRole(
+        userItem.id,
+        roleOption.roleId,
+        now,
+        roleExpiresAt
+      );
       if (!updateResult.success) {
         return { success: false, error: { type: 'REPOSITORY_ERROR', cause: updateResult.error } };
       }
     }
 
-    // 8. 결과 반환
+    // 9. 결과 반환
     const remainingQuantity = isPeriod
       ? userItem.quantity
       : userItem.quantity - ticket.consumeQuantity;
@@ -194,6 +203,7 @@ export class InventoryService {
         removedRoleIds,
         remainingQuantity,
         expiresAt: userItem.expiresAt,
+        roleExpiresAt,
         isPeriod,
       },
     };
@@ -224,7 +234,37 @@ export class InventoryService {
    * 만료된 아이템의 역할 회수 처리 (스케줄러용)
    */
   async markItemExpired(itemId: bigint): Promise<Result<void, CurrencyError>> {
-    const result = await this.shopRepo.updateCurrentRole(itemId, null, null);
+    const result = await this.shopRepo.updateCurrentRole(itemId, null, null, null);
+    if (!result.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
+    }
+    return { success: true, data: undefined };
+  }
+
+  /**
+   * 역할 효과가 만료된 아이템 조회 (스케줄러용)
+   */
+  async getRoleExpiredItems(): Promise<Result<ExpiredItem[], CurrencyError>> {
+    const now = this.clock.now();
+
+    const result = await this.shopRepo.findRoleExpiredItems(now);
+    if (!result.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
+    }
+
+    const expiredItems: ExpiredItem[] = result.data.map((item) => ({
+      userItem: item,
+      roleIdToRevoke: item.currentRoleId,
+    }));
+
+    return { success: true, data: expiredItems };
+  }
+
+  /**
+   * 역할 효과 만료 처리 (역할만 회수, 아이템 유지)
+   */
+  async markRoleExpired(itemId: bigint): Promise<Result<void, CurrencyError>> {
+    const result = await this.shopRepo.updateCurrentRole(itemId, null, null, null);
     if (!result.success) {
       return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
     }

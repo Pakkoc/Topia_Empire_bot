@@ -65,6 +65,7 @@ const shopItemFormSchema = z.object({
   hasRoleTicket: z.boolean().optional(),
   consumeQuantity: z.coerce.number().min(0).optional(),
   removePreviousRole: z.boolean().optional(),
+  effectDurationDays: z.coerce.number().min(0).optional(),
 });
 
 type ShopItemFormValues = z.infer<typeof shopItemFormSchema>;
@@ -107,6 +108,7 @@ export default function ShopV2Page() {
       hasRoleTicket: false,
       consumeQuantity: 1,
       removePreviousRole: true,
+      effectDurationDays: 0,
     },
   });
 
@@ -160,10 +162,16 @@ export default function ShopV2Page() {
       }));
 
       // Build role ticket if enabled
+      // 효과 지속 기간: 일 -> 초 변환 (0이면 null = 영구)
+      const effectDurationSeconds = data.effectDurationDays
+        ? data.effectDurationDays * 24 * 60 * 60
+        : null;
+
       const roleTicket = data.hasRoleTicket
         ? {
             consumeQuantity: data.consumeQuantity ?? 1,
             removePreviousRole: data.removePreviousRole ?? true,
+            effectDurationSeconds,
             roleOptions,
           }
         : undefined;
@@ -227,6 +235,11 @@ export default function ShopV2Page() {
       setPendingRoleOptions([]);
     }
 
+    // 효과 지속 기간: 초 -> 일 변환
+    const effectDurationDays = item.roleTicket?.effectDurationSeconds
+      ? Math.floor(item.roleTicket.effectDurationSeconds / (24 * 60 * 60))
+      : 0;
+
     form.reset({
       name: item.name,
       description: item.description || "",
@@ -239,6 +252,7 @@ export default function ShopV2Page() {
       hasRoleTicket: !!item.roleTicket,
       consumeQuantity: item.roleTicket?.consumeQuantity ?? 1,
       removePreviousRole: item.roleTicket?.removePreviousRole ?? true,
+      effectDurationDays,
     });
   };
 
@@ -471,7 +485,7 @@ export default function ShopV2Page() {
 
           {hasRoleTicket && (
             <div className="mt-4 space-y-4 p-4 rounded-xl bg-white/5 border border-white/10">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="consumeQuantity"
@@ -488,6 +502,30 @@ export default function ShopV2Page() {
                       </FormControl>
                       <FormDescription className="text-xs text-white/40">
                         0 = 기간제 (소모 없음)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="effectDurationDays"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70">효과 지속 (일)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="0"
+                          {...field}
+                          value={field.value || ""}
+                          className="bg-white/5 border-white/10 text-white"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-white/40">
+                        0 = 영구, 양수 = 기간제
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

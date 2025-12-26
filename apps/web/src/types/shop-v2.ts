@@ -18,6 +18,7 @@ export const roleTicketResponseSchema = z.object({
   id: z.number(),
   consumeQuantity: z.number(),
   removePreviousRole: z.boolean(),
+  effectDurationSeconds: z.number().nullable(),
   roleOptions: z.array(roleOptionResponseSchema),
 });
 
@@ -54,6 +55,7 @@ export type InlineRoleOption = z.infer<typeof inlineRoleOptionSchema>;
 export const inlineRoleTicketSchema = z.object({
   consumeQuantity: z.number().min(0),
   removePreviousRole: z.boolean(),
+  effectDurationSeconds: z.number().nullable().optional(),
   roleOptions: z.array(inlineRoleOptionSchema),
 });
 
@@ -99,6 +101,7 @@ export const roleTicketSchema = z.object({
   shopItemId: z.number(),
   consumeQuantity: z.number(),
   removePreviousRole: z.boolean(),
+  effectDurationSeconds: z.number().nullable(),
   enabled: z.boolean(),
   createdAt: z.string(),
   shopItem: shopItemV2Schema.optional(),

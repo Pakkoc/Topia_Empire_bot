@@ -34,6 +34,7 @@ interface UserItemV2Row extends RowDataPacket {
   expires_at: Date | null;
   current_role_id: string | null;
   current_role_applied_at: Date | null;
+  role_expires_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -66,6 +67,7 @@ function toUserItemV2(row: UserItemV2Row): UserItemV2 {
     expiresAt: row.expires_at,
     currentRoleId: row.current_role_id,
     currentRoleAppliedAt: row.current_role_applied_at,
+    roleExpiresAt: row.role_expires_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -369,16 +371,36 @@ export class ShopV2Repository implements ShopV2RepositoryPort {
   async updateCurrentRole(
     id: bigint,
     roleId: string | null,
-    appliedAt: Date | null
+    appliedAt: Date | null,
+    roleExpiresAt: Date | null
   ): Promise<Result<void, RepositoryError>> {
     try {
       await this.pool.execute(
         `UPDATE user_items_v2
-         SET current_role_id = ?, current_role_applied_at = ?, updated_at = NOW()
+         SET current_role_id = ?, current_role_applied_at = ?, role_expires_at = ?, updated_at = NOW()
          WHERE id = ?`,
-        [roleId, appliedAt, id.toString()]
+        [roleId, appliedAt, roleExpiresAt, id.toString()]
       );
       return Result.ok(undefined);
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async findRoleExpiredItems(before: Date): Promise<Result<UserItemV2[], RepositoryError>> {
+    try {
+      const [rows] = await this.pool.execute<UserItemV2Row[]>(
+        `SELECT * FROM user_items_v2
+         WHERE role_expires_at IS NOT NULL
+           AND role_expires_at < ?
+           AND current_role_id IS NOT NULL
+         ORDER BY role_expires_at ASC`,
+        [before]
+      );
+      return Result.ok(rows.map(toUserItemV2));
     } catch (error) {
       return Result.err({
         type: 'QUERY_ERROR',

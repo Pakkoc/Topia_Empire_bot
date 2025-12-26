@@ -21,6 +21,7 @@ interface ShopItemV2Row extends RowDataPacket {
   ticket_id?: number | null;
   ticket_consume_quantity?: number | null;
   ticket_remove_previous_role?: number | null;
+  ticket_effect_duration_seconds?: string | null;
 }
 
 interface RoleOptionRow extends RowDataPacket {
@@ -53,6 +54,9 @@ function rowToShopItemV2(row: ShopItemV2Row, roleOptions?: RoleOptionRow[]) {
       id: row.ticket_id,
       consumeQuantity: row.ticket_consume_quantity ?? 1,
       removePreviousRole: row.ticket_remove_previous_role === 1,
+      effectDurationSeconds: row.ticket_effect_duration_seconds
+        ? Number(row.ticket_effect_duration_seconds)
+        : null,
       roleOptions: (roleOptions ?? []).map((opt) => ({
         id: opt.id,
         roleId: opt.role_id,
@@ -85,7 +89,8 @@ export async function GET(
       `SELECT si.*,
               rt.id as ticket_id,
               rt.consume_quantity as ticket_consume_quantity,
-              rt.remove_previous_role as ticket_remove_previous_role
+              rt.remove_previous_role as ticket_remove_previous_role,
+              rt.effect_duration_seconds as ticket_effect_duration_seconds
        FROM shop_items_v2 si
        LEFT JOIN role_tickets rt ON si.id = rt.shop_item_id
        WHERE si.guild_id = ?
@@ -176,13 +181,13 @@ export async function POST(
 
       // 2. If roleTicket is provided, create role_tickets and ticket_role_options
       if (validatedData.roleTicket) {
-        const { consumeQuantity, removePreviousRole, roleOptions } = validatedData.roleTicket;
+        const { consumeQuantity, removePreviousRole, effectDurationSeconds, roleOptions } = validatedData.roleTicket;
 
         // Create role ticket (name = shop item name)
         const [ticketResult] = await connection.execute<ResultSetHeader>(
           `INSERT INTO role_tickets
-           (guild_id, name, description, shop_item_id, consume_quantity, remove_previous_role, enabled)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           (guild_id, name, description, shop_item_id, consume_quantity, remove_previous_role, effect_duration_seconds, enabled)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             guildId,
             validatedData.name, // Use shop item name
@@ -190,6 +195,7 @@ export async function POST(
             shopItemId,
             consumeQuantity,
             removePreviousRole ? 1 : 0,
+            effectDurationSeconds ?? null,
             validatedData.enabled !== false ? 1 : 0,
           ]
         );

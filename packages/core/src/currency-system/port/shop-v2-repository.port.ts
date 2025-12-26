@@ -45,8 +45,12 @@ export interface ShopV2RepositoryPort {
   updateCurrentRole(
     id: bigint,
     roleId: string | null,
-    appliedAt: Date | null
+    appliedAt: Date | null,
+    roleExpiresAt: Date | null
   ): Promise<Result<void, RepositoryError>>;
+
+  // 역할 효과 만료된 아이템 조회
+  findRoleExpiredItems(before: Date): Promise<Result<UserItemV2[], RepositoryError>>;
 
   // 구매 횟수 조회
   getUserPurchaseCount(

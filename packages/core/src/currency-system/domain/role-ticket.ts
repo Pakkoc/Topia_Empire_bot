@@ -12,6 +12,7 @@ export interface RoleTicket {
   shopItemId: number;
   consumeQuantity: number; // 소모 개수 (0=기간제 무제한)
   removePreviousRole: boolean; // 이전 역할 제거 여부
+  effectDurationSeconds: number | null; // 효과 지속 기간 (null/0=영구, 양수=초 단위)
   enabled: boolean;
   createdAt: Date;
   // 조인 데이터
@@ -26,6 +27,7 @@ export interface CreateRoleTicketInput {
   shopItemId: number;
   consumeQuantity?: number;
   removePreviousRole?: boolean;
+  effectDurationSeconds?: number | null;
   enabled?: boolean;
 }
 
@@ -35,6 +37,7 @@ export interface UpdateRoleTicketInput {
   shopItemId?: number;
   consumeQuantity?: number;
   removePreviousRole?: boolean;
+  effectDurationSeconds?: number | null;
   enabled?: boolean;
 }
 
@@ -43,4 +46,27 @@ export interface UpdateRoleTicketInput {
  */
 export function isPeriodTicket(ticket: RoleTicket): boolean {
   return ticket.consumeQuantity === 0;
+}
+
+/**
+ * 효과가 영구인지 확인
+ */
+export function isEffectPermanent(ticket: RoleTicket): boolean {
+  return (
+    ticket.effectDurationSeconds === null ||
+    ticket.effectDurationSeconds === 0
+  );
+}
+
+/**
+ * 역할 효과 만료 시각 계산
+ */
+export function calculateRoleExpiresAt(
+  ticket: RoleTicket,
+  now: Date
+): Date | null {
+  if (isEffectPermanent(ticket)) {
+    return null;
+  }
+  return new Date(now.getTime() + ticket.effectDurationSeconds! * 1000);
 }

@@ -21,6 +21,7 @@ interface RoleTicketRow extends RowDataPacket {
   shop_item_id: number;
   consume_quantity: number;
   remove_previous_role: number;
+  effect_duration_seconds: string | null; // BIGINT as string
   enabled: number;
   created_at: Date;
 }
@@ -46,6 +47,9 @@ function toRoleTicket(row: RoleTicketRow, roleOptions?: TicketRoleOption[]): Rol
     shopItemId: row.shop_item_id,
     consumeQuantity: row.consume_quantity,
     removePreviousRole: row.remove_previous_role === 1,
+    effectDurationSeconds: row.effect_duration_seconds
+      ? Number(row.effect_duration_seconds)
+      : null,
     enabled: row.enabled === 1,
     createdAt: row.created_at,
     roleOptions,
@@ -174,8 +178,8 @@ export class RoleTicketRepository implements RoleTicketRepositoryPort {
     try {
       const [result] = await this.pool.execute<ResultSetHeader>(
         `INSERT INTO role_tickets
-         (guild_id, name, description, shop_item_id, consume_quantity, remove_previous_role, enabled)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (guild_id, name, description, shop_item_id, consume_quantity, remove_previous_role, effect_duration_seconds, enabled)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           input.guildId,
           input.name,
@@ -183,6 +187,7 @@ export class RoleTicketRepository implements RoleTicketRepositoryPort {
           input.shopItemId,
           input.consumeQuantity ?? 1,
           input.removePreviousRole !== false ? 1 : 0,
+          input.effectDurationSeconds ?? null,
           input.enabled !== false ? 1 : 0,
         ]
       );
@@ -224,6 +229,10 @@ export class RoleTicketRepository implements RoleTicketRepositoryPort {
       if (input.removePreviousRole !== undefined) {
         fields.push('remove_previous_role = ?');
         values.push(input.removePreviousRole ? 1 : 0);
+      }
+      if (input.effectDurationSeconds !== undefined) {
+        fields.push('effect_duration_seconds = ?');
+        values.push(input.effectDurationSeconds);
       }
       if (input.enabled !== undefined) {
         fields.push('enabled = ?');
