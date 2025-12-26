@@ -531,6 +531,7 @@ async function main() {
       'currency-hottime': '화폐 핫타임',
       'currency-multiplier': '화폐 배율',
       'currency-channel-category': '채널 카테고리',
+      'currency-manager': '화폐 관리자',
     };
 
     const typeLabel = typeLabels[type] || type;

@@ -18,7 +18,8 @@ export type SettingType =
   | 'currency-exclusion'
   | 'currency-hottime'
   | 'currency-multiplier'
-  | 'currency-channel-category';
+  | 'currency-channel-category'
+  | 'currency-manager';
 
 export type SettingAction = '추가' | '수정' | '삭제' | '변경';
 

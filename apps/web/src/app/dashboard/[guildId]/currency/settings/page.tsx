@@ -4,8 +4,15 @@ import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect } from "react";
-import { useCurrencySettings, useUpdateCurrencySettings } from "@/hooks/queries";
+import { useEffect, useState } from "react";
+import {
+  useCurrencySettings,
+  useUpdateCurrencySettings,
+  useCurrencyManagers,
+  useAddCurrencyManager,
+  useRemoveCurrencyManager,
+  useGuildMembers,
+} from "@/hooks/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -18,6 +25,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChanges } from "@/contexts/unsaved-changes-context";
 import { Icon } from "@iconify/react";
@@ -54,6 +68,13 @@ export default function CurrencySettingsPage() {
 
   const { data: settings, isLoading } = useCurrencySettings(guildId);
   const updateSettings = useUpdateCurrencySettings(guildId);
+
+  // Currency managers
+  const { data: managers = [], isLoading: managersLoading } = useCurrencyManagers(guildId);
+  const addManager = useAddCurrencyManager(guildId);
+  const removeManager = useRemoveCurrencyManager(guildId);
+  const { data: members = [] } = useGuildMembers(guildId);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
 
   const form = useForm<CurrencySettingsFormValues>({
     resolver: zodResolver(currencySettingsFormSchema),
@@ -659,6 +680,147 @@ export default function CurrencySettingsPage() {
           </div>
         </form>
       </Form>
+
+      {/* 화폐 관리자 설정 */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
+        <div className="p-6 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+              <Icon icon="solar:shield-user-linear" className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white">화폐 관리자</h3>
+              <p className="text-white/50 text-sm">지정된 유저가 다른 유저에게 무제한 화폐 지급 가능</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          {/* Add manager */}
+          <div className="flex gap-3">
+            <Select
+              value={selectedUserId}
+              onValueChange={setSelectedUserId}
+            >
+              <SelectTrigger className="flex-1 bg-white/5 border-white/10 text-white focus:ring-violet-500">
+                <SelectValue placeholder="유저를 선택하세요" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-white/10">
+                {members
+                  .filter((m) => !managers.some((mgr) => mgr.userId === m.id))
+                  .map((m) => (
+                    <SelectItem
+                      key={m.id}
+                      value={m.id}
+                      className="text-white focus:bg-white/10"
+                    >
+                      {m.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              disabled={!selectedUserId || addManager.isPending}
+              onClick={async () => {
+                if (!selectedUserId) return;
+                try {
+                  await addManager.mutateAsync(selectedUserId);
+                  setSelectedUserId("");
+                  toast({
+                    title: "화폐 관리자 추가",
+                    description: "화폐 관리자가 추가되었습니다.",
+                  });
+                } catch {
+                  toast({
+                    title: "추가 실패",
+                    description: "화폐 관리자를 추가하는 중 오류가 발생했습니다.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="bg-violet-600 hover:bg-violet-500 text-white"
+            >
+              <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
+              추가
+            </Button>
+          </div>
+
+          {/* Manager list */}
+          {managersLoading ? (
+            <div className="space-y-2">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="h-14 rounded-xl bg-white/5 animate-pulse" />
+              ))}
+            </div>
+          ) : managers.length > 0 ? (
+            <div className="space-y-2">
+              {managers.map((manager) => {
+                const member = members.find((m) => m.id === manager.userId);
+                return (
+                  <div
+                    key={manager.id}
+                    className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center">
+                        <Icon icon="solar:user-linear" className="h-4 w-4 text-violet-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-white">{member?.name ?? "알 수 없음"}</p>
+                        <p className="text-xs text-white/40">ID: {manager.userId}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await removeManager.mutateAsync(manager.userId);
+                          toast({
+                            title: "화폐 관리자 제거",
+                            description: "화폐 관리자가 제거되었습니다.",
+                          });
+                        } catch {
+                          toast({
+                            title: "제거 실패",
+                            description: "화폐 관리자를 제거하는 중 오류가 발생했습니다.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      disabled={removeManager.isPending}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    >
+                      <Icon icon="solar:trash-bin-trash-linear" className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-3">
+                <Icon icon="solar:shield-user-linear" className="h-6 w-6 text-white/20" />
+              </div>
+              <p className="text-white/50">등록된 화폐 관리자가 없습니다</p>
+              <p className="text-xs text-white/30 mt-1">유저를 선택하여 추가해주세요</p>
+            </div>
+          )}
+
+          {/* Info */}
+          <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <Icon icon="solar:info-circle-linear" className="w-5 h-5 text-violet-400 mt-0.5" />
+              <div>
+                <p className="text-sm text-violet-300 font-medium">화폐 관리자 안내</p>
+                <p className="text-xs text-violet-300/70 mt-1">
+                  화폐 관리자는 <code className="bg-violet-500/20 px-1 rounded">/지급</code> 명령어로 다른 유저에게 토피/루비를 무제한 지급할 수 있습니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

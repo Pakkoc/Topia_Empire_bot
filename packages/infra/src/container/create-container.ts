@@ -24,6 +24,7 @@ import {
   BankSubscriptionRepository,
   ShopV2Repository,
   RoleTicketRepository,
+  CurrencyManagerRepository,
 } from '../database/repositories';
 import { SystemClock } from '../clock';
 import type { Container } from './types';
@@ -53,6 +54,9 @@ export function createContainer(): Container {
   const shopV2Repo = new ShopV2Repository(pool);
   const roleTicketRepo = new RoleTicketRepository(pool);
 
+  // 화폐 관리자
+  const currencyManagerRepo = new CurrencyManagerRepository(pool);
+
   // Services
   const xpService = new XpService(xpRepo, xpSettingsRepo, clock);
   const currencyService = new CurrencyService(
@@ -61,7 +65,8 @@ export function createContainer(): Container {
     currencySettingsRepo,
     currencyTransactionRepo,
     clock,
-    dailyRewardRepo
+    dailyRewardRepo,
+    currencyManagerRepo
   );
   const shopService = new ShopService(
     shopRepo,

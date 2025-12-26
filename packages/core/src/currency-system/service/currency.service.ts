@@ -4,6 +4,8 @@ import type { RubyWalletRepositoryPort } from '../port/ruby-wallet-repository.po
 import type { CurrencySettingsRepositoryPort } from '../port/currency-settings-repository.port';
 import type { CurrencyTransactionRepositoryPort } from '../port/currency-transaction-repository.port';
 import type { DailyRewardRepositoryPort } from '../port/daily-reward-repository.port';
+import type { CurrencyManagerRepositoryPort } from '../port/currency-manager-repository.port';
+import type { CurrencyManager } from '../domain/currency-manager';
 import type { TopyWallet } from '../domain/topy-wallet';
 import type { RubyWallet } from '../domain/ruby-wallet';
 import type { CurrencySettings } from '../domain/currency-settings';
@@ -50,6 +52,11 @@ export interface AttendanceStatus {
   totalCount: number;
 }
 
+export interface AdminGrantResult {
+  newBalance: bigint;
+  currencyType: CurrencyType;
+}
+
 export class CurrencyService {
   constructor(
     private readonly topyWalletRepo: TopyWalletRepositoryPort,
@@ -57,7 +64,8 @@ export class CurrencyService {
     private readonly settingsRepo: CurrencySettingsRepositoryPort,
     private readonly transactionRepo: CurrencyTransactionRepositoryPort,
     private readonly clock: ClockPort,
-    private readonly dailyRewardRepo?: DailyRewardRepositoryPort
+    private readonly dailyRewardRepo?: DailyRewardRepositoryPort,
+    private readonly currencyManagerRepo?: CurrencyManagerRepositoryPort
   ) {}
 
   /**
@@ -844,5 +852,143 @@ export class CurrencyService {
       streakCount: existingReward.streakCount,
       totalCount: existingReward.totalCount,
     });
+  }
+
+  // ============================================
+  // 화폐 관리자 기능
+  // ============================================
+
+  /**
+   * 화폐 관리자 목록 조회
+   */
+  async getCurrencyManagers(
+    guildId: string
+  ): Promise<Result<CurrencyManager[], CurrencyError>> {
+    if (!this.currencyManagerRepo) {
+      return Result.ok([]);
+    }
+
+    const result = await this.currencyManagerRepo.findByGuild(guildId);
+    if (!result.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: result.error });
+    }
+    return Result.ok(result.data);
+  }
+
+  /**
+   * 화폐 관리자 여부 확인
+   */
+  async isCurrencyManager(
+    guildId: string,
+    userId: string
+  ): Promise<Result<boolean, CurrencyError>> {
+    if (!this.currencyManagerRepo) {
+      return Result.ok(false);
+    }
+
+    const result = await this.currencyManagerRepo.isManager(guildId, userId);
+    if (!result.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: result.error });
+    }
+    return Result.ok(result.data);
+  }
+
+  /**
+   * 화폐 관리자 추가
+   */
+  async addCurrencyManager(
+    guildId: string,
+    userId: string
+  ): Promise<Result<CurrencyManager, CurrencyError>> {
+    if (!this.currencyManagerRepo) {
+      return Result.err({ type: 'SETTINGS_NOT_FOUND', guildId });
+    }
+
+    const result = await this.currencyManagerRepo.add({ guildId, userId });
+    if (!result.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: result.error });
+    }
+    return Result.ok(result.data);
+  }
+
+  /**
+   * 화폐 관리자 제거
+   */
+  async removeCurrencyManager(
+    guildId: string,
+    userId: string
+  ): Promise<Result<void, CurrencyError>> {
+    if (!this.currencyManagerRepo) {
+      return Result.err({ type: 'SETTINGS_NOT_FOUND', guildId });
+    }
+
+    const result = await this.currencyManagerRepo.remove(guildId, userId);
+    if (!result.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: result.error });
+    }
+    return Result.ok(undefined);
+  }
+
+  /**
+   * 관리자 화폐 지급 (화폐 관리자만 사용 가능)
+   */
+  async adminGrantCurrency(
+    guildId: string,
+    managerUserId: string,
+    targetUserId: string,
+    amount: bigint,
+    currencyType: CurrencyType,
+    description?: string
+  ): Promise<Result<AdminGrantResult, CurrencyError>> {
+    // 1. 화폐 관리자 여부 확인
+    const isManagerResult = await this.isCurrencyManager(guildId, managerUserId);
+    if (!isManagerResult.success) {
+      return Result.err(isManagerResult.error);
+    }
+    if (!isManagerResult.data) {
+      return Result.err({ type: 'NOT_CURRENCY_MANAGER' });
+    }
+
+    // 2. 금액 검증
+    if (amount <= BigInt(0)) {
+      return Result.err({ type: 'INVALID_AMOUNT', message: '지급 금액은 0보다 커야 합니다.' });
+    }
+
+    // 3. 화폐 지급
+    if (currencyType === 'topy') {
+      const addResult = await this.topyWalletRepo.updateBalance(guildId, targetUserId, amount, 'add');
+      if (!addResult.success) {
+        return Result.err({ type: 'REPOSITORY_ERROR', cause: addResult.error });
+      }
+
+      const newBalance = addResult.data.balance;
+
+      // 거래 기록 저장
+      await this.transactionRepo.save(
+        createTransaction(guildId, targetUserId, 'topy', 'admin_add', amount, newBalance, {
+          relatedUserId: managerUserId,
+          description: description ?? '관리자 지급',
+        })
+      );
+
+      return Result.ok({ newBalance, currencyType: 'topy' });
+    } else {
+      const addResult = await this.rubyWalletRepo.updateBalance(guildId, targetUserId, amount, 'add');
+      if (!addResult.success) {
+        return Result.err({ type: 'REPOSITORY_ERROR', cause: addResult.error });
+      }
+
+      const newBalance = addResult.data.balance;
+
+      // 거래 기록 저장
+      await this.transactionRepo.save(
+        createTransaction(guildId, targetUserId, 'ruby', 'admin_add', amount, newBalance, {
+          relatedUserId: managerUserId,
+          description: description ?? '관리자 지급',
+        })
+      );
+
+      return Result.ok({ newBalance, currencyType: 'ruby' });
+    }
   }
 }

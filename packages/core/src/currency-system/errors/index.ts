@@ -42,4 +42,6 @@ export type CurrencyError =
   | { type: 'TICKET_NOT_FOUND' }
   | { type: 'TICKET_ALREADY_EXISTS' }
   | { type: 'ROLE_OPTION_NOT_FOUND' }
-  | { type: 'INSUFFICIENT_QUANTITY'; required: number; available: number };
+  | { type: 'INSUFFICIENT_QUANTITY'; required: number; available: number }
+  // 화폐 관리자 에러
+  | { type: 'NOT_CURRENCY_MANAGER' };

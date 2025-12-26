@@ -11,3 +11,6 @@ export * from './bank-subscription-repository.port';
 // V2 역할선택권 시스템
 export * from './shop-v2-repository.port';
 export * from './role-ticket-repository.port';
+
+// 화폐 관리자
+export * from './currency-manager-repository.port';

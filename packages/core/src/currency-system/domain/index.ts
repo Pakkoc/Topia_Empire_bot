@@ -18,3 +18,6 @@ export * from './shop-item-v2';
 export * from './role-ticket';
 export * from './ticket-role-option';
 export * from './user-item-v2';
+
+// 화폐 관리자
+export * from './currency-manager';
