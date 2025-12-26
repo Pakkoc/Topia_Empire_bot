@@ -57,6 +57,8 @@ const shopItemFormSchema = z.object({
     "random_box",
     "warning_remove",
     "tax_exempt",
+    "bank_silver",
+    "bank_gold",
     "custom",
   ]),
   durationDays: z.coerce.number().optional(),

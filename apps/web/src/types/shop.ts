@@ -8,6 +8,8 @@ export const itemTypeSchema = z.enum([
   "random_box",
   "warning_remove",
   "tax_exempt",
+  "bank_silver",
+  "bank_gold",
   "custom",
 ]);
 
@@ -100,5 +102,7 @@ export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   random_box: "랜덤박스",
   warning_remove: "경고 차감",
   tax_exempt: "세금 면제권",
+  bank_silver: "디토뱅크 실버",
+  bank_gold: "디토뱅크 골드",
   custom: "커스텀",
 };
