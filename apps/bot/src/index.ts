@@ -24,6 +24,7 @@ import {
   handleMarketPanelMy,
 } from './handlers/market-panel';
 import { commands, type Command } from './commands';
+import { startExpiredItemsScheduler } from './schedulers/expired-items.scheduler';
 
 const client = new Client({
   intents: [
@@ -103,6 +104,9 @@ async function main() {
   // Events
   client.once(Events.ClientReady, async (c) => {
     console.log(`✅ Bot ready! Logged in as ${c.user.tag}`);
+
+    // 만료 아이템 스케줄러 시작
+    startExpiredItemsScheduler(client, container);
 
     // Register all guilds the bot is currently in
     const pool = getPool();

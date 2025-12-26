@@ -16,4 +16,6 @@ export * from "./use-currency-multipliers";
 export * from "./use-currency-wallets";
 export * from "./use-currency-transactions";
 export * from "./use-shop-items";
+export * from "./use-shop-items-v2";
+export * from "./use-role-tickets";
 export * from "./use-market-listings";
