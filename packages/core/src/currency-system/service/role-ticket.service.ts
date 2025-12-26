@@ -1,7 +1,7 @@
 import { Result } from '../../shared/types/result';
 import type { CurrencyError } from '../errors';
 import type { RoleTicketRepositoryPort } from '../port/role-ticket-repository.port';
-import type { ShopV2RepositoryPort } from '../port/shop-v2-repository.port';
+import type { ShopRepositoryPort } from '../port/shop-repository.port';
 import type {
   RoleTicket,
   CreateRoleTicketInput,
@@ -16,7 +16,7 @@ import type {
 export class RoleTicketService {
   constructor(
     private readonly ticketRepo: RoleTicketRepositoryPort,
-    private readonly shopRepo: ShopV2RepositoryPort
+    private readonly shopRepo: ShopRepositoryPort
   ) {}
 
   // ========== 선택권 CRUD ==========

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,6 +13,9 @@ import {
   useDeleteShopItem,
   useRoles,
   useColorOptions,
+  useCurrencySettings,
+  useTextChannels,
+  useCreateShopPanel,
   type ColorOption,
 } from "@/hooks/queries";
 import { Button } from "@/components/ui/button";
@@ -82,6 +85,13 @@ export default function ShopPage() {
   const [newColorHex, setNewColorHex] = useState("#FF0000");
   const [newColorRoleId, setNewColorRoleId] = useState("");
   const [newColorPrice, setNewColorPrice] = useState(0);
+  const [selectedChannelId, setSelectedChannelId] = useState<string>("");
+  const [mounted, setMounted] = useState(false);
+
+  // 마운트 상태 추적
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 새 아이템 생성 시 임시 색상 옵션 목록
   interface PendingColorOption {
@@ -100,9 +110,33 @@ export default function ShopPage() {
   const { data: items, isLoading } = useShopItems(guildId);
   const { data: roles } = useRoles(guildId);
   const { data: colorOptions } = useColorOptions(guildId, colorManageItem?.id ?? null);
+  const { data: currencySettings } = useCurrencySettings(guildId);
+  const { data: channels } = useTextChannels(guildId);
   const createItem = useCreateShopItem(guildId);
   const updateItem = useUpdateShopItem(guildId);
   const deleteItem = useDeleteShopItem(guildId);
+  const createPanelMutation = useCreateShopPanel(guildId);
+
+  // 설정이 로드되면 상태 동기화
+  useEffect(() => {
+    if (currencySettings?.shopChannelId) {
+      setSelectedChannelId(currencySettings.shopChannelId);
+    }
+  }, [currencySettings?.shopChannelId]);
+
+  const handleCreatePanel = async () => {
+    if (!selectedChannelId) {
+      toast({ title: "채널을 선택해주세요.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await createPanelMutation.mutateAsync(selectedChannelId);
+      toast({ title: "상점 패널이 설치되었습니다!" });
+    } catch {
+      toast({ title: "패널 설치에 실패했습니다.", variant: "destructive" });
+    }
+  };
 
   const form = useForm<ShopItemFormValues>({
     resolver: zodResolver(shopItemFormSchema),
@@ -763,6 +797,69 @@ export default function ShopPage() {
             {formContent}
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Panel Setup */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+            <Icon icon="solar:widget-add-bold" className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">상점 패널 설정</h3>
+            <p className="text-white/50 text-sm">특정 채널에 상점 패널을 설치합니다</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          {mounted ? (
+            <Select
+              value={selectedChannelId}
+              onValueChange={setSelectedChannelId}
+            >
+              <SelectTrigger className="bg-white/5 border-white/10 text-white sm:w-64">
+                <SelectValue placeholder="채널 선택..." />
+              </SelectTrigger>
+              <SelectContent>
+                {channels?.map((channel) => (
+                  <SelectItem key={channel.id} value={channel.id}>
+                    # {channel.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="h-10 w-64 bg-white/5 border border-white/10 rounded-lg animate-pulse" />
+          )}
+
+          <Button
+            onClick={handleCreatePanel}
+            disabled={!selectedChannelId || createPanelMutation.isPending}
+            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+          >
+            {createPanelMutation.isPending ? (
+              <>
+                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                설치 중...
+              </>
+            ) : currencySettings?.shopChannelId === selectedChannelId && currencySettings?.shopMessageId ? (
+              <>
+                <Icon icon="solar:refresh-bold" className="h-4 w-4 mr-2" />
+                패널 갱신
+              </>
+            ) : (
+              <>
+                <Icon icon="solar:add-circle-bold" className="h-4 w-4 mr-2" />
+                패널 설치
+              </>
+            )}
+          </Button>
+        </div>
+        <p className="text-white/40 text-xs mt-2">
+          {currencySettings?.shopChannelId && currencySettings?.shopMessageId
+            ? "패널이 설치되어 있습니다. 다른 채널을 선택하면 기존 패널은 삭제됩니다."
+            : "선택한 채널에 상점 패널 메시지가 생성됩니다. 메시지를 고정해두세요."}
+        </p>
       </div>
 
       {/* Edit Dialog */}

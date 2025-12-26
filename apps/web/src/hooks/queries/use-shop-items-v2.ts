@@ -95,3 +95,26 @@ export function useDeleteShopItemV2(guildId: string) {
     },
   });
 }
+
+// Create shop panel
+export function useCreateShopPanel(guildId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ success: boolean; messageId: string }, Error, string>({
+    mutationFn: async (channelId: string) => {
+      const res = await fetch(`/api/guilds/${guildId}/shop/panel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create shop panel");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["currency-settings", guildId] });
+    },
+  });
+}

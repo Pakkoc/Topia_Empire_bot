@@ -1,4 +1,4 @@
-import type { ShopItemV2 } from './shop-item-v2';
+import type { ShopItemV2 } from './shop-item';
 import type { TicketRoleOption } from './ticket-role-option';
 
 /**

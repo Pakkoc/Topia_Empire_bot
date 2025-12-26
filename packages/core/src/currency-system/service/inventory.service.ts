@@ -1,11 +1,11 @@
 import type { ClockPort } from '../../shared/port/clock.port';
 import type { CurrencyError } from '../errors';
-import type { ShopV2RepositoryPort } from '../port/shop-v2-repository.port';
+import type { ShopRepositoryPort } from '../port/shop-repository.port';
 import type { RoleTicketRepositoryPort } from '../port/role-ticket-repository.port';
 import type { RoleTicket } from '../domain/role-ticket';
 import type { TicketRoleOption } from '../domain/ticket-role-option';
 import type { UserItemV2 } from '../domain/user-item-v2';
-import type { ShopItemV2 } from '../domain/shop-item-v2';
+import type { ShopItemV2 } from '../domain/shop-item';
 import { Result } from '../../shared/types/result';
 import { isPeriodTicket, calculateRoleExpiresAt } from '../domain/role-ticket';
 import { isItemV2Expired } from '../domain/user-item-v2';
@@ -32,7 +32,7 @@ export interface ExpiredItem {
 
 export class InventoryService {
   constructor(
-    private readonly shopRepo: ShopV2RepositoryPort,
+    private readonly shopRepo: ShopRepositoryPort,
     private readonly ticketRepo: RoleTicketRepositoryPort,
     private readonly clock: ClockPort
   ) {}

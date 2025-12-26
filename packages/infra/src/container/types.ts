@@ -5,7 +5,6 @@ import type {
   MarketService,
   MarketSettingsService,
   BankService,
-  ShopV2Service,
   RoleTicketService,
   InventoryService,
 } from '@topia/core';
@@ -18,8 +17,8 @@ export interface Container {
   marketSettingsService: MarketSettingsService;
   bankService: BankService;
 
-  // V2 역할선택권 시스템
-  shopV2Service: ShopV2Service;
+  // V2 역할선택권 시스템 (ShopService로 통합됨)
+  shopV2Service: ShopService;
   roleTicketService: RoleTicketService;
   inventoryService: InventoryService;
 }

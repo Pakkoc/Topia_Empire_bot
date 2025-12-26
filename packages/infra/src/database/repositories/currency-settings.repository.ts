@@ -32,6 +32,8 @@ interface CurrencySettingsRow extends RowDataPacket {
   min_transfer_ruby: number;
   transfer_fee_topy_percent: string;
   transfer_fee_ruby_percent: string;
+  shop_channel_id: string | null;
+  shop_message_id: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -98,6 +100,8 @@ function toCurrencySettings(row: CurrencySettingsRow): CurrencySettings {
     minTransferRuby: row.min_transfer_ruby ?? 1,
     transferFeeTopyPercent: parseFloat(row.transfer_fee_topy_percent) || 1.2,
     transferFeeRubyPercent: parseFloat(row.transfer_fee_ruby_percent) || 0,
+    shopChannelId: row.shop_channel_id ?? null,
+    shopMessageId: row.shop_message_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -136,8 +140,9 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           text_min_length, text_cooldown_seconds, text_max_per_cooldown, text_daily_limit,
           voice_earn_enabled, voice_earn_min, voice_earn_max, voice_cooldown_seconds,
           voice_daily_limit, min_transfer_topy, min_transfer_ruby,
-          transfer_fee_topy_percent, transfer_fee_ruby_percent, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          transfer_fee_topy_percent, transfer_fee_ruby_percent,
+          shop_channel_id, shop_message_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          enabled = VALUES(enabled),
          topy_name = VALUES(topy_name),
@@ -158,6 +163,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
          min_transfer_ruby = VALUES(min_transfer_ruby),
          transfer_fee_topy_percent = VALUES(transfer_fee_topy_percent),
          transfer_fee_ruby_percent = VALUES(transfer_fee_ruby_percent),
+         shop_channel_id = VALUES(shop_channel_id),
+         shop_message_id = VALUES(shop_message_id),
          updated_at = VALUES(updated_at)`,
         [
           settings.guildId,
@@ -180,6 +187,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           settings.minTransferRuby,
           settings.transferFeeTopyPercent,
           settings.transferFeeRubyPercent,
+          settings.shopChannelId,
+          settings.shopMessageId,
           settings.createdAt,
           settings.updatedAt,
         ]

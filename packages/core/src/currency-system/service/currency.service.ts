@@ -468,6 +468,19 @@ export class CurrencyService {
   }
 
   /**
+   * 설정 저장
+   */
+  async saveSettings(
+    settings: CurrencySettings
+  ): Promise<Result<void, CurrencyError>> {
+    const result = await this.settingsRepo.save(settings);
+    if (!result.success) {
+      return Result.err({ type: 'REPOSITORY_ERROR', cause: result.error });
+    }
+    return Result.ok(undefined);
+  }
+
+  /**
    * 신규 유저 지갑 초기화 (서버 가입 시 호출)
    */
   async initializeWallet(

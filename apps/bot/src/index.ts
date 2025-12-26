@@ -23,6 +23,7 @@ import {
   handleMarketPanelRegisterModal,
   handleMarketPanelMy,
 } from './handlers/market-panel';
+import { handleShopPanelButton } from './handlers/shop-panel';
 import { commands, type Command } from './commands';
 import { startExpiredItemsScheduler } from './schedulers/expired-items.scheduler';
 
@@ -374,6 +375,12 @@ async function main() {
       const customId = interaction.customId;
 
       try {
+        // 상점 패널 버튼
+        if (customId === 'shop_panel_open') {
+          await handleShopPanelButton(interaction, container);
+          return;
+        }
+
         // 장터 패널 버튼
         if (customId === 'market_panel_list') {
           await handleMarketPanelList(interaction, container);
@@ -676,6 +683,95 @@ async function main() {
     } catch (error) {
       console.error('[MARKET] Failed to create panel:', error);
       return res.status(500).json({ error: 'Failed to create market panel' });
+    }
+  });
+
+  // 상점 패널 생성 엔드포인트
+  app.post('/api/shop/panel', async (req, res) => {
+    const { guildId, channelId } = req.body;
+
+    if (!guildId || !channelId) {
+      return res.status(400).json({ error: 'guildId and channelId are required' });
+    }
+
+    try {
+      const guild = await client.guilds.fetch(guildId);
+      const channel = await guild.channels.fetch(channelId);
+
+      if (!channel) {
+        return res.status(404).json({ error: 'Channel not found' });
+      }
+
+      // 텍스트 채널인지 확인
+      if (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement) {
+        return res.status(400).json({ error: 'Channel must be a text channel' });
+      }
+
+      // 기존 설정 조회
+      const currencySettingsResult = await container.currencyService.getSettings(guildId);
+      const currencySettings = currencySettingsResult.success ? currencySettingsResult.data : null;
+
+      // 기존 패널 메시지 삭제 (채널 변경 시)
+      if (currencySettings?.shopChannelId && currencySettings?.shopMessageId) {
+        try {
+          const oldChannel = await guild.channels.fetch(currencySettings.shopChannelId);
+          if (oldChannel && 'messages' in oldChannel) {
+            const oldMessage = await oldChannel.messages.fetch(currencySettings.shopMessageId);
+            if (oldMessage) {
+              await oldMessage.delete();
+              console.log(`[SHOP] Deleted old panel message in channel ${currencySettings.shopChannelId}`);
+            }
+          }
+        } catch (err) {
+          // 기존 메시지 삭제 실패는 무시 (이미 삭제됐을 수 있음)
+          console.log(`[SHOP] Could not delete old panel message: ${err}`);
+        }
+      }
+
+      // 화폐 설정 조회
+      const topyName = (currencySettingsResult.success && currencySettingsResult.data?.topyName) || '토피';
+      const rubyName = (currencySettingsResult.success && currencySettingsResult.data?.rubyName) || '루비';
+
+      // 패널 Embed 생성
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('🛒 상점')
+        .setDescription(
+          '아이템을 구매하여 다양한 혜택을 누려보세요!\n\n' +
+          `💰 **${topyName}** 또는 💎 **${rubyName}**로 아이템을 구매할 수 있습니다.\n` +
+          '구매한 아이템은 `/인벤토리` 명령어에서 확인할 수 있습니다.'
+        )
+        .setFooter({ text: '아래 버튼을 눌러 상점을 열어보세요!' })
+        .setTimestamp();
+
+      // 버튼 생성
+      const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId('shop_panel_open')
+          .setLabel('상점 열기')
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('🛒')
+      );
+
+      // 채널에 패널 메시지 전송
+      const message = await channel.send({
+        embeds: [embed],
+        components: [buttonRow],
+      });
+
+      // 설정에 채널/메시지 ID 저장
+      if (currencySettings) {
+        currencySettings.shopChannelId = channelId;
+        currencySettings.shopMessageId = message.id;
+        currencySettings.updatedAt = new Date();
+        await container.currencyService.saveSettings(currencySettings);
+      }
+
+      console.log(`[SHOP] Panel created in channel ${channel.name} (${channelId}) in guild ${guildId}`);
+      return res.json({ success: true, messageId: message.id });
+    } catch (error) {
+      console.error('[SHOP] Failed to create panel:', error);
+      return res.status(500).json({ error: 'Failed to create shop panel' });
     }
   });
 

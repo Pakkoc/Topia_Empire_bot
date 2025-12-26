@@ -73,8 +73,7 @@ export function createContainer(): Container {
     topyWalletRepo,
     rubyWalletRepo,
     currencyTransactionRepo,
-    clock,
-    bankSubscriptionRepo
+    clock
   );
   const marketService = new MarketService(
     marketRepo,
