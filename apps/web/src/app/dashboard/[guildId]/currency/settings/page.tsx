@@ -181,8 +181,34 @@ export default function CurrencySettingsPage() {
         <p className="text-white/50 mt-1">토피 획득 방식을 설정합니다</p>
       </div>
 
-      {/* 화폐 관리자 설정 */}
-      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* 시스템 활성화 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+            <FormField
+              control={form.control}
+              name="enabled"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-white font-medium text-lg">화폐 시스템 활성화</FormLabel>
+                    <FormDescription className="text-white/40">
+                      활동 보상으로 토피를 획득할 수 있습니다
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* 화폐 관리자 설정 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
@@ -320,32 +346,6 @@ export default function CurrencySettingsPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* 시스템 활성화 */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
-            <FormField
-              control={form.control}
-              name="enabled"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-white font-medium text-lg">화폐 시스템 활성화</FormLabel>
-                    <FormDescription className="text-white/40">
-                      활동 보상으로 토피를 획득할 수 있습니다
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
           </div>
 
           {/* 화폐 이름 설정 */}
