@@ -1,0 +1,46 @@
+import type { ShopItemV2 } from './shop-item-v2';
+import type { TicketRoleOption } from './ticket-role-option';
+
+/**
+ * 역할선택권 정의
+ */
+export interface RoleTicket {
+  id: number;
+  guildId: string;
+  name: string;
+  description: string | null;
+  shopItemId: number;
+  consumeQuantity: number; // 소모 개수 (0=기간제 무제한)
+  removePreviousRole: boolean; // 이전 역할 제거 여부
+  enabled: boolean;
+  createdAt: Date;
+  // 조인 데이터
+  shopItem?: ShopItemV2;
+  roleOptions?: TicketRoleOption[];
+}
+
+export interface CreateRoleTicketInput {
+  guildId: string;
+  name: string;
+  description?: string | null;
+  shopItemId: number;
+  consumeQuantity?: number;
+  removePreviousRole?: boolean;
+  enabled?: boolean;
+}
+
+export interface UpdateRoleTicketInput {
+  name?: string;
+  description?: string | null;
+  shopItemId?: number;
+  consumeQuantity?: number;
+  removePreviousRole?: boolean;
+  enabled?: boolean;
+}
+
+/**
+ * 기간제 선택권인지 확인 (소모 개수가 0이면 기간제)
+ */
+export function isPeriodTicket(ticket: RoleTicket): boolean {
+  return ticket.consumeQuantity === 0;
+}

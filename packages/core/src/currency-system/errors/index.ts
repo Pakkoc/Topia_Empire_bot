@@ -37,4 +37,9 @@ export type CurrencyError =
   | { type: 'BANK_SERVICE_NOT_AVAILABLE' }
   // 색상 관련 에러
   | { type: 'COLOR_NOT_OWNED' }
-  | { type: 'COLOR_OPTION_NOT_FOUND' };
+  | { type: 'COLOR_OPTION_NOT_FOUND' }
+  // V2 역할선택권 시스템 에러
+  | { type: 'TICKET_NOT_FOUND' }
+  | { type: 'TICKET_ALREADY_EXISTS' }
+  | { type: 'ROLE_OPTION_NOT_FOUND' }
+  | { type: 'INSUFFICIENT_QUANTITY'; required: number; available: number };

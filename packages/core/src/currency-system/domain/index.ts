@@ -12,3 +12,9 @@ export * from './color-option';
 export * from './market-listing';
 export * from './market-settings';
 export * from './bank-subscription';
+
+// V2 역할선택권 시스템
+export * from './shop-item-v2';
+export * from './role-ticket';
+export * from './ticket-role-option';
+export * from './user-item-v2';
