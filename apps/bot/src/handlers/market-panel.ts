@@ -29,12 +29,14 @@ const CATEGORY_OPTIONS = [
   { label: '기타', value: 'other', emoji: '✨' },
 ];
 
-/** 화폐 선택 옵션 */
-const CURRENCY_OPTIONS = [
-  { label: '전체', value: 'all', emoji: '🔷' },
-  { label: '토피', value: 'topy', emoji: '💰' },
-  { label: '루비', value: 'ruby', emoji: '💎' },
-];
+/** 화폐 선택 옵션 생성 */
+function getCurrencyOptions(topyName: string, rubyName: string) {
+  return [
+    { label: '전체', value: 'all', emoji: '🔷' },
+    { label: topyName, value: 'topy', emoji: '💰' },
+    { label: rubyName, value: 'ruby', emoji: '💎' },
+  ];
+}
 
 interface Container {
   marketService: MarketService;
@@ -223,7 +225,7 @@ export async function handleMarketPanelList(
       new StringSelectMenuBuilder()
         .setCustomId(`market_panel_list_currency_${userId}`)
         .setPlaceholder('화폐 필터')
-        .addOptions(CURRENCY_OPTIONS)
+        .addOptions(getCurrencyOptions(topyName, rubyName))
     )
   );
 
@@ -319,7 +321,7 @@ export async function handleMarketPanelList(
         new StringSelectMenuBuilder()
           .setCustomId(`market_panel_list_currency_${userId}`)
           .setPlaceholder('화폐 필터')
-          .addOptions(CURRENCY_OPTIONS)
+          .addOptions(getCurrencyOptions(topyName, rubyName))
       )
     );
 

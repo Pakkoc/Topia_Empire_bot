@@ -7,7 +7,7 @@ import type { Command } from './types';
 export const transferCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('이체')
-    .setDescription('다른 유저에게 토피 또는 루비를 송금합니다')
+    .setDescription('다른 유저에게 화폐를 송금합니다')
     .addUserOption(option =>
       option
         .setName('받는사람')
@@ -27,8 +27,8 @@ export const transferCommand: Command = {
         .setDescription('송금할 화폐 종류')
         .setRequired(true)
         .addChoices(
-          { name: '토피', value: 'topy' },
-          { name: '루비', value: 'ruby' }
+          { name: '유상 화폐', value: 'topy' },
+          { name: '무상 화폐', value: 'ruby' }
         )
     ),
 

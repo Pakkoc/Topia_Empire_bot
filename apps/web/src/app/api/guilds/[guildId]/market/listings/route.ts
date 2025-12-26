@@ -27,6 +27,11 @@ interface CountRow extends RowDataPacket {
   count: number;
 }
 
+interface CurrencySettingsRow extends RowDataPacket {
+  topy_name: string | null;
+  ruby_name: string | null;
+}
+
 // ========== Mapper ==========
 
 function rowToMarketListing(row: MarketListingRow) {
@@ -168,18 +173,27 @@ export async function POST(
     const body = await request.json();
     const validatedData = createListingSchema.parse(body);
 
+    const pool = db();
+
+    // Get currency settings for dynamic names
+    const [settingsRows] = await pool.query<CurrencySettingsRow[]>(
+      "SELECT topy_name, ruby_name FROM currency_settings WHERE guild_id = ?",
+      [guildId]
+    );
+    const topyName = settingsRows[0]?.topy_name ?? "토피";
+    const rubyName = settingsRows[0]?.ruby_name ?? "루비";
+
     // Validate minimum price
     const minPrice = validatedData.currencyType === "ruby" ? 1 : 100;
+    const currencyName = validatedData.currencyType === "ruby" ? rubyName : topyName;
     if (validatedData.price < minPrice) {
       return NextResponse.json(
         {
-          error: `최소 가격은 ${minPrice}${validatedData.currencyType === "ruby" ? "루비" : "토피"}입니다.`,
+          error: `최소 가격은 ${minPrice}${currencyName}입니다.`,
         },
         { status: 400 }
       );
     }
-
-    const pool = db();
 
     // Check active listings count (max 10)
     const [countRows] = await pool.query<CountRow[]>(
