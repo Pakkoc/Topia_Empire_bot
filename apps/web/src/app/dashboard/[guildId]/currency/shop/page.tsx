@@ -11,6 +11,7 @@ import {
   useUpdateShopItemV2,
   useDeleteShopItemV2,
   useCurrencySettings,
+  useUpdateCurrencySettings,
   useRoles,
   useTextChannels,
   useCreateShopPanel,
@@ -90,7 +91,12 @@ export default function ShopV2Page() {
   const [selectedChannelId, setSelectedChannelId] = useState("");
 
   const { data: settings } = useCurrencySettings(guildId);
+  const updateSettings = useUpdateCurrencySettings(guildId);
   const { data: items, isLoading } = useShopItemsV2(guildId);
+
+  // 수수료 설정 상태
+  const [shopFeeTopy, setShopFeeTopy] = useState<string>("0");
+  const [shopFeeRuby, setShopFeeRuby] = useState<string>("0");
   const { data: roles } = useRoles(guildId);
   const { data: channels } = useTextChannels(guildId);
   const createItem = useCreateShopItemV2(guildId);
@@ -107,6 +113,27 @@ export default function ShopV2Page() {
       setSelectedChannelId(settings.shopChannelId);
     }
   }, [settings?.shopChannelId]);
+
+  // 수수료 설정 초기화
+  useEffect(() => {
+    if (settings) {
+      setShopFeeTopy(String(settings.shopFeeTopyPercent ?? 0));
+      setShopFeeRuby(String(settings.shopFeeRubyPercent ?? 0));
+    }
+  }, [settings]);
+
+  // 수수료 저장
+  const handleSaveFee = async () => {
+    try {
+      await updateSettings.mutateAsync({
+        shopFeeTopyPercent: parseFloat(shopFeeTopy) || 0,
+        shopFeeRubyPercent: parseFloat(shopFeeRuby) || 0,
+      });
+      toast({ title: "수수료 설정 저장 완료" });
+    } catch {
+      toast({ title: "수수료 설정 저장 실패", variant: "destructive" });
+    }
+  };
 
   const form = useForm<ShopItemFormValues>({
     resolver: zodResolver(shopItemFormSchema),
@@ -768,6 +795,66 @@ export default function ShopV2Page() {
           {formContent}
         </DialogContent>
       </Dialog>
+
+      {/* 상점 수수료 설정 */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center">
+            <Icon icon="solar:tag-price-linear" className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">상점 수수료</h3>
+            <p className="text-white/50 text-sm">상점 구매 시 부과되는 수수료</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 mb-4">
+          <div>
+            <label className="text-white/70 text-sm block mb-2">{topyName} 상점 수수료 (%)</label>
+            <Input
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              value={shopFeeTopy}
+              onChange={(e) => setShopFeeTopy(e.target.value)}
+              className="bg-white/5 border-white/10 text-white focus:border-pink-500/50"
+            />
+            <p className="text-xs text-white/40 mt-1">{topyName}로 상점 구매 시 부과되는 수수료</p>
+          </div>
+          <div>
+            <label className="text-white/70 text-sm block mb-2">{rubyName} 상점 수수료 (%)</label>
+            <Input
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              value={shopFeeRuby}
+              onChange={(e) => setShopFeeRuby(e.target.value)}
+              className="bg-white/5 border-white/10 text-white focus:border-pink-500/50"
+            />
+            <p className="text-xs text-white/40 mt-1">{rubyName}로 상점 구매 시 부과되는 수수료</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="bg-pink-500/10 border border-pink-500/20 rounded-xl p-3 flex-1 mr-4">
+            <div className="flex items-start gap-2">
+              <Icon icon="solar:info-circle-linear" className="w-4 h-4 text-pink-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-pink-300/70">
+                수수료는 상품 가격에 추가로 부과됩니다. 0%로 설정하면 수수료가 부과되지 않습니다.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={handleSaveFee}
+            disabled={updateSettings.isPending}
+            className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
+          >
+            {updateSettings.isPending ? "저장 중..." : "저장"}
+          </Button>
+        </div>
+      </div>
 
       {/* Panel Setup */}
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
