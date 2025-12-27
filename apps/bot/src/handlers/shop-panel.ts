@@ -449,6 +449,6 @@ async function handleItemSelection(
       ],
       components: [],
     });
-    scheduleMessageDelete(interaction);
+    scheduleMessageDelete(interaction, 30000); // 30초 후 삭제
   }
 }
