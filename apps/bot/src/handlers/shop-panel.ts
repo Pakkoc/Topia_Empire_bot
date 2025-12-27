@@ -239,11 +239,14 @@ export async function handleShopPanelButton(
       }
     });
 
-    collector.on('end', async () => {
-      try {
-        await interaction.editReply({ components: [] });
-      } catch {
-        // 메시지 삭제됨
+    collector.on('end', async (_, reason) => {
+      // 아이템 선택으로 끝난 경우는 handleItemSelection에서 처리
+      if (reason === 'time') {
+        try {
+          await interaction.deleteReply();
+        } catch {
+          // 이미 삭제됨
+        }
       }
     });
   } catch (error) {
@@ -252,6 +255,19 @@ export async function handleShopPanelButton(
       content: '상점 정보를 불러오는 중 오류가 발생했습니다.',
     });
   }
+}
+
+const AUTO_DELETE_DELAY = 3000; // 3초 후 자동 삭제
+
+/** 일정 시간 후 메시지 삭제 */
+function scheduleMessageDelete(interaction: StringSelectMenuInteraction, delay: number = AUTO_DELETE_DELAY) {
+  setTimeout(async () => {
+    try {
+      await interaction.deleteReply();
+    } catch {
+      // 이미 삭제됨
+    }
+  }, delay);
 }
 
 /** 아이템 선택 처리 */
@@ -269,10 +285,16 @@ async function handleItemSelection(
   const selectedItem = items.find((item) => item.id === itemId);
 
   if (!selectedItem) {
-    await interaction.reply({
-      content: '아이템을 찾을 수 없습니다.',
-      ephemeral: true,
+    await interaction.update({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xFF0000)
+          .setTitle('❌ 오류')
+          .setDescription('아이템을 찾을 수 없습니다.'),
+      ],
+      components: [],
     });
+    scheduleMessageDelete(interaction);
     return;
   }
 
@@ -306,15 +328,15 @@ async function handleItemSelection(
       .setEmoji('❌')
   );
 
-  await interaction.reply({
+  // 기존 메시지를 구매 확인 화면으로 교체
+  await interaction.update({
     embeds: [confirmEmbed],
     components: [confirmRow],
-    ephemeral: true,
   });
 
   // 구매 확인 버튼 이벤트 처리
   try {
-    const buttonInteraction = await interaction.channel?.awaitMessageComponent({
+    const buttonInteraction = await interaction.message.awaitMessageComponent({
       componentType: ComponentType.Button,
       filter: (i) =>
         i.user.id === userId &&
@@ -322,8 +344,6 @@ async function handleItemSelection(
           i.customId === `shop_panel_cancel_${userId}`),
       time: 30000,
     });
-
-    if (!buttonInteraction) return;
 
     if (buttonInteraction.customId === `shop_panel_cancel_${userId}`) {
       await buttonInteraction.update({
@@ -335,6 +355,7 @@ async function handleItemSelection(
         ],
         components: [],
       });
+      scheduleMessageDelete(interaction);
       return;
     }
 
@@ -379,6 +400,7 @@ async function handleItemSelection(
         ],
         components: [],
       });
+      scheduleMessageDelete(interaction, 5000); // 실패 시 5초 후 삭제
       return;
     }
 
@@ -415,6 +437,7 @@ async function handleItemSelection(
       embeds: [successEmbed],
       components: [],
     });
+    scheduleMessageDelete(interaction, 5000); // 성공 시 5초 후 삭제
   } catch {
     // 시간 초과
     await interaction.editReply({
@@ -426,5 +449,6 @@ async function handleItemSelection(
       ],
       components: [],
     });
+    scheduleMessageDelete(interaction);
   }
 }
