@@ -87,9 +87,15 @@ export class ShopService {
   async purchaseItem(
     guildId: string,
     userId: string,
-    itemId: number
+    itemId: number,
+    quantity: number = 1
   ): Promise<Result<PurchaseResult, CurrencyError>> {
     const now = this.clock.now();
+
+    // 수량 검증
+    if (quantity < 1 || quantity > 99 || !Number.isInteger(quantity)) {
+      return { success: false, error: { type: 'INVALID_QUANTITY' as const } };
+    }
 
     // 1. 아이템 조회
     const itemResult = await this.shopRepo.findById(itemId);
@@ -105,8 +111,8 @@ export class ShopService {
     }
 
     // 2. 재고 확인
-    if (item.stock !== null && item.stock <= 0) {
-      return { success: false, error: { type: 'OUT_OF_STOCK' } };
+    if (item.stock !== null && item.stock < quantity) {
+      return { success: false, error: { type: 'OUT_OF_STOCK', available: item.stock, requested: quantity } };
     }
 
     // 3. 유저당 구매 제한 확인
@@ -115,20 +121,21 @@ export class ShopService {
       if (!countResult.success) {
         return { success: false, error: { type: 'REPOSITORY_ERROR', cause: countResult.error } };
       }
-      if (countResult.data >= item.maxPerUser) {
+      if (countResult.data + quantity > item.maxPerUser) {
         return {
           success: false,
           error: {
             type: 'PURCHASE_LIMIT_EXCEEDED',
             maxPerUser: item.maxPerUser,
             currentCount: countResult.data,
+            requested: quantity,
           },
         };
       }
     }
 
     // 4. 잔액 확인 및 차감
-    const totalCost = item.price;
+    const totalCost = item.price * BigInt(quantity);
     let newBalance: bigint;
 
     if (item.currencyType === 'topy') {
@@ -163,7 +170,7 @@ export class ShopService {
 
     // 5. 재고 감소
     if (item.stock !== null) {
-      await this.shopRepo.decreaseStock(itemId);
+      await this.shopRepo.decreaseStock(itemId, quantity);
     }
 
     // 6. 인벤토리에 추가
@@ -175,7 +182,7 @@ export class ShopService {
       guildId,
       userId,
       itemId,
-      1, // 수량 1 증가
+      quantity,
       expiresAt
     );
     if (!userItemResult.success) {

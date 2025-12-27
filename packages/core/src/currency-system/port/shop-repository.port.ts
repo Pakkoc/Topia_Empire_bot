@@ -15,7 +15,7 @@ export interface ShopRepositoryPort {
   create(input: CreateShopItemInput): Promise<Result<ShopItem, RepositoryError>>;
   update(id: number, input: UpdateShopItemInput): Promise<Result<void, RepositoryError>>;
   delete(id: number): Promise<Result<void, RepositoryError>>;
-  decreaseStock(id: number): Promise<Result<void, RepositoryError>>;
+  decreaseStock(id: number, quantity?: number): Promise<Result<void, RepositoryError>>;
 
   // 유저 아이템 (인벤토리)
   findUserItem(

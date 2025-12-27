@@ -5,6 +5,9 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   type ButtonInteraction,
   type StringSelectMenuInteraction,
 } from 'discord.js';
@@ -270,6 +273,99 @@ function scheduleMessageDelete(interaction: StringSelectMenuInteraction, delay: 
   }, delay);
 }
 
+/** 수량 선택 UI 생성 */
+function createQuantitySelectEmbed(
+  item: ShopItemV2,
+  currencyName: string,
+  currentQuantity: number
+): EmbedBuilder {
+  const totalPrice = item.price * BigInt(currentQuantity);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('🔢 수량 선택')
+    .setDescription(`**${item.name}**을(를) 몇 개 구매하시겠습니까?`)
+    .addFields(
+      { name: '💰 개당 가격', value: `${item.price.toLocaleString()} ${currencyName}`, inline: true },
+      { name: '📦 선택 수량', value: `${currentQuantity}개`, inline: true },
+      { name: '💵 총 가격', value: `${totalPrice.toLocaleString()} ${currencyName}`, inline: true }
+    );
+
+  if (item.stock !== null) {
+    embed.addFields({ name: '📦 남은 재고', value: `${item.stock}개`, inline: true });
+  }
+  if (item.maxPerUser !== null) {
+    embed.addFields({ name: '👤 인당 제한', value: `${item.maxPerUser}개`, inline: true });
+  }
+
+  return embed;
+}
+
+/** 수량 선택 버튼 생성 */
+function createQuantityButtons(
+  itemId: number,
+  userId: string,
+  currentQuantity: number,
+  maxQuantity: number
+): ActionRowBuilder<ButtonBuilder>[] {
+  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+
+  // 수량 조절 버튼
+  const adjustRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`shop_qty_1_${itemId}_${userId}`)
+      .setLabel('1개')
+      .setStyle(currentQuantity === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`shop_qty_5_${itemId}_${userId}`)
+      .setLabel('5개')
+      .setStyle(currentQuantity === 5 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setDisabled(maxQuantity < 5),
+    new ButtonBuilder()
+      .setCustomId(`shop_qty_10_${itemId}_${userId}`)
+      .setLabel('10개')
+      .setStyle(currentQuantity === 10 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setDisabled(maxQuantity < 10),
+    new ButtonBuilder()
+      .setCustomId(`shop_qty_custom_${itemId}_${userId}`)
+      .setLabel('직접 입력')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('✏️')
+  );
+  rows.push(adjustRow);
+
+  // 확인/취소 버튼
+  const confirmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`shop_qty_confirm_${itemId}_${currentQuantity}_${userId}`)
+      .setLabel(`${currentQuantity}개 구매하기`)
+      .setStyle(ButtonStyle.Success)
+      .setEmoji('✅'),
+    new ButtonBuilder()
+      .setCustomId(`shop_qty_cancel_${userId}`)
+      .setLabel('취소')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('❌')
+  );
+  rows.push(confirmRow);
+
+  return rows;
+}
+
+/** 최대 구매 가능 수량 계산 */
+function calculateMaxQuantity(item: ShopItemV2, currentOwned: number): number {
+  let max = 99;
+
+  if (item.stock !== null) {
+    max = Math.min(max, item.stock);
+  }
+  if (item.maxPerUser !== null) {
+    max = Math.min(max, item.maxPerUser - currentOwned);
+  }
+
+  return Math.max(0, max);
+}
+
 /** 아이템 선택 처리 */
 async function handleItemSelection(
   interaction: StringSelectMenuInteraction,
@@ -299,156 +395,244 @@ async function handleItemSelection(
   }
 
   const currencyName = selectedItem.currencyType === 'topy' ? topyName : rubyName;
-  const totalCost = selectedItem.price;
 
-  // 구매 확인 Embed
-  const confirmEmbed = new EmbedBuilder()
-    .setColor(0xFFA500)
-    .setTitle('🛒 구매 확인')
-    .setDescription(`**${selectedItem.name}**을(를) 구매하시겠습니까?`)
-    .addFields(
-      { name: '💰 가격', value: `${totalCost.toLocaleString()} ${currencyName}`, inline: true },
-      { name: '⏰ 유효기간', value: selectedItem.durationDays > 0 ? `${selectedItem.durationDays}일` : '영구', inline: true }
-    );
+  // 현재 보유 수량 조회 (인당 제한 확인용)
+  const userItemResult = await container.shopV2Service.getUserItem(guildId, userId, itemId);
+  const currentOwned = userItemResult.success && userItemResult.data ? userItemResult.data.quantity : 0;
+  const maxQuantity = calculateMaxQuantity(selectedItem, currentOwned);
 
-  if (selectedItem.description) {
-    confirmEmbed.addFields({ name: '📝 설명', value: selectedItem.description });
-  }
-
-  const confirmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`shop_panel_confirm_${itemId}_${userId}`)
-      .setLabel('구매하기')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('✅'),
-    new ButtonBuilder()
-      .setCustomId(`shop_panel_cancel_${userId}`)
-      .setLabel('취소')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('❌')
-  );
-
-  // 기존 메시지를 구매 확인 화면으로 교체
-  await interaction.update({
-    embeds: [confirmEmbed],
-    components: [confirmRow],
-  });
-
-  // 구매 확인 버튼 이벤트 처리
-  try {
-    const buttonInteraction = await interaction.message.awaitMessageComponent({
-      componentType: ComponentType.Button,
-      filter: (i) =>
-        i.user.id === userId &&
-        (i.customId === `shop_panel_confirm_${itemId}_${userId}` ||
-          i.customId === `shop_panel_cancel_${userId}`),
-      time: 30000,
-    });
-
-    if (buttonInteraction.customId === `shop_panel_cancel_${userId}`) {
-      await buttonInteraction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0x808080)
-            .setTitle('❌ 구매 취소')
-            .setDescription('구매가 취소되었습니다.'),
-        ],
-        components: [],
-      });
-      scheduleMessageDelete(interaction);
-      return;
-    }
-
-    // 구매 처리
-    await buttonInteraction.deferUpdate();
-
-    const purchaseResult = await container.shopV2Service.purchaseItem(
-      guildId,
-      userId,
-      itemId
-    );
-
-    if (!purchaseResult.success) {
-      let errorMessage = '구매 처리 중 오류가 발생했습니다.';
-
-      switch (purchaseResult.error.type) {
-        case 'ITEM_NOT_FOUND':
-          errorMessage = '아이템을 찾을 수 없습니다.';
-          break;
-        case 'ITEM_DISABLED':
-          errorMessage = '현재 판매 중지된 아이템입니다.';
-          break;
-        case 'OUT_OF_STOCK':
-          errorMessage = '재고가 소진되었습니다.';
-          break;
-        case 'PURCHASE_LIMIT_EXCEEDED':
-          errorMessage = `구매 한도를 초과했습니다. (최대 ${purchaseResult.error.maxPerUser}회)`;
-          break;
-        case 'INSUFFICIENT_BALANCE':
-          const required = purchaseResult.error.required;
-          const available = purchaseResult.error.available;
-          errorMessage = `잔액이 부족합니다.\n필요: ${required.toLocaleString()} ${currencyName}\n보유: ${available.toLocaleString()} ${currencyName}`;
-          break;
-      }
-
-      await buttonInteraction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0xFF0000)
-            .setTitle('❌ 구매 실패')
-            .setDescription(errorMessage),
-        ],
-        components: [],
-      });
-      scheduleMessageDelete(interaction, 5000); // 실패 시 5초 후 삭제
-      return;
-    }
-
-    const { item, userItem, totalCost: paidAmount } = purchaseResult.data;
-
-    const successEmbed = new EmbedBuilder()
-      .setColor(0x00FF00)
-      .setTitle('✅ 구매 완료!')
-      .setDescription(`**${item.name}**을(를) 구매했습니다!`)
-      .addFields(
-        { name: '💰 지불 금액', value: `${paidAmount.toLocaleString()} ${currencyName}`, inline: true },
-        { name: '📦 보유 수량', value: `${userItem.quantity}개`, inline: true }
-      );
-
-    if (userItem.expiresAt) {
-      const expiresAt = new Date(userItem.expiresAt);
-      const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      successEmbed.addFields({
-        name: '⏰ 유효기간',
-        value: `${daysLeft}일 남음`,
-        inline: true,
-      });
-    }
-
-    successEmbed.addFields({
-      name: '💡 사용 방법',
-      value: '`/인벤토리` 명령어에서 역할로 교환할 수 있습니다.',
-      inline: false,
-    });
-
-    successEmbed.setTimestamp();
-
-    await buttonInteraction.editReply({
-      embeds: [successEmbed],
+  if (maxQuantity <= 0) {
+    await interaction.update({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xFF0000)
+          .setTitle('❌ 구매 불가')
+          .setDescription(selectedItem.stock === 0 ? '재고가 소진되었습니다.' : '구매 한도에 도달했습니다.'),
+      ],
       components: [],
     });
-    scheduleMessageDelete(interaction, 5000); // 성공 시 5초 후 삭제
+    scheduleMessageDelete(interaction, 3000);
+    return;
+  }
+
+  let currentQuantity = 1;
+
+  // 수량 선택 화면 표시
+  await interaction.update({
+    embeds: [createQuantitySelectEmbed(selectedItem, currencyName, currentQuantity)],
+    components: createQuantityButtons(itemId, userId, currentQuantity, maxQuantity),
+  });
+
+  // 수량 선택 및 구매 확인 처리
+  try {
+    const collector = interaction.message.createMessageComponentCollector({
+      filter: (i) => i.user.id === userId,
+      time: 60000, // 1분
+    });
+
+    collector.on('collect', async (componentInteraction) => {
+      const customId = componentInteraction.customId;
+
+      // 취소
+      if (customId === `shop_qty_cancel_${userId}`) {
+        collector.stop('cancelled');
+        await componentInteraction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x808080)
+              .setTitle('❌ 구매 취소')
+              .setDescription('구매가 취소되었습니다.'),
+          ],
+          components: [],
+        });
+        scheduleMessageDelete(interaction);
+        return;
+      }
+
+      // 수량 선택 (1, 5, 10)
+      if (customId.startsWith(`shop_qty_`) && !customId.includes('confirm') && !customId.includes('custom') && !customId.includes('cancel')) {
+        const qty = parseInt(customId.split('_')[2]!, 10);
+        currentQuantity = Math.min(qty, maxQuantity);
+        await componentInteraction.update({
+          embeds: [createQuantitySelectEmbed(selectedItem, currencyName, currentQuantity)],
+          components: createQuantityButtons(itemId, userId, currentQuantity, maxQuantity),
+        });
+        return;
+      }
+
+      // 직접 입력
+      if (customId === `shop_qty_custom_${itemId}_${userId}`) {
+        const modal = new ModalBuilder()
+          .setCustomId(`shop_qty_modal_${itemId}_${userId}`)
+          .setTitle('수량 입력')
+          .addComponents(
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId('quantity')
+                .setLabel(`구매할 수량 (최대 ${maxQuantity}개)`)
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('1')
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(2)
+            )
+          );
+
+        await componentInteraction.showModal(modal);
+
+        try {
+          const modalInteraction = await componentInteraction.awaitModalSubmit({
+            filter: (i) => i.customId === `shop_qty_modal_${itemId}_${userId}`,
+            time: 30000,
+          });
+
+          const inputQty = parseInt(modalInteraction.fields.getTextInputValue('quantity'), 10);
+          if (isNaN(inputQty) || inputQty < 1) {
+            await modalInteraction.reply({ content: '올바른 숫자를 입력해주세요.', ephemeral: true });
+            return;
+          }
+
+          currentQuantity = Math.min(inputQty, maxQuantity);
+          await modalInteraction.deferUpdate();
+          await interaction.editReply({
+            embeds: [createQuantitySelectEmbed(selectedItem, currencyName, currentQuantity)],
+            components: createQuantityButtons(itemId, userId, currentQuantity, maxQuantity),
+          });
+        } catch {
+          // 모달 시간 초과
+        }
+        return;
+      }
+
+      // 구매 확인
+      if (customId.startsWith(`shop_qty_confirm_${itemId}_`)) {
+        const parts = customId.split('_');
+        const confirmQty = parseInt(parts[4]!, 10);
+        collector.stop('confirmed');
+
+        await componentInteraction.deferUpdate();
+
+        // 구매 처리
+        const purchaseResult = await container.shopV2Service.purchaseItem(
+          guildId,
+          userId,
+          itemId,
+          confirmQty
+        );
+
+        if (!purchaseResult.success) {
+          let errorMessage = '구매 처리 중 오류가 발생했습니다.';
+
+          switch (purchaseResult.error.type) {
+            case 'ITEM_NOT_FOUND':
+              errorMessage = '아이템을 찾을 수 없습니다.';
+              break;
+            case 'ITEM_DISABLED':
+              errorMessage = '현재 판매 중지된 아이템입니다.';
+              break;
+            case 'OUT_OF_STOCK':
+              if ('available' in purchaseResult.error && 'requested' in purchaseResult.error) {
+                errorMessage = `재고가 부족합니다. (요청: ${purchaseResult.error.requested}개, 재고: ${purchaseResult.error.available}개)`;
+              } else {
+                errorMessage = '재고가 소진되었습니다.';
+              }
+              break;
+            case 'PURCHASE_LIMIT_EXCEEDED':
+              if ('requested' in purchaseResult.error) {
+                errorMessage = `구매 한도를 초과합니다. (최대 ${purchaseResult.error.maxPerUser}회, 현재 ${purchaseResult.error.currentCount}회 구매함, 요청 ${purchaseResult.error.requested}개)`;
+              } else {
+                errorMessage = `구매 한도를 초과했습니다. (최대 ${purchaseResult.error.maxPerUser}회)`;
+              }
+              break;
+            case 'INSUFFICIENT_BALANCE':
+              const required = purchaseResult.error.required;
+              const available = purchaseResult.error.available;
+              errorMessage = `잔액이 부족합니다.\n필요: ${required.toLocaleString()} ${currencyName}\n보유: ${available.toLocaleString()} ${currencyName}`;
+              break;
+            case 'INVALID_QUANTITY':
+              errorMessage = '잘못된 수량입니다. (1~99개)';
+              break;
+          }
+
+          await componentInteraction.editReply({
+            embeds: [
+              new EmbedBuilder()
+                .setColor(0xFF0000)
+                .setTitle('❌ 구매 실패')
+                .setDescription(errorMessage),
+            ],
+            components: [],
+          });
+          scheduleMessageDelete(interaction, 5000);
+          return;
+        }
+
+        const { item, userItem, totalCost: paidAmount } = purchaseResult.data;
+
+        const successEmbed = new EmbedBuilder()
+          .setColor(0x00FF00)
+          .setTitle('✅ 구매 완료!')
+          .setDescription(`**${item.name}** x${confirmQty}개를 구매했습니다!`)
+          .addFields(
+            { name: '💰 지불 금액', value: `${paidAmount.toLocaleString()} ${currencyName}`, inline: true },
+            { name: '📦 보유 수량', value: `${userItem.quantity}개`, inline: true }
+          );
+
+        if (userItem.expiresAt) {
+          const expiresAt = new Date(userItem.expiresAt);
+          const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          successEmbed.addFields({
+            name: '⏰ 유효기간',
+            value: `${daysLeft}일 남음`,
+            inline: true,
+          });
+        }
+
+        successEmbed.addFields({
+          name: '💡 사용 방법',
+          value: '`/인벤토리` 명령어에서 역할로 교환할 수 있습니다.',
+          inline: false,
+        });
+
+        successEmbed.setTimestamp();
+
+        await componentInteraction.editReply({
+          embeds: [successEmbed],
+          components: [],
+        });
+        scheduleMessageDelete(interaction, 5000);
+      }
+    });
+
+    collector.on('end', async (_, reason) => {
+      if (reason === 'time') {
+        try {
+          await interaction.editReply({
+            embeds: [
+              new EmbedBuilder()
+                .setColor(0x808080)
+                .setTitle('⏰ 시간 초과')
+                .setDescription('구매 시간이 초과되었습니다.'),
+            ],
+            components: [],
+          });
+          scheduleMessageDelete(interaction, 3000);
+        } catch {
+          // 이미 삭제됨
+        }
+      }
+    });
   } catch {
-    // 시간 초과
+    // 초기 collector 오류
     await interaction.editReply({
       embeds: [
         new EmbedBuilder()
           .setColor(0x808080)
           .setTitle('⏰ 시간 초과')
-          .setDescription('구매 확인 시간이 초과되었습니다.'),
+          .setDescription('구매 시간이 초과되었습니다.'),
       ],
       components: [],
     });
-    scheduleMessageDelete(interaction, 30000); // 30초 후 삭제
+    scheduleMessageDelete(interaction, 3000);
   }
 }

@@ -21,8 +21,9 @@ export type CurrencyError =
   // 상점 관련 에러
   | { type: 'ITEM_NOT_FOUND' }
   | { type: 'ITEM_DISABLED' }
-  | { type: 'OUT_OF_STOCK' }
-  | { type: 'PURCHASE_LIMIT_EXCEEDED'; maxPerUser: number; currentCount: number }
+  | { type: 'OUT_OF_STOCK'; available?: number; requested?: number }
+  | { type: 'PURCHASE_LIMIT_EXCEEDED'; maxPerUser: number; currentCount: number; requested?: number }
+  | { type: 'INVALID_QUANTITY' }
   | { type: 'ITEM_NOT_OWNED' }
   | { type: 'ITEM_EXPIRED' }
   // 장터 관련 에러

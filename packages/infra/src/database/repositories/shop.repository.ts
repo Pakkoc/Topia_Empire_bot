@@ -236,11 +236,11 @@ export class ShopRepository implements ShopRepositoryPort {
     }
   }
 
-  async decreaseStock(id: number): Promise<Result<void, RepositoryError>> {
+  async decreaseStock(id: number, quantity: number = 1): Promise<Result<void, RepositoryError>> {
     try {
       await this.pool.execute(
-        'UPDATE shop_items_v2 SET stock = stock - 1 WHERE id = ? AND stock > 0',
-        [id]
+        'UPDATE shop_items_v2 SET stock = stock - ? WHERE id = ? AND stock >= ?',
+        [quantity, id, quantity]
       );
       return Result.ok(undefined);
     } catch (error) {

@@ -80,7 +80,9 @@ export async function GET(
       return NextResponse.json({ guildId, ...DEFAULT_CURRENCY_SETTINGS });
     }
 
-    return NextResponse.json(rowToSettings(rows[0]!));
+    const settings = rowToSettings(rows[0]!);
+    console.log("[API] Currency settings response:", { shopChannelId: settings.shopChannelId, shopMessageId: settings.shopMessageId });
+    return NextResponse.json(settings);
   } catch (error) {
     console.error("Error fetching currency settings:", error);
     return NextResponse.json(

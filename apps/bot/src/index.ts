@@ -764,8 +764,12 @@ async function main() {
         currencySettings.shopChannelId = channelId;
         currencySettings.shopMessageId = message.id;
         currencySettings.updatedAt = new Date();
-        await container.currencyService.saveSettings(currencySettings);
-        console.log(`[SHOP] Saved panel info: channel=${channelId}, message=${message.id}`);
+        const saveResult = await container.currencyService.saveSettings(currencySettings);
+        if (saveResult.success) {
+          console.log(`[SHOP] Saved panel info: channel=${channelId}, message=${message.id}`);
+        } else {
+          console.error(`[SHOP] Failed to save panel info:`, saveResult.error);
+        }
       } else {
         // 설정이 없으면 새로 생성
         const newSettings = {
@@ -773,8 +777,12 @@ async function main() {
           shopChannelId: channelId,
           shopMessageId: message.id,
         };
-        await container.currencyService.saveSettings(newSettings as any);
-        console.log(`[SHOP] Created new settings with panel info: channel=${channelId}, message=${message.id}`);
+        const saveResult = await container.currencyService.saveSettings(newSettings as any);
+        if (saveResult.success) {
+          console.log(`[SHOP] Created new settings with panel info: channel=${channelId}, message=${message.id}`);
+        } else {
+          console.error(`[SHOP] Failed to create settings:`, saveResult.error);
+        }
       }
 
       console.log(`[SHOP] Panel created in channel ${channel.name} (${channelId}) in guild ${guildId}`);
