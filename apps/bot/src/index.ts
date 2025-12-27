@@ -775,6 +775,67 @@ async function main() {
     }
   });
 
+  // 상점 패널 메시지 업데이트 (화폐 설정 변경 시)
+  app.post('/api/shop/panel/refresh', async (req, res) => {
+    const { guildId } = req.body;
+
+    if (!guildId) {
+      return res.status(400).json({ error: 'guildId is required' });
+    }
+
+    try {
+      // 설정 조회
+      const currencySettingsResult = await container.currencyService.getSettings(guildId);
+      if (!currencySettingsResult.success || !currencySettingsResult.data) {
+        return res.status(404).json({ error: 'Currency settings not found' });
+      }
+
+      const currencySettings = currencySettingsResult.data;
+      const { shopChannelId, shopMessageId, topyName, rubyName } = currencySettings;
+
+      // 패널이 설치되어 있지 않으면 스킵
+      if (!shopChannelId || !shopMessageId) {
+        return res.json({ success: true, skipped: true, reason: 'No panel installed' });
+      }
+
+      const guild = await client.guilds.fetch(guildId);
+      const channel = await guild.channels.fetch(shopChannelId);
+
+      if (!channel || !('messages' in channel)) {
+        return res.json({ success: true, skipped: true, reason: 'Channel not found' });
+      }
+
+      // 기존 메시지 가져오기
+      let message;
+      try {
+        message = await channel.messages.fetch(shopMessageId);
+      } catch {
+        return res.json({ success: true, skipped: true, reason: 'Message not found' });
+      }
+
+      // 패널 Embed 업데이트
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('🛒 상점')
+        .setDescription(
+          '아이템을 구매하여 다양한 혜택을 누려보세요!\n\n' +
+          `💰 **${topyName || '토피'}** 또는 💎 **${rubyName || '루비'}**로 아이템을 구매할 수 있습니다.\n` +
+          '구매한 아이템은 `/인벤토리` 명령어에서 확인할 수 있습니다.'
+        )
+        .setFooter({ text: '아래 버튼을 눌러 상점을 열어보세요!' })
+        .setTimestamp();
+
+      // 메시지 편집
+      await message.edit({ embeds: [embed] });
+
+      console.log(`[SHOP] Panel refreshed in guild ${guildId}`);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('[SHOP] Failed to refresh panel:', error);
+      return res.status(500).json({ error: 'Failed to refresh shop panel' });
+    }
+  });
+
   const BOT_API_PORT = parseInt(process.env['BOT_API_PORT'] || '3001');
   app.listen(BOT_API_PORT, () => {
     console.log(`📡 Bot API server running on port ${BOT_API_PORT}`);

@@ -171,6 +171,21 @@ export async function PATCH(
       details: `변경된 필드: ${changedFields}`,
     });
 
+    // 화폐 이름 변경 시 상점 패널 메시지 업데이트
+    if ('topyName' in validatedData || 'rubyName' in validatedData) {
+      try {
+        const botApiUrl = process.env["BOT_API_URL"] || "http://localhost:3001";
+        await fetch(`${botApiUrl}/api/shop/panel/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guildId }),
+        });
+      } catch (err) {
+        // 패널 업데이트 실패는 무시 (설정 저장은 성공했으므로)
+        console.error("[API] Failed to refresh shop panel:", err);
+      }
+    }
+
     return NextResponse.json(rowToSettings(rows[0]!));
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
