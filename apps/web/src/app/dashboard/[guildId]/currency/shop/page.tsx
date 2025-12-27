@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -100,6 +100,13 @@ export default function ShopV2Page() {
 
   const topyName = settings?.topyName ?? "토피";
   const rubyName = settings?.rubyName ?? "루비";
+
+  // 설치된 채널이 있으면 초기값으로 설정
+  useEffect(() => {
+    if (settings?.shopChannelId) {
+      setSelectedChannelId(settings.shopChannelId);
+    }
+  }, [settings?.shopChannelId]);
 
   const form = useForm<ShopItemFormValues>({
     resolver: zodResolver(shopItemFormSchema),
@@ -801,6 +808,11 @@ export default function ShopV2Page() {
                 <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 설치 중...
               </>
+            ) : settings?.shopChannelId === selectedChannelId && settings?.shopMessageId ? (
+              <>
+                <Icon icon="solar:refresh-bold" className="h-4 w-4 mr-2" />
+                패널 갱신
+              </>
             ) : (
               <>
                 <Icon icon="solar:add-circle-bold" className="h-4 w-4 mr-2" />
@@ -810,7 +822,9 @@ export default function ShopV2Page() {
           </Button>
         </div>
         <p className="text-white/40 text-xs mt-2">
-          선택한 채널에 상점 패널 메시지가 생성됩니다. 유저가 버튼을 눌러 상점을 이용할 수 있습니다.
+          {settings?.shopChannelId && settings?.shopMessageId
+            ? "패널이 설치되어 있습니다. 다른 채널을 선택하면 기존 패널은 삭제됩니다."
+            : "선택한 채널에 상점 패널 메시지가 생성됩니다. 유저가 버튼을 눌러 상점을 이용할 수 있습니다."}
         </p>
       </div>
 

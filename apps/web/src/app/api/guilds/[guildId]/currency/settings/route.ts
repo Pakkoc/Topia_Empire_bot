@@ -27,6 +27,8 @@ interface CurrencySettingsRow extends RowDataPacket {
   min_transfer_ruby: number;
   transfer_fee_topy_percent: string;
   transfer_fee_ruby_percent: string;
+  shop_channel_id: string | null;
+  shop_message_id: string | null;
 }
 
 function rowToSettings(row: CurrencySettingsRow) {
@@ -51,6 +53,8 @@ function rowToSettings(row: CurrencySettingsRow) {
     minTransferRuby: row.min_transfer_ruby ?? 1,
     transferFeeTopyPercent: parseFloat(row.transfer_fee_topy_percent) || 1.2,
     transferFeeRubyPercent: parseFloat(row.transfer_fee_ruby_percent) || 0,
+    shopChannelId: row.shop_channel_id ?? null,
+    shopMessageId: row.shop_message_id ?? null,
   };
 }
 
@@ -172,14 +176,20 @@ export async function PATCH(
     });
 
     // 화폐 이름 변경 시 상점 패널 메시지 업데이트
-    if ('topyName' in validatedData || 'rubyName' in validatedData) {
+    const hasCurrencyNameChange = 'topyName' in validatedData || 'rubyName' in validatedData;
+    console.log("[API] Currency name change detected:", hasCurrencyNameChange, Object.keys(validatedData));
+
+    if (hasCurrencyNameChange) {
       try {
         const botApiUrl = process.env["BOT_API_URL"] || "http://localhost:3001";
-        await fetch(`${botApiUrl}/api/shop/panel/refresh`, {
+        console.log("[API] Calling shop panel refresh:", `${botApiUrl}/api/shop/panel/refresh`);
+        const response = await fetch(`${botApiUrl}/api/shop/panel/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ guildId }),
         });
+        const result = await response.json();
+        console.log("[API] Shop panel refresh result:", result);
       } catch (err) {
         // 패널 업데이트 실패는 무시 (설정 저장은 성공했으므로)
         console.error("[API] Failed to refresh shop panel:", err);

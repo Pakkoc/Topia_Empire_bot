@@ -22,6 +22,8 @@ export const currencySettingsSchema = z.object({
   minTransferRuby: z.number().min(0).max(1000000),
   transferFeeTopyPercent: z.number().min(0).max(100),
   transferFeeRubyPercent: z.number().min(0).max(100),
+  shopChannelId: z.string().nullable().optional(),
+  shopMessageId: z.string().nullable().optional(),
 });
 
 export type CurrencySettings = z.infer<typeof currencySettingsSchema>;
