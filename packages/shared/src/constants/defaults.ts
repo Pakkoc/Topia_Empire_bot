@@ -49,6 +49,10 @@ export const CURRENCY_DEFAULTS = {
   TRANSFER_FEE_TOPY_PERCENT: 1.2,
   TRANSFER_FEE_RUBY_PERCENT: 0,
 
+  // 상점 수수료 설정
+  SHOP_FEE_TOPY_PERCENT: 0,
+  SHOP_FEE_RUBY_PERCENT: 0,
+
   // 채널 카테고리별 배율
   CHANNEL_CATEGORY_MULTIPLIERS: {
     normal: 1.0,    // 일반 통화방

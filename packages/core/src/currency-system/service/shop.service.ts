@@ -4,6 +4,7 @@ import type { ShopRepositoryPort } from '../port/shop-repository.port';
 import type { TopyWalletRepositoryPort } from '../port/topy-wallet-repository.port';
 import type { RubyWalletRepositoryPort } from '../port/ruby-wallet-repository.port';
 import type { CurrencyTransactionRepositoryPort } from '../port/currency-transaction-repository.port';
+import type { CurrencySettingsRepositoryPort } from '../port/currency-settings-repository.port';
 import type {
   ShopItem,
   CreateShopItemInput,
@@ -13,11 +14,13 @@ import type { UserItemV2 } from '../domain/user-item-v2';
 import { Result } from '../../shared/types/result';
 import { isPeriodItem } from '../domain/shop-item';
 import { createTransaction } from '../domain/currency-transaction';
+import { CURRENCY_DEFAULTS } from '@topia/shared';
 
 export interface PurchaseResult {
   item: ShopItem;
   userItem: UserItemV2;
   totalCost: bigint;
+  fee: bigint;
 }
 
 export class ShopService {
@@ -26,6 +29,7 @@ export class ShopService {
     private readonly topyWalletRepo: TopyWalletRepositoryPort,
     private readonly rubyWalletRepo: RubyWalletRepositoryPort,
     private readonly transactionRepo: CurrencyTransactionRepositoryPort,
+    private readonly currencySettingsRepo: CurrencySettingsRepositoryPort,
     private readonly clock: ClockPort
   ) {}
 
@@ -134,8 +138,21 @@ export class ShopService {
       }
     }
 
-    // 4. 잔액 확인 및 차감
-    const totalCost = item.price * BigInt(quantity);
+    // 4. 수수료 계산
+    const settingsResult = await this.currencySettingsRepo.findByGuild(guildId);
+    const settings = settingsResult.success ? settingsResult.data : null;
+    const feePercent = item.currencyType === 'topy'
+      ? (settings?.shopFeeTopyPercent ?? CURRENCY_DEFAULTS.SHOP_FEE_TOPY_PERCENT)
+      : (settings?.shopFeeRubyPercent ?? CURRENCY_DEFAULTS.SHOP_FEE_RUBY_PERCENT);
+
+    const itemCost = item.price * BigInt(quantity);
+    // 수수료 = 가격 * 퍼센트 / 100 (소수점 버림)
+    const fee = feePercent > 0
+      ? (itemCost * BigInt(Math.round(feePercent * 10))) / BigInt(1000)
+      : BigInt(0);
+    const totalCost = itemCost + fee;
+
+    // 5. 잔액 확인 및 차감
     let newBalance: bigint;
 
     if (item.currencyType === 'topy') {
@@ -168,12 +185,12 @@ export class ShopService {
       await this.rubyWalletRepo.updateBalance(guildId, userId, totalCost, 'subtract');
     }
 
-    // 5. 재고 감소
+    // 6. 재고 감소
     if (item.stock !== null) {
       await this.shopRepo.decreaseStock(itemId, quantity);
     }
 
-    // 6. 인벤토리에 추가
+    // 7. 인벤토리에 추가
     const expiresAt = isPeriodItem(item)
       ? new Date(now.getTime() + item.durationDays * 24 * 60 * 60 * 1000)
       : null;
@@ -189,10 +206,17 @@ export class ShopService {
       return { success: false, error: { type: 'REPOSITORY_ERROR', cause: userItemResult.error } };
     }
 
-    // 7. 거래 기록
+    // 8. 거래 기록
     await this.transactionRepo.save(
       createTransaction(guildId, userId, item.currencyType, 'shop_purchase', -totalCost, newBalance)
     );
+
+    // 수수료가 있으면 별도 거래 기록
+    if (fee > BigInt(0)) {
+      await this.transactionRepo.save(
+        createTransaction(guildId, userId, item.currencyType, 'fee', -fee, newBalance)
+      );
+    }
 
     return {
       success: true,
@@ -200,6 +224,7 @@ export class ShopService {
         item,
         userItem: userItemResult.data,
         totalCost,
+        fee,
       },
     };
   }

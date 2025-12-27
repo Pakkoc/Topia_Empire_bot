@@ -73,6 +73,7 @@ export function createContainer(): Container {
     topyWalletRepo,
     rubyWalletRepo,
     currencyTransactionRepo,
+    currencySettingsRepo,
     clock
   );
   const marketService = new MarketService(
@@ -91,6 +92,7 @@ export function createContainer(): Container {
     topyWalletRepo,
     rubyWalletRepo,
     currencyTransactionRepo,
+    currencySettingsRepo,
     clock
   );
   const roleTicketService = new RoleTicketService(roleTicketRepo, shopV2Repo);

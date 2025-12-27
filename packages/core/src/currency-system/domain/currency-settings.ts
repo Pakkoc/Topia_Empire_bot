@@ -33,6 +33,10 @@ export interface CurrencySettings {
   transferFeeTopyPercent: number;
   transferFeeRubyPercent: number;
 
+  // 상점 수수료 설정
+  shopFeeTopyPercent: number;
+  shopFeeRubyPercent: number;
+
   // 상점 패널 설정
   shopChannelId: string | null;
   shopMessageId: string | null;
@@ -68,6 +72,9 @@ export function createDefaultCurrencySettings(guildId: string): CurrencySettings
     minTransferRuby: CURRENCY_DEFAULTS.MIN_TRANSFER_RUBY,
     transferFeeTopyPercent: CURRENCY_DEFAULTS.TRANSFER_FEE_TOPY_PERCENT,
     transferFeeRubyPercent: CURRENCY_DEFAULTS.TRANSFER_FEE_RUBY_PERCENT,
+
+    shopFeeTopyPercent: CURRENCY_DEFAULTS.SHOP_FEE_TOPY_PERCENT,
+    shopFeeRubyPercent: CURRENCY_DEFAULTS.SHOP_FEE_RUBY_PERCENT,
 
     shopChannelId: null,
     shopMessageId: null,

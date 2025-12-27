@@ -22,6 +22,8 @@ export const currencySettingsSchema = z.object({
   minTransferRuby: z.number().min(0).max(1000000),
   transferFeeTopyPercent: z.number().min(0).max(100),
   transferFeeRubyPercent: z.number().min(0).max(100),
+  shopFeeTopyPercent: z.number().min(0).max(100),
+  shopFeeRubyPercent: z.number().min(0).max(100),
   shopChannelId: z.string().nullable().optional(),
   shopMessageId: z.string().nullable().optional(),
 });
@@ -112,6 +114,8 @@ export const DEFAULT_CURRENCY_SETTINGS: Omit<CurrencySettings, "guildId"> = {
   minTransferRuby: 1,
   transferFeeTopyPercent: 1.2,
   transferFeeRubyPercent: 0,
+  shopFeeTopyPercent: 0,
+  shopFeeRubyPercent: 0,
 };
 
 export const CHANNEL_CATEGORY_LABELS: Record<string, string> = {

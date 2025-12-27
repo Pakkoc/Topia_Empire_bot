@@ -56,6 +56,8 @@ const currencySettingsFormSchema = z.object({
   minTransferRuby: z.coerce.number().min(0).max(1000000),
   transferFeeTopyPercent: z.coerce.number().min(0).max(100),
   transferFeeRubyPercent: z.coerce.number().min(0).max(100),
+  shopFeeTopyPercent: z.coerce.number().min(0).max(100),
+  shopFeeRubyPercent: z.coerce.number().min(0).max(100),
 });
 
 type CurrencySettingsFormValues = z.infer<typeof currencySettingsFormSchema>;
@@ -99,6 +101,8 @@ export default function CurrencySettingsPage() {
       minTransferRuby: 1,
       transferFeeTopyPercent: 1.2,
       transferFeeRubyPercent: 0,
+      shopFeeTopyPercent: 0,
+      shopFeeRubyPercent: 0,
     },
   });
 
@@ -130,6 +134,8 @@ export default function CurrencySettingsPage() {
         minTransferRuby: settings.minTransferRuby ?? 1,
         transferFeeTopyPercent: settings.transferFeeTopyPercent ?? 1.2,
         transferFeeRubyPercent: settings.transferFeeRubyPercent ?? 0,
+        shopFeeTopyPercent: settings.shopFeeTopyPercent ?? 0,
+        shopFeeRubyPercent: settings.shopFeeRubyPercent ?? 0,
       });
     }
   }, [settings, form]);
@@ -803,6 +809,81 @@ export default function CurrencySettingsPage() {
                     <p className="text-sm text-cyan-300 font-medium">이체 안내</p>
                     <p className="text-xs text-cyan-300/70 mt-1">
                       수수료는 이체 금액에서 별도로 차감됩니다. 0%로 설정하면 수수료가 부과되지 않습니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 상점 수수료 설정 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
+            <div className="p-6 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center">
+                  <Icon icon="solar:shop-linear" className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">상점 수수료</h3>
+                  <p className="text-white/50 text-sm">상점 구매 시 부과되는 수수료</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="shopFeeTopyPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70 text-sm">토피 상점 수수료 (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          {...field}
+                          className="bg-white/5 border-white/10 text-white focus:border-pink-500/50"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-white/40">
+                        토피로 상점 구매 시 부과되는 수수료 (기본: 0%)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="shopFeeRubyPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70 text-sm">루비 상점 수수료 (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          {...field}
+                          className="bg-white/5 border-white/10 text-white focus:border-pink-500/50"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-white/40">
+                        루비로 상점 구매 시 부과되는 수수료 (기본: 0%)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Info about shop fee */}
+              <div className="bg-pink-500/10 border border-pink-500/20 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <Icon icon="solar:info-circle-linear" className="w-5 h-5 text-pink-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-pink-300 font-medium">상점 수수료 안내</p>
+                    <p className="text-xs text-pink-300/70 mt-1">
+                      수수료는 상품 가격에 추가로 부과됩니다. 0%로 설정하면 수수료가 부과되지 않습니다.
                     </p>
                   </div>
                 </div>

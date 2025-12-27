@@ -27,6 +27,8 @@ interface CurrencySettingsRow extends RowDataPacket {
   min_transfer_ruby: number;
   transfer_fee_topy_percent: string;
   transfer_fee_ruby_percent: string;
+  shop_fee_topy_percent: string;
+  shop_fee_ruby_percent: string;
   shop_channel_id: string | null;
   shop_message_id: string | null;
 }
@@ -53,6 +55,8 @@ function rowToSettings(row: CurrencySettingsRow) {
     minTransferRuby: row.min_transfer_ruby ?? 1,
     transferFeeTopyPercent: parseFloat(row.transfer_fee_topy_percent) || 1.2,
     transferFeeRubyPercent: parseFloat(row.transfer_fee_ruby_percent) || 0,
+    shopFeeTopyPercent: parseFloat(row.shop_fee_topy_percent) || 0,
+    shopFeeRubyPercent: parseFloat(row.shop_fee_ruby_percent) || 0,
     shopChannelId: row.shop_channel_id ?? null,
     shopMessageId: row.shop_message_id ?? null,
   };
@@ -129,6 +133,8 @@ export async function PATCH(
       minTransferRuby: "min_transfer_ruby",
       transferFeeTopyPercent: "transfer_fee_topy_percent",
       transferFeeRubyPercent: "transfer_fee_ruby_percent",
+      shopFeeTopyPercent: "shop_fee_topy_percent",
+      shopFeeRubyPercent: "shop_fee_ruby_percent",
     };
 
     const updates: string[] = [];
