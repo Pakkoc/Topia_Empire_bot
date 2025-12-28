@@ -34,6 +34,8 @@ interface CurrencySettingsRow extends RowDataPacket {
   transfer_fee_ruby_percent: string;
   shop_fee_topy_percent: string;
   shop_fee_ruby_percent: string;
+  monthly_tax_enabled: number;
+  monthly_tax_percent: string;
   shop_channel_id: string | null;
   shop_message_id: string | null;
   created_at: Date;
@@ -104,6 +106,8 @@ function toCurrencySettings(row: CurrencySettingsRow): CurrencySettings {
     transferFeeRubyPercent: parseFloat(row.transfer_fee_ruby_percent) || 0,
     shopFeeTopyPercent: parseFloat(row.shop_fee_topy_percent) || 0,
     shopFeeRubyPercent: parseFloat(row.shop_fee_ruby_percent) || 0,
+    monthlyTaxEnabled: row.monthly_tax_enabled === 1,
+    monthlyTaxPercent: parseFloat(row.monthly_tax_percent) || 3.3,
     shopChannelId: row.shop_channel_id ?? null,
     shopMessageId: row.shop_message_id ?? null,
     createdAt: row.created_at,
@@ -146,8 +150,9 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           voice_daily_limit, min_transfer_topy, min_transfer_ruby,
           transfer_fee_topy_percent, transfer_fee_ruby_percent,
           shop_fee_topy_percent, shop_fee_ruby_percent,
+          monthly_tax_enabled, monthly_tax_percent,
           shop_channel_id, shop_message_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          enabled = VALUES(enabled),
          topy_name = VALUES(topy_name),
@@ -170,6 +175,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
          transfer_fee_ruby_percent = VALUES(transfer_fee_ruby_percent),
          shop_fee_topy_percent = VALUES(shop_fee_topy_percent),
          shop_fee_ruby_percent = VALUES(shop_fee_ruby_percent),
+         monthly_tax_enabled = VALUES(monthly_tax_enabled),
+         monthly_tax_percent = VALUES(monthly_tax_percent),
          shop_channel_id = VALUES(shop_channel_id),
          shop_message_id = VALUES(shop_message_id),
          updated_at = VALUES(updated_at)`,
@@ -196,6 +203,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           settings.transferFeeRubyPercent,
           settings.shopFeeTopyPercent,
           settings.shopFeeRubyPercent,
+          settings.monthlyTaxEnabled ? 1 : 0,
+          settings.monthlyTaxPercent,
           settings.shopChannelId,
           settings.shopMessageId,
           settings.createdAt,

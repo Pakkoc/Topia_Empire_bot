@@ -6,6 +6,7 @@ export interface GameSettings {
   guildId: string;
   channelId: string | null;
   messageId: string | null;
+  managerRoleId: string | null;
   betFeePercent: number;
   minBet: bigint;
   maxBet: bigint;
@@ -20,6 +21,7 @@ export interface CreateGameSettingsDto {
   guildId: string;
   channelId?: string;
   messageId?: string;
+  managerRoleId?: string;
   betFeePercent?: number;
   minBet?: bigint;
   maxBet?: bigint;
@@ -31,6 +33,7 @@ export interface CreateGameSettingsDto {
 export interface UpdateGameSettingsDto {
   channelId?: string | null;
   messageId?: string | null;
+  managerRoleId?: string | null;
   betFeePercent?: number;
   minBet?: bigint;
   maxBet?: bigint;
@@ -52,6 +55,7 @@ export function createDefaultGameSettings(guildId: string): GameSettings {
     guildId,
     channelId: null,
     messageId: null,
+    managerRoleId: null,
     betFeePercent: DEFAULT_BET_FEE_PERCENT,
     minBet: DEFAULT_MIN_BET,
     maxBet: DEFAULT_MAX_BET,

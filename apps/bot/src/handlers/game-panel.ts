@@ -122,11 +122,25 @@ function createBetMessageButtons(game: Game, isAdmin: boolean): ActionRowBuilder
 }
 
 /**
- * 관리자 권한 확인
+ * 관리자 권한 확인 (역할 또는 서버관리 권한)
  */
-function isAdminUser(interaction: ButtonInteraction): boolean {
-  if (!interaction.memberPermissions) return false;
-  return interaction.memberPermissions.has(PermissionFlagsBits.ManageGuild);
+function isAdminUser(interaction: ButtonInteraction, managerRoleId: string | null): boolean {
+  // 서버 관리 권한이 있으면 허용
+  if (interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return true;
+  }
+
+  // 지정된 관리 역할이 있고, 유저가 해당 역할을 가지고 있으면 허용
+  if (managerRoleId && interaction.member) {
+    const memberRoles = interaction.member.roles;
+    if (Array.isArray(memberRoles)) {
+      return memberRoles.includes(managerRoleId);
+    } else {
+      return memberRoles.cache.has(managerRoleId);
+    }
+  }
+
+  return false;
 }
 
 // ============================================================
@@ -140,8 +154,18 @@ export async function handleGamePanelCreate(
   interaction: ButtonInteraction,
   container: Container
 ) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    return;
+  }
+
+  // 설정 조회 (관리 역할 확인용)
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
   // 관리자 권한 확인
-  if (!isAdminUser(interaction)) {
+  if (!isAdminUser(interaction, managerRoleId)) {
     await interaction.reply({
       content: '❌ 관리자만 배팅을 생성할 수 있습니다.',
       ephemeral: true,
@@ -430,8 +454,18 @@ export async function handleGameResult(
   container: Container,
   gameId: bigint
 ) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    return;
+  }
+
+  // 설정 조회 (관리 역할 확인용)
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
   // 관리자 권한 확인
-  if (!isAdminUser(interaction)) {
+  if (!isAdminUser(interaction, managerRoleId)) {
     await interaction.reply({
       content: '❌ 관리자만 결과를 입력할 수 있습니다.',
       ephemeral: true,
@@ -559,19 +593,22 @@ export async function handleGameCancel(
   container: Container,
   gameId: bigint
 ) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    return;
+  }
+
+  // 설정 조회 (관리 역할 확인용)
+  const gameSettingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = gameSettingsResult.success ? gameSettingsResult.data.managerRoleId : null;
+
   // 관리자 권한 확인
-  if (!isAdminUser(interaction)) {
+  if (!isAdminUser(interaction, managerRoleId)) {
     await interaction.reply({
       content: '❌ 관리자만 게임을 취소할 수 있습니다.',
       ephemeral: true,
     });
-    return;
-  }
-
-  const guildId = interaction.guildId;
-
-  if (!guildId) {
-    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
     return;
   }
 

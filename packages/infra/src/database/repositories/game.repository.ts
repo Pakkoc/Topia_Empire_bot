@@ -19,6 +19,7 @@ interface GameSettingsRow extends RowDataPacket {
   guild_id: string;
   channel_id: string | null;
   message_id: string | null;
+  manager_role_id: string | null;
   bet_fee_percent: number;
   min_bet: string; // bigint as string
   max_bet: string;
@@ -65,6 +66,7 @@ function settingsRowToEntity(row: GameSettingsRow): GameSettings {
     guildId: row.guild_id,
     channelId: row.channel_id,
     messageId: row.message_id,
+    managerRoleId: row.manager_role_id,
     betFeePercent: row.bet_fee_percent,
     minBet: BigInt(row.min_bet),
     maxBet: BigInt(row.max_bet),
@@ -131,11 +133,12 @@ export class GameRepository implements GameRepositoryPort {
 
   async upsertSettings(dto: CreateGameSettingsDto): Promise<GameSettings> {
     await this.pool.query<ResultSetHeader>(
-      `INSERT INTO game_settings (guild_id, channel_id, message_id, bet_fee_percent, min_bet, max_bet)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO game_settings (guild_id, channel_id, message_id, manager_role_id, bet_fee_percent, min_bet, max_bet)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          channel_id = COALESCE(VALUES(channel_id), channel_id),
          message_id = COALESCE(VALUES(message_id), message_id),
+         manager_role_id = COALESCE(VALUES(manager_role_id), manager_role_id),
          bet_fee_percent = COALESCE(VALUES(bet_fee_percent), bet_fee_percent),
          min_bet = COALESCE(VALUES(min_bet), min_bet),
          max_bet = COALESCE(VALUES(max_bet), max_bet),
@@ -144,6 +147,7 @@ export class GameRepository implements GameRepositoryPort {
         dto.guildId,
         dto.channelId ?? null,
         dto.messageId ?? null,
+        dto.managerRoleId ?? null,
         dto.betFeePercent ?? 20,
         dto.minBet?.toString() ?? '100',
         dto.maxBet?.toString() ?? '10000',
@@ -168,6 +172,10 @@ export class GameRepository implements GameRepositoryPort {
     if (dto.messageId !== undefined) {
       updates.push('message_id = ?');
       values.push(dto.messageId);
+    }
+    if (dto.managerRoleId !== undefined) {
+      updates.push('manager_role_id = ?');
+      values.push(dto.managerRoleId);
     }
     if (dto.betFeePercent !== undefined) {
       updates.push('bet_fee_percent = ?');

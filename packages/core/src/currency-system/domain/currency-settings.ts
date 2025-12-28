@@ -37,6 +37,10 @@ export interface CurrencySettings {
   shopFeeTopyPercent: number;
   shopFeeRubyPercent: number;
 
+  // 월말 세금 설정
+  monthlyTaxEnabled: boolean;
+  monthlyTaxPercent: number;
+
   // 상점 패널 설정
   shopChannelId: string | null;
   shopMessageId: string | null;
@@ -75,6 +79,9 @@ export function createDefaultCurrencySettings(guildId: string): CurrencySettings
 
     shopFeeTopyPercent: CURRENCY_DEFAULTS.SHOP_FEE_TOPY_PERCENT,
     shopFeeRubyPercent: CURRENCY_DEFAULTS.SHOP_FEE_RUBY_PERCENT,
+
+    monthlyTaxEnabled: CURRENCY_DEFAULTS.MONTHLY_TAX_ENABLED,
+    monthlyTaxPercent: CURRENCY_DEFAULTS.MONTHLY_TAX_PERCENT,
 
     shopChannelId: null,
     shopMessageId: null,

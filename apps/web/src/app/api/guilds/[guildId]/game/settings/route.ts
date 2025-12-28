@@ -7,6 +7,7 @@ import { z } from "zod";
 // ========== Schema ==========
 
 const updateSettingsSchema = z.object({
+  managerRoleId: z.string().nullable().optional(),
   betFeePercent: z.number().min(0).max(100).optional(),
   minBet: z.string().optional(),
   maxBet: z.string().optional(),
@@ -29,6 +30,7 @@ export async function GET(
     const result = await container.gameService.getSettings(guildId);
 
     if (!result.success) {
+      console.error("[API] Game settings error:", result.error);
       return NextResponse.json(
         { error: result.error.type },
         { status: 400 }
@@ -40,6 +42,7 @@ export async function GET(
       guildId: settings.guildId,
       channelId: settings.channelId,
       messageId: settings.messageId,
+      managerRoleId: settings.managerRoleId,
       betFeePercent: settings.betFeePercent,
       minBet: settings.minBet.toString(),
       maxBet: settings.maxBet.toString(),
@@ -81,6 +84,7 @@ export async function PATCH(
     const container = createContainer();
 
     const result = await container.gameService.saveSettings(guildId, {
+      managerRoleId: data.managerRoleId,
       betFeePercent: data.betFeePercent,
       minBet: data.minBet ? BigInt(data.minBet) : undefined,
       maxBet: data.maxBet ? BigInt(data.maxBet) : undefined,
@@ -98,6 +102,7 @@ export async function PATCH(
       guildId: settings.guildId,
       channelId: settings.channelId,
       messageId: settings.messageId,
+      managerRoleId: settings.managerRoleId,
       betFeePercent: settings.betFeePercent,
       minBet: settings.minBet.toString(),
       maxBet: settings.maxBet.toString(),

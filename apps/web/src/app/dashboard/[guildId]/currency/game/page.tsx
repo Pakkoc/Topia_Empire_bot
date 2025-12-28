@@ -8,6 +8,7 @@ import {
   useUpdateGameSettings,
   useTextChannels,
   useCurrencySettings,
+  useRoles,
 } from "@/hooks/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ export default function GameCenterPage() {
   const [selectedChannelId, setSelectedChannelId] = useState("");
 
   // 게임 설정
+  const [managerRoleId, setManagerRoleId] = useState<string | null>(null);
   const [betFeePercent, setBetFeePercent] = useState("20");
   const [minBet, setMinBet] = useState("100");
   const [maxBet, setMaxBet] = useState("10000");
@@ -37,6 +39,7 @@ export default function GameCenterPage() {
   const { data: currencySettings } = useCurrencySettings(guildId);
   const { data: settings, isLoading } = useGameSettings(guildId);
   const { data: channels } = useTextChannels(guildId);
+  const { data: roles } = useRoles(guildId);
   const createPanelMutation = useCreateGamePanel(guildId);
   const updateSettingsMutation = useUpdateGameSettings(guildId);
 
@@ -48,6 +51,7 @@ export default function GameCenterPage() {
       if (settings.channelId) {
         setSelectedChannelId(settings.channelId);
       }
+      setManagerRoleId(settings.managerRoleId);
       setBetFeePercent(String(settings.betFeePercent));
       setMinBet(settings.minBet);
       setMaxBet(settings.maxBet);
@@ -71,6 +75,7 @@ export default function GameCenterPage() {
   const handleSaveSettings = async () => {
     try {
       await updateSettingsMutation.mutateAsync({
+        managerRoleId,
         betFeePercent: parseFloat(betFeePercent) || 20,
         minBet,
         maxBet,
@@ -177,6 +182,51 @@ export default function GameCenterPage() {
           {settings?.channelId && settings?.messageId
             ? "패널이 설치되어 있습니다. 다른 채널을 선택하면 기존 패널은 삭제됩니다."
             : "선택한 채널에 게임센터 패널이 생성됩니다. 관리자가 버튼을 눌러 배팅을 생성할 수 있습니다."}
+        </p>
+      </div>
+
+      {/* 관리 역할 설정 */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+            <Icon icon="solar:shield-user-bold" className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">관리 역할 설정</h3>
+            <p className="text-white/50 text-sm">배팅 생성/결과 입력/취소 권한을 가진 역할을 지정합니다</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Select
+            value={managerRoleId || "__none__"}
+            onValueChange={(value) => setManagerRoleId(value === "__none__" ? null : value)}
+          >
+            <SelectTrigger className="bg-white/5 border-white/10 text-white sm:w-64">
+              <SelectValue placeholder="역할 선택..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">없음 (서버 관리 권한만)</SelectItem>
+              {roles?.map((role) => (
+                <SelectItem key={role.id} value={role.id}>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{
+                        backgroundColor: `#${role.color.toString(16).padStart(6, "0")}`,
+                      }}
+                    />
+                    @{role.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <p className="text-white/40 text-xs mt-2">
+          {managerRoleId
+            ? "선택한 역할 또는 서버 관리 권한을 가진 유저가 게임을 관리할 수 있습니다."
+            : "서버 관리 권한을 가진 유저만 게임을 관리할 수 있습니다."}
         </p>
       </div>
 

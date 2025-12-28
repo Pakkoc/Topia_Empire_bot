@@ -4,6 +4,7 @@ export interface GameSettings {
   guildId: string;
   channelId: string | null;
   messageId: string | null;
+  managerRoleId: string | null;
   betFeePercent: number;
   minBet: string;
   maxBet: string;

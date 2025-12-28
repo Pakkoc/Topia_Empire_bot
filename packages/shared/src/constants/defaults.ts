@@ -53,6 +53,10 @@ export const CURRENCY_DEFAULTS = {
   SHOP_FEE_TOPY_PERCENT: 0,
   SHOP_FEE_RUBY_PERCENT: 0,
 
+  // 월말 세금 설정
+  MONTHLY_TAX_ENABLED: false,
+  MONTHLY_TAX_PERCENT: 3.3,
+
   // 채널 카테고리별 배율
   CHANNEL_CATEGORY_MULTIPLIERS: {
     normal: 1.0,    // 일반 통화방
