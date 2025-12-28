@@ -176,20 +176,21 @@ export async function PATCH(
           );
           const shopItem = itemRows[0]!;
 
-          const { consumeQuantity, removePreviousRole, effectDurationSeconds, roleOptions } = validatedData.roleTicket;
+          const { consumeQuantity, removePreviousRole, fixedRoleId, effectDurationSeconds, roleOptions } = validatedData.roleTicket;
 
           if (existingTickets.length > 0) {
             // Update existing role ticket
             const ticketId = existingTickets[0]!.id;
             await connection.execute(
               `UPDATE role_tickets
-               SET name = ?, description = ?, consume_quantity = ?, remove_previous_role = ?, effect_duration_seconds = ?, enabled = ?
+               SET name = ?, description = ?, consume_quantity = ?, remove_previous_role = ?, fixed_role_id = ?, effect_duration_seconds = ?, enabled = ?
                WHERE id = ?`,
               [
                 shopItem.name,
                 shopItem.description,
                 consumeQuantity,
                 removePreviousRole ? 1 : 0,
+                fixedRoleId ?? null,
                 effectDurationSeconds ?? null,
                 shopItem.enabled,
                 ticketId,
@@ -215,8 +216,8 @@ export async function PATCH(
             // Create new role ticket
             const [ticketResult] = await connection.execute<ResultSetHeader>(
               `INSERT INTO role_tickets
-               (guild_id, name, description, shop_item_id, consume_quantity, remove_previous_role, effect_duration_seconds, enabled)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+               (guild_id, name, description, shop_item_id, consume_quantity, remove_previous_role, fixed_role_id, effect_duration_seconds, enabled)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
                 guildId,
                 shopItem.name,
@@ -224,6 +225,7 @@ export async function PATCH(
                 itemId,
                 consumeQuantity,
                 removePreviousRole ? 1 : 0,
+                fixedRoleId ?? null,
                 effectDurationSeconds ?? null,
                 shopItem.enabled,
               ]
