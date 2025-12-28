@@ -21,6 +21,7 @@ interface RoleTicketRow extends RowDataPacket {
   shop_item_id: number;
   consume_quantity: number;
   remove_previous_role: number;
+  fixed_role_id: string | null;
   effect_duration_seconds: string | null; // BIGINT as string
   enabled: number;
   created_at: Date;
@@ -47,6 +48,7 @@ function toRoleTicket(row: RoleTicketRow, roleOptions?: TicketRoleOption[]): Rol
     shopItemId: row.shop_item_id,
     consumeQuantity: row.consume_quantity,
     removePreviousRole: row.remove_previous_role === 1,
+    fixedRoleId: row.fixed_role_id,
     effectDurationSeconds: row.effect_duration_seconds
       ? Number(row.effect_duration_seconds)
       : null,
@@ -178,8 +180,8 @@ export class RoleTicketRepository implements RoleTicketRepositoryPort {
     try {
       const [result] = await this.pool.execute<ResultSetHeader>(
         `INSERT INTO role_tickets
-         (guild_id, name, description, shop_item_id, consume_quantity, remove_previous_role, effect_duration_seconds, enabled)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (guild_id, name, description, shop_item_id, consume_quantity, remove_previous_role, fixed_role_id, effect_duration_seconds, enabled)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           input.guildId,
           input.name,
@@ -187,6 +189,7 @@ export class RoleTicketRepository implements RoleTicketRepositoryPort {
           input.shopItemId,
           input.consumeQuantity ?? 1,
           input.removePreviousRole !== false ? 1 : 0,
+          input.fixedRoleId ?? null,
           input.effectDurationSeconds ?? null,
           input.enabled !== false ? 1 : 0,
         ]
@@ -229,6 +232,10 @@ export class RoleTicketRepository implements RoleTicketRepositoryPort {
       if (input.removePreviousRole !== undefined) {
         fields.push('remove_previous_role = ?');
         values.push(input.removePreviousRole ? 1 : 0);
+      }
+      if (input.fixedRoleId !== undefined) {
+        fields.push('fixed_role_id = ?');
+        values.push(input.fixedRoleId);
       }
       if (input.effectDurationSeconds !== undefined) {
         fields.push('effect_duration_seconds = ?');

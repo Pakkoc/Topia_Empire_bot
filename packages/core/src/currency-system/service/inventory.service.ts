@@ -18,6 +18,7 @@ export interface AvailableTicket {
 
 export interface ExchangeRoleResult {
   newRoleId: string;
+  fixedRoleId: string | null; // 고정 역할 ID
   removedRoleIds: string[];
   remainingQuantity: number;
   expiresAt: Date | null;
@@ -28,6 +29,7 @@ export interface ExchangeRoleResult {
 export interface ExpiredItem {
   userItem: UserItemV2;
   roleIdToRevoke: string | null;
+  fixedRoleIdToRevoke: string | null; // 고정 역할도 함께 제거
 }
 
 export class InventoryService {
@@ -179,12 +181,16 @@ export class InventoryService {
     const roleExpiresAt = calculateRoleExpiresAt(ticket, now);
 
     // 8. 현재 적용 역할 업데이트 (기간제용)
+    // 고정 역할이 있으면 함께 저장
+    const fixedRoleId = ticket.fixedRoleId;
+
     if (isPeriod) {
       const updateResult = await this.shopRepo.updateCurrentRole(
         userItem.id,
         roleOption.roleId,
         now,
-        roleExpiresAt
+        roleExpiresAt,
+        fixedRoleId // 고정 역할 ID 전달
       );
       if (!updateResult.success) {
         return { success: false, error: { type: 'REPOSITORY_ERROR', cause: updateResult.error } };
@@ -200,6 +206,7 @@ export class InventoryService {
       success: true,
       data: {
         newRoleId: roleOption.roleId,
+        fixedRoleId, // 고정 역할 ID 포함
         removedRoleIds,
         remainingQuantity,
         expiresAt: userItem.expiresAt,
@@ -220,11 +227,13 @@ export class InventoryService {
       return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
     }
 
+    // 적용 중인 역할(일반 또는 고정)이 있는 것만 필터링
     const expiredItems: ExpiredItem[] = result.data
-      .filter((item) => item.currentRoleId !== null) // 적용 중인 역할이 있는 것만
+      .filter((item) => item.currentRoleId !== null || item.fixedRoleId !== null)
       .map((item) => ({
         userItem: item,
         roleIdToRevoke: item.currentRoleId,
+        fixedRoleIdToRevoke: item.fixedRoleId, // 고정 역할도 함께 제거
       }));
 
     return { success: true, data: expiredItems };
@@ -255,6 +264,7 @@ export class InventoryService {
     const expiredItems: ExpiredItem[] = result.data.map((item) => ({
       userItem: item,
       roleIdToRevoke: item.currentRoleId,
+      fixedRoleIdToRevoke: item.fixedRoleId, // 고정 역할도 함께 제거
     }));
 
     return { success: true, data: expiredItems };
@@ -262,9 +272,11 @@ export class InventoryService {
 
   /**
    * 역할 효과 만료 처리 (역할만 회수, 아이템 유지)
+   * 고정 역할도 함께 제거
    */
   async markRoleExpired(itemId: bigint): Promise<Result<void, CurrencyError>> {
-    const result = await this.shopRepo.updateCurrentRole(itemId, null, null, null);
+    // 고정 역할도 함께 null로 설정
+    const result = await this.shopRepo.updateCurrentRole(itemId, null, null, null, null);
     if (!result.success) {
       return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
     }

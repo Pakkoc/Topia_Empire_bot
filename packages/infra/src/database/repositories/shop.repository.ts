@@ -34,6 +34,7 @@ interface UserItemV2Row extends RowDataPacket {
   expires_at: Date | null;
   current_role_id: string | null;
   current_role_applied_at: Date | null;
+  fixed_role_id: string | null;
   role_expires_at: Date | null;
   created_at: Date;
   updated_at: Date;
@@ -67,6 +68,7 @@ function toUserItemV2(row: UserItemV2Row): UserItemV2 {
     expiresAt: row.expires_at,
     currentRoleId: row.current_role_id,
     currentRoleAppliedAt: row.current_role_applied_at,
+    fixedRoleId: row.fixed_role_id,
     roleExpiresAt: row.role_expires_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -372,15 +374,26 @@ export class ShopRepository implements ShopRepositoryPort {
     id: bigint,
     roleId: string | null,
     appliedAt: Date | null,
-    roleExpiresAt: Date | null
+    roleExpiresAt: Date | null,
+    fixedRoleId?: string | null
   ): Promise<Result<void, RepositoryError>> {
     try {
-      await this.pool.execute(
-        `UPDATE user_items_v2
-         SET current_role_id = ?, current_role_applied_at = ?, role_expires_at = ?, updated_at = NOW()
-         WHERE id = ?`,
-        [roleId, appliedAt, roleExpiresAt, id.toString()]
-      );
+      // fixedRoleId가 undefined가 아니면 업데이트에 포함
+      if (fixedRoleId !== undefined) {
+        await this.pool.execute(
+          `UPDATE user_items_v2
+           SET current_role_id = ?, current_role_applied_at = ?, fixed_role_id = ?, role_expires_at = ?, updated_at = NOW()
+           WHERE id = ?`,
+          [roleId, appliedAt, fixedRoleId, roleExpiresAt, id.toString()]
+        );
+      } else {
+        await this.pool.execute(
+          `UPDATE user_items_v2
+           SET current_role_id = ?, current_role_applied_at = ?, role_expires_at = ?, updated_at = NOW()
+           WHERE id = ?`,
+          [roleId, appliedAt, roleExpiresAt, id.toString()]
+        );
+      }
       return Result.ok(undefined);
     } catch (error) {
       return Result.err({

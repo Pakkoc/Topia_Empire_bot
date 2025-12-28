@@ -12,6 +12,7 @@ export interface RoleTicket {
   shopItemId: number;
   consumeQuantity: number; // 소모 개수 (0=기간제 무제한)
   removePreviousRole: boolean; // 이전 역할 제거 여부
+  fixedRoleId: string | null; // 고정 역할 ID (만료 시 교환 역할도 함께 제거)
   effectDurationSeconds: number | null; // 효과 지속 기간 (null/0=영구, 양수=초 단위)
   enabled: boolean;
   createdAt: Date;
@@ -27,6 +28,7 @@ export interface CreateRoleTicketInput {
   shopItemId: number;
   consumeQuantity?: number;
   removePreviousRole?: boolean;
+  fixedRoleId?: string | null;
   effectDurationSeconds?: number | null;
   enabled?: boolean;
 }
@@ -37,6 +39,7 @@ export interface UpdateRoleTicketInput {
   shopItemId?: number;
   consumeQuantity?: number;
   removePreviousRole?: boolean;
+  fixedRoleId?: string | null;
   effectDurationSeconds?: number | null;
   enabled?: boolean;
 }

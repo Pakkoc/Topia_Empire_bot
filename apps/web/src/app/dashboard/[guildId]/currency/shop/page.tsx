@@ -68,6 +68,7 @@ const shopItemFormSchema = z.object({
   hasRoleTicket: z.boolean().optional(),
   consumeQuantity: z.coerce.number().min(0).optional(),
   removePreviousRole: z.boolean().optional(),
+  fixedRoleId: z.string().optional(), // 고정 역할 ID
   effectDurationDays: z.coerce.number().min(0).optional(),
 });
 
@@ -149,6 +150,7 @@ export default function ShopV2Page() {
       hasRoleTicket: false,
       consumeQuantity: 1,
       removePreviousRole: true,
+      fixedRoleId: "",
       effectDurationDays: 0,
     },
   });
@@ -212,6 +214,7 @@ export default function ShopV2Page() {
         ? {
             consumeQuantity: data.consumeQuantity ?? 1,
             removePreviousRole: data.removePreviousRole ?? true,
+            fixedRoleId: data.fixedRoleId || null,
             effectDurationSeconds,
             roleOptions,
           }
@@ -293,6 +296,7 @@ export default function ShopV2Page() {
       hasRoleTicket: !!item.roleTicket,
       consumeQuantity: item.roleTicket?.consumeQuantity ?? 1,
       removePreviousRole: item.roleTicket?.removePreviousRole ?? true,
+      fixedRoleId: item.roleTicket?.fixedRoleId || "",
       effectDurationDays,
     });
   };
@@ -540,6 +544,62 @@ export default function ShopV2Page() {
 
           {hasRoleTicket && (
             <div className="mt-4 space-y-4 p-4 rounded-xl bg-white/5 border border-white/10">
+              {/* 고정 역할 선택 */}
+              <FormField
+                control={form.control}
+                name="fixedRoleId"
+                render={({ field }) => {
+                  const selectedRole = roles?.find((r) => r.id === field.value);
+                  return (
+                    <FormItem>
+                      <FormLabel className="text-white/70 flex items-center gap-2">
+                        <Icon icon="solar:lock-bold" className="h-4 w-4 text-amber-400" />
+                        고정 역할 (선택)
+                      </FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                            <SelectValue placeholder="고정 역할 선택 (선택사항)">
+                              {selectedRole && (
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-3 h-3 rounded-full"
+                                    style={{
+                                      backgroundColor: `#${selectedRole.color.toString(16).padStart(6, "0")}`,
+                                    }}
+                                  />
+                                  {selectedRole.name}
+                                </div>
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">없음</SelectItem>
+                          {roles?.map((role) => (
+                            <SelectItem key={role.id} value={role.id}>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{
+                                    backgroundColor: `#${role.color.toString(16).padStart(6, "0")}`,
+                                  }}
+                                />
+                                {role.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-xs text-white/40">
+                        교환 역할과 함께 부여되는 메인 역할. 만료 시 모든 역할 제거됨
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
               <div className="grid grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
@@ -991,6 +1051,15 @@ export default function ShopV2Page() {
                         >
                           <Icon icon="solar:ticket-linear" className="h-3 w-3 mr-1" />
                           역할선택권 ({item.roleTicket.roleOptions.length}개 역할)
+                        </Badge>
+                      )}
+                      {item.roleTicket?.fixedRoleId && (
+                        <Badge
+                          variant="secondary"
+                          className="bg-amber-500/20 text-amber-400 border-0"
+                        >
+                          <Icon icon="solar:lock-linear" className="h-3 w-3 mr-1" />
+                          고정 역할
                         </Badge>
                       )}
                     </div>

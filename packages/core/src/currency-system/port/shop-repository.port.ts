@@ -46,7 +46,8 @@ export interface ShopRepositoryPort {
     id: bigint,
     roleId: string | null,
     appliedAt: Date | null,
-    roleExpiresAt: Date | null
+    roleExpiresAt: Date | null,
+    fixedRoleId?: string | null
   ): Promise<Result<void, RepositoryError>>;
 
   // 역할 효과 만료된 아이템 조회

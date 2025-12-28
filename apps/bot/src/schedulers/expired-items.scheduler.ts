@@ -53,20 +53,24 @@ async function processExpiredItems(client: Client, container: Container) {
   let revokedCount = 0;
   let failedCount = 0;
 
-  for (const { userItem, roleIdToRevoke } of expiredItems) {
+  for (const { userItem, roleIdToRevoke, fixedRoleIdToRevoke } of expiredItems) {
     try {
-      // 역할 회수 시도
-      if (roleIdToRevoke) {
-        const guild = await client.guilds.fetch(userItem.guildId);
-        const member = await guild.members.fetch(userItem.userId);
+      const guild = await client.guilds.fetch(userItem.guildId);
+      const member = await guild.members.fetch(userItem.userId);
 
-        if (member.roles.cache.has(roleIdToRevoke)) {
-          await member.roles.remove(roleIdToRevoke);
-          console.log(`[EXPIRED ITEMS] Revoked role ${roleIdToRevoke} from user ${userItem.userId} in guild ${userItem.guildId}`);
-        }
+      // 교환 역할 회수
+      if (roleIdToRevoke && member.roles.cache.has(roleIdToRevoke)) {
+        await member.roles.remove(roleIdToRevoke);
+        console.log(`[EXPIRED ITEMS] Revoked role ${roleIdToRevoke} from user ${userItem.userId} in guild ${userItem.guildId}`);
       }
 
-      // 아이템 만료 처리 (currentRoleId = null)
+      // 고정 역할 회수
+      if (fixedRoleIdToRevoke && member.roles.cache.has(fixedRoleIdToRevoke)) {
+        await member.roles.remove(fixedRoleIdToRevoke);
+        console.log(`[EXPIRED ITEMS] Revoked fixed role ${fixedRoleIdToRevoke} from user ${userItem.userId} in guild ${userItem.guildId}`);
+      }
+
+      // 아이템 만료 처리 (currentRoleId = null, fixedRoleId = null)
       const markResult = await container.inventoryService.markItemExpired(userItem.id);
       if (markResult.success) {
         revokedCount++;
@@ -104,17 +108,21 @@ async function processExpiredRoles(client: Client, container: Container) {
   let revokedCount = 0;
   let failedCount = 0;
 
-  for (const { userItem, roleIdToRevoke } of expiredItems) {
+  for (const { userItem, roleIdToRevoke, fixedRoleIdToRevoke } of expiredItems) {
     try {
-      // 역할 회수 시도
-      if (roleIdToRevoke) {
-        const guild = await client.guilds.fetch(userItem.guildId);
-        const member = await guild.members.fetch(userItem.userId);
+      const guild = await client.guilds.fetch(userItem.guildId);
+      const member = await guild.members.fetch(userItem.userId);
 
-        if (member.roles.cache.has(roleIdToRevoke)) {
-          await member.roles.remove(roleIdToRevoke);
-          console.log(`[EXPIRED ROLES] Revoked role ${roleIdToRevoke} from user ${userItem.userId} in guild ${userItem.guildId}`);
-        }
+      // 교환 역할 회수
+      if (roleIdToRevoke && member.roles.cache.has(roleIdToRevoke)) {
+        await member.roles.remove(roleIdToRevoke);
+        console.log(`[EXPIRED ROLES] Revoked role ${roleIdToRevoke} from user ${userItem.userId} in guild ${userItem.guildId}`);
+      }
+
+      // 고정 역할 회수
+      if (fixedRoleIdToRevoke && member.roles.cache.has(fixedRoleIdToRevoke)) {
+        await member.roles.remove(fixedRoleIdToRevoke);
+        console.log(`[EXPIRED ROLES] Revoked fixed role ${fixedRoleIdToRevoke} from user ${userItem.userId} in guild ${userItem.guildId}`);
       }
 
       // 역할 효과 만료 처리 (역할만 null, 아이템 유지)

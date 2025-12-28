@@ -433,7 +433,19 @@ export const inventoryCommand: Command = {
                   }
                 }
 
-                // 새 역할 부여
+                // 고정 역할 부여 (있는 경우)
+                if (result.fixedRoleId) {
+                  try {
+                    const fixedRole = await interaction.guild?.roles.fetch(result.fixedRoleId);
+                    if (fixedRole && !member.roles.cache.has(result.fixedRoleId)) {
+                      await member.roles.add(fixedRole);
+                    }
+                  } catch (err) {
+                    console.error(`고정 역할 부여 실패 (${result.fixedRoleId}):`, err);
+                  }
+                }
+
+                // 새 역할 부여 (교환 가능 역할)
                 const newRole = await interaction.guild?.roles.fetch(result.newRoleId);
                 if (newRole) {
                   await member.roles.add(newRole);
@@ -449,8 +461,17 @@ export const inventoryCommand: Command = {
               .setTitle('✅ 역할 교환 완료!')
               .setDescription(`**${roleOption.name}** 역할이 부여되었습니다!`)
               .addFields(
-                { name: '🎭 새 역할', value: `<@&${result.newRoleId}>`, inline: true }
+                { name: '🎭 교환 역할', value: `<@&${result.newRoleId}>`, inline: true }
               );
+
+            // 고정 역할 표시
+            if (result.fixedRoleId) {
+              successEmbed.addFields({
+                name: '🔒 고정 역할',
+                value: `<@&${result.fixedRoleId}>`,
+                inline: true,
+              });
+            }
 
             if (result.removedRoleIds.length > 0) {
               successEmbed.addFields({

@@ -10,6 +10,7 @@ export interface UserItemV2 {
   expiresAt: Date | null; // 기간제 만료 시각 (아이템 보유 기간)
   currentRoleId: string | null; // 현재 적용 중인 역할 (기간제용)
   currentRoleAppliedAt: Date | null; // 역할 적용 시각
+  fixedRoleId: string | null; // 현재 적용 중인 고정 역할
   roleExpiresAt: Date | null; // 역할 효과 만료 시각
   createdAt: Date;
   updatedAt: Date;
