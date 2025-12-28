@@ -110,7 +110,7 @@ function createBetMessageButtons(game: Game, isAdmin: boolean): ActionRowBuilder
             .setEmoji('🏆'),
           new ButtonBuilder()
             .setCustomId(`game_cancel_${game.id}`)
-            .setLabel('취소 (환불)')
+            .setLabel('경기 취소')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('❌')
         )

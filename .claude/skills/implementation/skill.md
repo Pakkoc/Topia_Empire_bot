@@ -390,6 +390,50 @@ Badge를 사용하여 유형, 배율 등을 표시합니다.
 - XP 규칙: `/xp/rules` - 핫타임, 제외, 배율 목록 UI
 - 화폐 규칙: `/currency/rules` - 동일한 패턴 적용
 
+### Select 초기값 표시 (DB에서 불러온 값)
+
+**DB에서 불러온 설정값을 Select에 표시할 때는 데이터 로딩 상태를 고려해야 합니다.**
+
+설정(settings)이 먼저 로드되고, 옵션 목록(channels, roles 등)이 나중에 로드되면 Select에 값이 표시되지 않는 문제가 발생합니다.
+
+```tsx
+// ❌ 잘못된 패턴 - 옵션 목록 로드 전에는 선택된 값이 안 보임
+<Select value={selectedChannelId} onValueChange={setSelectedChannelId}>
+  <SelectTrigger>
+    <SelectValue placeholder="채널 선택..." />
+  </SelectTrigger>
+  <SelectContent>
+    {channels?.map((ch) => (
+      <SelectItem key={ch.id} value={ch.id}># {ch.name}</SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
+// ✅ 올바른 패턴 - 선택된 값을 직접 렌더링
+<Select value={selectedChannelId || undefined} onValueChange={setSelectedChannelId}>
+  <SelectTrigger>
+    <SelectValue placeholder="채널 선택...">
+      {selectedChannelId && channels?.find(c => c.id === selectedChannelId)
+        ? `# ${channels.find(c => c.id === selectedChannelId)?.name}`
+        : selectedChannelId
+          ? "로딩 중..."
+          : "채널 선택..."}
+    </SelectValue>
+  </SelectTrigger>
+  <SelectContent>
+    {channels?.map((ch) => (
+      <SelectItem key={ch.id} value={ch.id}># {ch.name}</SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+```
+
+**핵심 포인트:**
+1. `value={selectedId || undefined}` - 빈 문자열 대신 undefined 사용
+2. `<SelectValue>` 안에 children으로 직접 표시할 내용 작성
+3. 옵션 목록 로드 전이면 "로딩 중..." 표시
+4. 값이 없으면 placeholder 텍스트 표시
+
 ## 동적 화폐 이름 규칙
 
 화폐 이름(토피/루비)은 서버별로 커스텀 가능하므로, **하드코딩하지 않고 설정에서 가져와야 합니다.**

@@ -1,7 +1,16 @@
 import type { Client, TextChannel } from 'discord.js';
 import type { Container } from '@topia/infra';
+import type { RowDataPacket } from 'mysql2';
 import { EmbedBuilder } from 'discord.js';
 import { getPool } from '@topia/infra';
+
+interface GuildRow extends RowDataPacket {
+  id: string;
+}
+
+interface LogChannelRow extends RowDataPacket {
+  log_channel_id: string | null;
+}
 
 // 매 시간마다 체크 (매일 23시에 마지막 날인지 확인)
 const TAX_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
@@ -43,7 +52,7 @@ async function checkAndProcessMonthlyTax(client: Client, container: Container) {
 
   // 모든 길드에 대해 세금 처리
   const pool = getPool();
-  const [guilds] = await pool.query<{ id: string }[]>(
+  const [guilds] = await pool.query<GuildRow[]>(
     'SELECT id FROM guilds WHERE left_at IS NULL'
   );
 
@@ -105,7 +114,7 @@ async function sendTaxNotification(
   try {
     // currency_settings에서 알림 채널 ID 조회
     const pool = getPool();
-    const [rows] = await pool.query<{ log_channel_id: string | null }[]>(
+    const [rows] = await pool.query<LogChannelRow[]>(
       'SELECT log_channel_id FROM currency_settings WHERE guild_id = ?',
       [guildId]
     );

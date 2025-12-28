@@ -53,4 +53,6 @@ export type CurrencyError =
   | { type: 'ALREADY_BET' }
   | { type: 'BET_AMOUNT_TOO_LOW'; minBet: bigint }
   | { type: 'BET_AMOUNT_TOO_HIGH'; maxBet: bigint }
-  | { type: 'INVALID_TEAM' };
+  | { type: 'INVALID_TEAM' }
+  // 세금 관련 에러
+  | { type: 'ALREADY_PROCESSED' };

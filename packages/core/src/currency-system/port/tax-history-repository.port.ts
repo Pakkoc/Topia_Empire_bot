@@ -1,5 +1,5 @@
 import type { Result } from '../../shared/types/result';
-import type { RepositoryError } from '../../shared/types/repository-error';
+import type { RepositoryError } from '../errors';
 
 export type TaxType = 'monthly';
 
