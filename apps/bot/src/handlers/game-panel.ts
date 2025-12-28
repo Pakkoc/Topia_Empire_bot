@@ -42,11 +42,13 @@ function createBetMessageEmbed(
 
   if (game.status === 'open') {
     embed.setDescription('아래 버튼을 눌러 배팅하세요!');
+  } else if (game.status === 'closed') {
+    embed.setDescription('🔒 배팅이 마감되었습니다.\n경기 진행 중...');
   } else if (game.status === 'finished') {
     const winnerTeam = game.winner === 'A' ? game.teamA : game.teamB;
     embed.setDescription(`🏆 **${winnerTeam}** 승리!\n\n정산이 완료되었습니다.`);
   } else if (game.status === 'cancelled') {
-    embed.setDescription('❌ 게임이 취소되었습니다.\n배팅금이 환불되었습니다.');
+    embed.setDescription('❌ 경기가 취소되었습니다.\n배팅금이 환불되었습니다.');
   }
 
   // 팀 정보
@@ -99,7 +101,25 @@ function createBetMessageButtons(game: Game, isAdmin: boolean): ActionRowBuilder
       )
     );
 
-    // 관리자 버튼
+    // 관리자 버튼 (open 상태: 배팅 마감, 경기 취소)
+    if (isAdmin) {
+      rows.push(
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`game_close_${game.id}`)
+            .setLabel('배팅 마감')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('🔒'),
+          new ButtonBuilder()
+            .setCustomId(`game_cancel_${game.id}`)
+            .setLabel('경기 취소')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('❌')
+        )
+      );
+    }
+  } else if (game.status === 'closed') {
+    // 관리자 버튼 (closed 상태: 결과 입력, 경기 취소)
     if (isAdmin) {
       rows.push(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -653,6 +673,85 @@ export async function handleGameCancel(
   const totalRefund = refundedBets.reduce((sum, b) => sum + b.amount, BigInt(0));
 
   await interaction.editReply({
-    content: `✅ 게임이 취소되었습니다.\n\n환불: ${refundedBets.length}명\n총 환불액: ${totalRefund.toLocaleString()} ${topyName}`,
+    content: `✅ 경기가 취소되었습니다.\n\n환불: ${refundedBets.length}명\n총 환불액: ${totalRefund.toLocaleString()} ${topyName}`,
+  });
+}
+
+/**
+ * 배팅 마감 핸들러
+ */
+export async function handleGameClose(
+  interaction: ButtonInteraction,
+  container: Container,
+  gameId: bigint
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    return;
+  }
+
+  // 설정 조회 (관리 역할 확인용)
+  const gameSettingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = gameSettingsResult.success ? gameSettingsResult.data.managerRoleId : null;
+
+  // 관리자 권한 확인
+  if (!isAdminUser(interaction, managerRoleId)) {
+    await interaction.reply({
+      content: '❌ 관리자만 배팅을 마감할 수 있습니다.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // 화폐 설정 조회
+  const settingsResult = await container.currencyService.getSettings(guildId);
+  const topyName = (settingsResult.success && settingsResult.data?.topyName) || '토피';
+
+  // 배팅 마감
+  const closeResult = await container.gameService.closeGame(gameId);
+
+  if (!closeResult.success) {
+    let errorMessage = '배팅 마감에 실패했습니다.';
+    if (closeResult.error.type === 'GAME_NOT_FOUND') {
+      errorMessage = '게임을 찾을 수 없습니다.';
+    } else if (closeResult.error.type === 'GAME_NOT_OPEN') {
+      errorMessage = '이미 마감되었거나 종료된 게임입니다.';
+    }
+    await interaction.editReply({ content: `❌ ${errorMessage}` });
+    return;
+  }
+
+  const game = closeResult.data;
+
+  // 배팅 수 조회
+  const betsResult = await container.gameService.getGameBets(gameId);
+  const bets = betsResult.success ? betsResult.data : [];
+  const betCount = {
+    teamA: bets.filter(b => b.team === 'A').length,
+    teamB: bets.filter(b => b.team === 'B').length,
+  };
+
+  // 배팅 메시지 업데이트
+  try {
+    if (game.messageId) {
+      const channel = interaction.channel as TextChannel;
+      const message = await channel.messages.fetch(game.messageId);
+
+      const embed = createBetMessageEmbed(game, topyName, betCount);
+      const buttons = createBetMessageButtons(game, true);
+      await message.edit({ embeds: [embed], components: buttons });
+    }
+  } catch (err) {
+    console.error('[GAME] Failed to update game message:', err);
+  }
+
+  const totalBets = betCount.teamA + betCount.teamB;
+  const totalPool = game.teamAPool + game.teamBPool;
+
+  await interaction.editReply({
+    content: `🔒 배팅이 마감되었습니다!\n\n참여자: ${totalBets}명\n총 배팅: ${totalPool.toLocaleString()} ${topyName}`,
   });
 }

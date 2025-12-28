@@ -29,6 +29,7 @@ import {
   handleGameCreateModal,
   handleGameBet,
   handleGameBetModal,
+  handleGameClose,
   handleGameResult,
   handleGameResultSelect,
   handleGameCancel,
@@ -426,6 +427,13 @@ async function main() {
           return;
         }
 
+        // 배팅 마감 버튼
+        if (customId.startsWith('game_close_')) {
+          const gameId = BigInt(customId.replace('game_close_', ''));
+          await handleGameClose(interaction, container, gameId);
+          return;
+        }
+
         // 게임 결과 입력 버튼
         if (customId.startsWith('game_result_') && !customId.includes('select')) {
           const gameId = BigInt(customId.replace('game_result_', ''));
@@ -433,7 +441,7 @@ async function main() {
           return;
         }
 
-        // 게임 취소 버튼
+        // 경기 취소 버튼
         if (customId.startsWith('game_cancel_')) {
           const gameId = BigInt(customId.replace('game_cancel_', ''));
           await handleGameCancel(interaction, container, gameId);

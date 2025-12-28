@@ -332,6 +332,35 @@ export class GameService {
   // ========== 게임 종료/정산 ==========
 
   /**
+   * 배팅 마감 (경기 시작)
+   */
+  async closeGame(gameId: bigint): Promise<Result<Game, CurrencyError>> {
+    try {
+      // 1. 게임 조회
+      const game = await this.gameRepo.findGameById(gameId);
+      if (!game) {
+        return Result.err({ type: 'GAME_NOT_FOUND' });
+      }
+
+      // 2. 게임 상태 확인
+      if (game.status !== 'open') {
+        return Result.err({ type: 'GAME_NOT_OPEN' });
+      }
+
+      // 3. 상태 변경
+      await this.gameRepo.updateGameStatus(gameId, 'closed');
+
+      return Result.ok({ ...game, status: 'closed' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
    * 게임 종료 및 정산
    */
   async finishGame(
