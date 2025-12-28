@@ -8,6 +8,7 @@ import type {
   RoleTicketService,
   InventoryService,
   GameService,
+  TaxService,
 } from '@topia/core';
 
 export interface Container {
@@ -25,4 +26,7 @@ export interface Container {
 
   // 게임센터
   gameService: GameService;
+
+  // 세금
+  taxService: TaxService;
 }

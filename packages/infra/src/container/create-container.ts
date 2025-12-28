@@ -9,6 +9,7 @@ import {
   RoleTicketService,
   InventoryService,
   GameService,
+  TaxService,
 } from '@topia/core';
 import { getPool } from '../database/pool';
 import {
@@ -27,6 +28,7 @@ import {
   RoleTicketRepository,
   CurrencyManagerRepository,
   GameRepository,
+  TaxHistoryRepository,
 } from '../database/repositories';
 import { SystemClock } from '../clock';
 import type { Container } from './types';
@@ -62,7 +64,10 @@ export function createContainer(): Container {
   // 게임센터
   const gameRepo = new GameRepository(pool);
 
-  // Services
+  // 세금
+  const taxHistoryRepo = new TaxHistoryRepository(pool);
+
+  // Services (repositories needed for tax service)
   const xpService = new XpService(xpRepo, xpSettingsRepo, clock);
   const currencyService = new CurrencyService(
     topyWalletRepo,
@@ -110,6 +115,15 @@ export function createContainer(): Container {
     currencyTransactionRepo
   );
 
+  // 세금 서비스
+  const taxService = new TaxService(
+    currencySettingsRepo,
+    topyWalletRepo,
+    currencyTransactionRepo,
+    taxHistoryRepo,
+    clock
+  );
+
   return {
     xpService,
     currencyService,
@@ -125,5 +139,8 @@ export function createContainer(): Container {
 
     // 게임센터
     gameService,
+
+    // 세금
+    taxService,
   };
 }

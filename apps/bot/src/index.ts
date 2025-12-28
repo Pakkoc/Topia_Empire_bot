@@ -35,6 +35,7 @@ import {
 } from './handlers/game-panel';
 import { commands, type Command } from './commands';
 import { startExpiredItemsScheduler } from './schedulers/expired-items.scheduler';
+import { startMonthlyTaxScheduler } from './schedulers/monthly-tax.scheduler';
 
 const client = new Client({
   intents: [
@@ -117,6 +118,9 @@ async function main() {
 
     // 만료 아이템 스케줄러 시작
     startExpiredItemsScheduler(client, container);
+
+    // 월말 세금 스케줄러 시작
+    startMonthlyTaxScheduler(client, container);
 
     // Register all guilds the bot is currently in
     const pool = getPool();

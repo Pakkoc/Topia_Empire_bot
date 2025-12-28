@@ -140,11 +140,17 @@ export default function GameCenterPage() {
 
         <div className="flex flex-col sm:flex-row gap-3">
           <Select
-            value={selectedChannelId}
+            value={selectedChannelId || undefined}
             onValueChange={setSelectedChannelId}
           >
             <SelectTrigger className="bg-white/5 border-white/10 text-white sm:w-64">
-              <SelectValue placeholder="채널 선택..." />
+              <SelectValue placeholder="채널 선택...">
+                {selectedChannelId && channels?.find(c => c.id === selectedChannelId)
+                  ? `# ${channels.find(c => c.id === selectedChannelId)?.name}`
+                  : selectedChannelId
+                    ? "로딩 중..."
+                    : "채널 선택..."}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {channels?.map((channel) => (

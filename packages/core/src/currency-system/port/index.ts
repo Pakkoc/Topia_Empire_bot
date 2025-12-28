@@ -12,5 +12,8 @@ export * from './role-ticket-repository.port';
 // 화폐 관리자
 export * from './currency-manager-repository.port';
 
+// 세금
+export * from './tax-history-repository.port';
+
 // 게임센터
 export * from './game-repository.port';
