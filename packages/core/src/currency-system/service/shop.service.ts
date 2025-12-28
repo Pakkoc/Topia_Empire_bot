@@ -191,9 +191,21 @@ export class ShopService {
     }
 
     // 7. 인벤토리에 추가
-    const expiresAt = isPeriodItem(item)
-      ? new Date(now.getTime() + item.durationDays * 24 * 60 * 60 * 1000)
-      : null;
+    // 기간제 아이템: 기존 만료일이 있고 유효하면 연장, 아니면 현재부터 시작
+    let expiresAt: Date | null = null;
+    if (isPeriodItem(item)) {
+      const existingItemResult = await this.shopRepo.findUserItem(guildId, userId, itemId);
+      const existingItem = existingItemResult.success ? existingItemResult.data : null;
+
+      // 기존 만료일이 있고 아직 유효하면 기존 만료일부터 연장
+      const baseDate = existingItem?.expiresAt && existingItem.expiresAt > now
+        ? existingItem.expiresAt
+        : now;
+
+      // 구매 수량만큼 기간 연장
+      const daysToAdd = item.durationDays * quantity;
+      expiresAt = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+    }
 
     const userItemResult = await this.shopRepo.upsertUserItem(
       guildId,
