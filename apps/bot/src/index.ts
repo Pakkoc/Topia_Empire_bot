@@ -24,6 +24,15 @@ import {
   handleMarketPanelMy,
 } from './handlers/market-panel';
 import { handleShopPanelButton } from './handlers/shop-panel';
+import {
+  handleGamePanelCreate,
+  handleGameCreateModal,
+  handleGameBet,
+  handleGameBetModal,
+  handleGameResult,
+  handleGameResultSelect,
+  handleGameCancel,
+} from './handlers/game-panel';
 import { commands, type Command } from './commands';
 import { startExpiredItemsScheduler } from './schedulers/expired-items.scheduler';
 
@@ -394,6 +403,38 @@ async function main() {
           await handleMarketPanelMy(interaction, container);
           return;
         }
+
+        // 게임센터 패널 버튼
+        if (customId === 'game_panel_create') {
+          await handleGamePanelCreate(interaction, container);
+          return;
+        }
+
+        // 게임 배팅 버튼
+        if (customId.startsWith('game_bet_A_')) {
+          const gameId = BigInt(customId.replace('game_bet_A_', ''));
+          await handleGameBet(interaction, container, 'A', gameId);
+          return;
+        }
+        if (customId.startsWith('game_bet_B_')) {
+          const gameId = BigInt(customId.replace('game_bet_B_', ''));
+          await handleGameBet(interaction, container, 'B', gameId);
+          return;
+        }
+
+        // 게임 결과 입력 버튼
+        if (customId.startsWith('game_result_') && !customId.includes('select')) {
+          const gameId = BigInt(customId.replace('game_result_', ''));
+          await handleGameResult(interaction, container, gameId);
+          return;
+        }
+
+        // 게임 취소 버튼
+        if (customId.startsWith('game_cancel_')) {
+          const gameId = BigInt(customId.replace('game_cancel_', ''));
+          await handleGameCancel(interaction, container, gameId);
+          return;
+        }
       } catch (error) {
         console.error(`[BUTTON] Error handling ${customId}:`, error);
 
@@ -421,6 +462,22 @@ async function main() {
           await handleMarketPanelRegisterModal(interaction, container);
           return;
         }
+
+        // 게임 생성 모달
+        if (customId.startsWith('game_create_modal_')) {
+          await handleGameCreateModal(interaction, container);
+          return;
+        }
+
+        // 게임 배팅 금액 모달
+        if (customId.startsWith('game_bet_modal_')) {
+          // game_bet_modal_{team}_{gameId}_{uniqueId}
+          const parts = customId.split('_');
+          const team = parts[3] as 'A' | 'B';
+          const gameId = BigInt(parts[4]!);
+          await handleGameBetModal(interaction, container, team, gameId);
+          return;
+        }
       } catch (error) {
         console.error(`[MODAL] Error handling ${customId}:`, error);
 
@@ -444,6 +501,16 @@ async function main() {
 
       try {
         // 장터 목록 선택 - 상품 상세 보기 등 추가 핸들러 필요시 여기에 추가
+
+        // 게임 결과 선택
+        if (customId.startsWith('game_result_select_')) {
+          // game_result_select_{gameId}_{userId}
+          const parts = customId.split('_');
+          const gameId = BigInt(parts[3]!);
+          const winner = interaction.values[0] as 'A' | 'B';
+          await handleGameResultSelect(interaction, container, gameId, winner);
+          return;
+        }
       } catch (error) {
         console.error(`[SELECT] Error handling ${customId}:`, error);
       }
@@ -851,6 +918,94 @@ async function main() {
     } catch (error) {
       console.error('[SHOP] Failed to refresh panel:', error);
       return res.status(500).json({ error: 'Failed to refresh shop panel' });
+    }
+  });
+
+  // 게임센터 패널 생성 엔드포인트
+  app.post('/api/game/panel', async (req, res) => {
+    const { guildId, channelId } = req.body;
+
+    if (!guildId || !channelId) {
+      return res.status(400).json({ error: 'guildId and channelId are required' });
+    }
+
+    try {
+      const guild = await client.guilds.fetch(guildId);
+      const channel = await guild.channels.fetch(channelId);
+
+      if (!channel) {
+        return res.status(404).json({ error: 'Channel not found' });
+      }
+
+      // 텍스트 채널인지 확인
+      if (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement) {
+        return res.status(400).json({ error: 'Channel must be a text channel' });
+      }
+
+      // 기존 설정 조회
+      const gameSettingsResult = await container.gameService.getSettings(guildId);
+      const gameSettings = gameSettingsResult.success ? gameSettingsResult.data : null;
+
+      // 기존 패널 메시지 삭제 (채널 변경 시)
+      if (gameSettings?.channelId && gameSettings?.messageId) {
+        try {
+          const oldChannel = await guild.channels.fetch(gameSettings.channelId);
+          if (oldChannel && 'messages' in oldChannel) {
+            const oldMessage = await oldChannel.messages.fetch(gameSettings.messageId);
+            if (oldMessage) {
+              await oldMessage.delete();
+              console.log(`[GAME] Deleted old panel message in channel ${gameSettings.channelId}`);
+            }
+          }
+        } catch (err) {
+          // 기존 메시지 삭제 실패는 무시
+          console.log(`[GAME] Could not delete old panel message: ${err}`);
+        }
+      }
+
+      // 화폐 설정 조회
+      const currencySettingsResult = await container.currencyService.getSettings(guildId);
+      const topyName = (currencySettingsResult.success && currencySettingsResult.data?.topyName) || '토피';
+
+      // 패널 Embed 생성
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('🎮 게임센터')
+        .setDescription(
+          '내전 배팅에 참여하세요!\n\n' +
+          `💰 **${topyName}**로 배팅하고 승리하면 배당금을 받아가세요.\n` +
+          '⚠️ 배팅은 1인 1회만 가능합니다.'
+        )
+        .addFields(
+          { name: '📋 배팅 방법', value: '1. 배팅 메시지에서 팀 버튼 클릭\n2. 금액 입력\n3. 결과 기다리기', inline: false },
+          { name: '💸 수수료', value: '당첨금의 20%가 수수료로 차감됩니다.', inline: false }
+        )
+        .setFooter({ text: '관리자만 배팅을 생성할 수 있습니다.' })
+        .setTimestamp();
+
+      // 버튼 생성
+      const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId('game_panel_create')
+          .setLabel('배팅 생성하기')
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('🎲')
+      );
+
+      // 채널에 패널 메시지 전송
+      const message = await channel.send({
+        embeds: [embed],
+        components: [buttonRow],
+      });
+
+      // 설정에 채널/메시지 ID 저장
+      await container.gameService.updatePanel(guildId, channelId, message.id);
+
+      console.log(`[GAME] Panel created in channel ${channel.name} (${channelId}) in guild ${guildId}`);
+      return res.json({ success: true, messageId: message.id });
+    } catch (error) {
+      console.error('[GAME] Failed to create panel:', error);
+      return res.status(500).json({ error: 'Failed to create game panel' });
     }
   });
 

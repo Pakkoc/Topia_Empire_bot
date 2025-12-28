@@ -18,3 +18,8 @@ export * from './user-item-v2';
 
 // 화폐 관리자
 export * from './currency-manager';
+
+// 게임센터
+export * from './game-settings';
+export * from './game';
+export * from './game-bet';

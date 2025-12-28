@@ -45,4 +45,12 @@ export type CurrencyError =
   | { type: 'ROLE_OPTION_NOT_FOUND' }
   | { type: 'INSUFFICIENT_QUANTITY'; required: number; available: number }
   // 화폐 관리자 에러
-  | { type: 'NOT_CURRENCY_MANAGER' };
+  | { type: 'NOT_CURRENCY_MANAGER' }
+  // 게임센터 관련 에러
+  | { type: 'GAME_NOT_FOUND' }
+  | { type: 'GAME_NOT_OPEN' }
+  | { type: 'GAME_ALREADY_FINISHED' }
+  | { type: 'ALREADY_BET' }
+  | { type: 'BET_AMOUNT_TOO_LOW'; minBet: bigint }
+  | { type: 'BET_AMOUNT_TOO_HIGH'; maxBet: bigint }
+  | { type: 'INVALID_TEAM' };

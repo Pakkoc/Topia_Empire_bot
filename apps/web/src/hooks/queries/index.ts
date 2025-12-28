@@ -19,3 +19,4 @@ export * from "./use-shop-items-v2";
 export * from "./use-role-tickets";
 export * from "./use-market-listings";
 export * from "./use-currency-managers";
+export * from "./use-game-settings";

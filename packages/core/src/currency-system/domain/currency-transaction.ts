@@ -18,7 +18,10 @@ export type TransactionType =
   | 'tax'            // 세금
   | 'fee'            // 수수료
   | 'admin_add'      // 관리자 추가
-  | 'admin_remove';  // 관리자 제거
+  | 'admin_remove'   // 관리자 제거
+  | 'game_bet'       // 게임 배팅
+  | 'game_win'       // 게임 당첨
+  | 'game_refund';   // 게임 환불
 
 /**
  * 화폐 거래 기록

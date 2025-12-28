@@ -8,6 +8,7 @@ import {
   ShopV2Service,
   RoleTicketService,
   InventoryService,
+  GameService,
 } from '@topia/core';
 import { getPool } from '../database/pool';
 import {
@@ -25,6 +26,7 @@ import {
   ShopV2Repository,
   RoleTicketRepository,
   CurrencyManagerRepository,
+  GameRepository,
 } from '../database/repositories';
 import { SystemClock } from '../clock';
 import type { Container } from './types';
@@ -56,6 +58,9 @@ export function createContainer(): Container {
 
   // 화폐 관리자
   const currencyManagerRepo = new CurrencyManagerRepository(pool);
+
+  // 게임센터
+  const gameRepo = new GameRepository(pool);
 
   // Services
   const xpService = new XpService(xpRepo, xpSettingsRepo, clock);
@@ -98,6 +103,13 @@ export function createContainer(): Container {
   const roleTicketService = new RoleTicketService(roleTicketRepo, shopV2Repo);
   const inventoryService = new InventoryService(shopV2Repo, roleTicketRepo, clock);
 
+  // 게임센터 서비스
+  const gameService = new GameService(
+    gameRepo,
+    topyWalletRepo,
+    currencyTransactionRepo
+  );
+
   return {
     xpService,
     currencyService,
@@ -110,5 +122,8 @@ export function createContainer(): Container {
     shopV2Service,
     roleTicketService,
     inventoryService,
+
+    // 게임센터
+    gameService,
   };
 }

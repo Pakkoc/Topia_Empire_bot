@@ -5,3 +5,4 @@ export * from './market-settings.service';
 export * from './bank.service';
 export * from './role-ticket.service';
 export * from './inventory.service';
+export * from './game.service';
