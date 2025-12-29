@@ -74,7 +74,7 @@ function createBetMessageEmbed(
 
   if (game.status === 'open' && betLimits) {
     embed.setFooter({
-      text: `⚠️ 배팅은 1인 1회만 가능합니다 | 배팅 한도: ${betLimits.minBet.toLocaleString()} ~ ${betLimits.maxBet.toLocaleString()} ${topyName}`
+      text: `⚠️ 배팅은 1인 1회만 가능합니다\n💰 배팅 한도: ${betLimits.minBet.toLocaleString()} ~ ${betLimits.maxBet.toLocaleString()} ${topyName}`
     });
   }
 
