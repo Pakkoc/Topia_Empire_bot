@@ -112,6 +112,24 @@ export class ShopRepository implements ShopRepositoryPort {
     }
   }
 
+  async findEnabledByGuildAndCurrency(
+    guildId: string,
+    currencyType: 'topy' | 'ruby'
+  ): Promise<Result<ShopItem[], RepositoryError>> {
+    try {
+      const [rows] = await this.pool.execute<ShopItemRow[]>(
+        'SELECT * FROM shop_items_v2 WHERE guild_id = ? AND enabled = 1 AND currency_type = ? ORDER BY id ASC',
+        [guildId, currencyType]
+      );
+      return Result.ok(rows.map(toShopItem));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
   async findById(id: number): Promise<Result<ShopItem | null, RepositoryError>> {
     try {
       const [rows] = await this.pool.execute<ShopItemRow[]>(

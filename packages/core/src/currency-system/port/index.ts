@@ -17,3 +17,6 @@ export * from './tax-history-repository.port';
 
 // 게임센터
 export * from './game-repository.port';
+
+// 상점 패널
+export * from './shop-panel-settings-repository.port';

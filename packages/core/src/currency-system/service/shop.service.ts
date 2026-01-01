@@ -51,6 +51,20 @@ export class ShopService {
     return result;
   }
 
+  /**
+   * 화폐 타입별 활성화된 상점 아이템 조회
+   */
+  async getEnabledShopItemsByCurrency(
+    guildId: string,
+    currencyType: 'topy' | 'ruby'
+  ): Promise<Result<ShopItem[], CurrencyError>> {
+    const result = await this.shopRepo.findEnabledByGuildAndCurrency(guildId, currencyType);
+    if (!result.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
+    }
+    return result;
+  }
+
   async getShopItem(id: number): Promise<Result<ShopItem | null, CurrencyError>> {
     const result = await this.shopRepo.findById(id);
     if (!result.success) {

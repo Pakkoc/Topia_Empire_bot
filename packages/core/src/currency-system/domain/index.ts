@@ -23,3 +23,6 @@ export * from './currency-manager';
 export * from './game-settings';
 export * from './game';
 export * from './game-bet';
+
+// 상점 패널
+export * from './shop-panel-settings';

@@ -10,6 +10,7 @@ import {
   InventoryService,
   GameService,
   TaxService,
+  ShopPanelService,
 } from '@topia/core';
 import { getPool } from '../database/pool';
 import {
@@ -29,6 +30,7 @@ import {
   CurrencyManagerRepository,
   GameRepository,
   TaxHistoryRepository,
+  ShopPanelSettingsRepository,
 } from '../database/repositories';
 import { SystemClock } from '../clock';
 import type { Container } from './types';
@@ -66,6 +68,9 @@ export function createContainer(): Container {
 
   // 세금
   const taxHistoryRepo = new TaxHistoryRepository(pool);
+
+  // 상점 패널
+  const shopPanelSettingsRepo = new ShopPanelSettingsRepository(pool);
 
   // Services (repositories needed for tax service)
   const xpService = new XpService(xpRepo, xpSettingsRepo, clock);
@@ -124,6 +129,9 @@ export function createContainer(): Container {
     clock
   );
 
+  // 상점 패널 서비스
+  const shopPanelService = new ShopPanelService(shopPanelSettingsRepo);
+
   return {
     xpService,
     currencyService,
@@ -142,5 +150,8 @@ export function createContainer(): Container {
 
     // 세금
     taxService,
+
+    // 상점 패널
+    shopPanelService,
   };
 }

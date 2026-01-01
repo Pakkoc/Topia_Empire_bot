@@ -11,6 +11,10 @@ export interface ShopRepositoryPort {
   // 상점 아이템 CRUD
   findAllByGuild(guildId: string): Promise<Result<ShopItem[], RepositoryError>>;
   findEnabledByGuild(guildId: string): Promise<Result<ShopItem[], RepositoryError>>;
+  findEnabledByGuildAndCurrency(
+    guildId: string,
+    currencyType: 'topy' | 'ruby'
+  ): Promise<Result<ShopItem[], RepositoryError>>;
   findById(id: number): Promise<Result<ShopItem | null, RepositoryError>>;
   create(input: CreateShopItemInput): Promise<Result<ShopItem, RepositoryError>>;
   update(id: number, input: UpdateShopItemInput): Promise<Result<void, RepositoryError>>;

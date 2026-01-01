@@ -21,3 +21,6 @@ export * from './tax-history.repository';
 
 // 게임센터
 export * from './game.repository';
+
+// 상점 패널
+export * from './shop-panel-settings.repository';
