@@ -20,3 +20,4 @@ export * from "./use-role-tickets";
 export * from "./use-market-listings";
 export * from "./use-currency-managers";
 export * from "./use-game-settings";
+export * from "./use-shop-panel-settings";
