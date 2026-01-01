@@ -942,8 +942,7 @@ export default function ShopV2Page() {
           {/* 토피 상점 패널 */}
           <div className="bg-white/5 rounded-xl border border-amber-500/20 p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Icon icon="solar:coin-bold" className="h-5 w-5 text-amber-400" />
-              <span className="font-medium text-white">{topyName} 상점</span>
+              <span className="font-medium text-white">💰 {topyName} 상점</span>
               {topyPanel?.messageId && (
                 <Badge className="bg-green-500/20 text-green-400 border-0 text-xs">설치됨</Badge>
               )}
@@ -997,8 +996,7 @@ export default function ShopV2Page() {
           {/* 루비 상점 패널 */}
           <div className="bg-white/5 rounded-xl border border-pink-500/20 p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Icon icon="solar:star-bold" className="h-5 w-5 text-pink-400" />
-              <span className="font-medium text-white">{rubyName} 상점</span>
+              <span className="font-medium text-white">💎 {rubyName} 상점</span>
               {rubyPanel?.messageId && (
                 <Badge className="bg-green-500/20 text-green-400 border-0 text-xs">설치됨</Badge>
               )}
