@@ -981,6 +981,39 @@ async function main() {
         }
       }
 
+      // 4. 장터 패널 업데이트
+      const marketSettingsResult = await container.marketSettingsService.getSettings(guildId);
+      if (marketSettingsResult.success && marketSettingsResult.data?.channelId && marketSettingsResult.data?.messageId) {
+        try {
+          const channel = await guild.channels.fetch(marketSettingsResult.data.channelId);
+          if (channel && 'messages' in channel) {
+            const message = await channel.messages.fetch(marketSettingsResult.data.messageId);
+            const marketSettings = marketSettingsResult.data;
+            const topyFeePercent = marketSettings.topyFeePercent ?? 5;
+            const rubyFeePercent = marketSettings.rubyFeePercent ?? 3;
+
+            const embed = new EmbedBuilder()
+              .setColor(0x5865F2)
+              .setTitle('🛒 토피아 장터')
+              .setDescription(
+                '재능과 서비스를 자유롭게 거래하세요!\n\n' +
+                '아래 버튼을 클릭하여 장터를 이용할 수 있습니다.'
+              )
+              .addFields(
+                { name: `💰 ${topyName || '토피'} 수수료`, value: `${topyFeePercent}%`, inline: true },
+                { name: `💎 ${rubyName || '루비'} 수수료`, value: `${rubyFeePercent}%`, inline: true },
+                { name: '⏰ 등록 유효기간', value: '30일', inline: true }
+              )
+              .setFooter({ text: '거래 시 발생하는 분쟁은 관리자에게 문의하세요.' })
+              .setTimestamp();
+            await message.edit({ embeds: [embed] });
+            results.push({ type: 'market', success: true });
+          }
+        } catch {
+          results.push({ type: 'market', success: false, reason: 'Message not found' });
+        }
+      }
+
       if (results.length === 0) {
         return res.json({ success: true, skipped: true, reason: 'No panel installed' });
       }
