@@ -532,7 +532,7 @@ async function main() {
         // 장터 목록 선택 - 상품 상세 보기 등 추가 핸들러 필요시 여기에 추가
 
         // 게임 카테고리 선택
-        if (customId.startsWith('game_category_select_')) {
+        if (customId.startsWith('game_create_category_')) {
           await handleGameCategorySelect(interaction, container);
           return;
         }
