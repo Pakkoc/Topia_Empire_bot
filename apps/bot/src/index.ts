@@ -28,12 +28,16 @@ import { handleTopyShopPanelButton } from './handlers/shop-topy-panel';
 import { handleRubyShopPanelButton } from './handlers/shop-ruby-panel';
 import {
   handleGamePanelCreate,
+  handleGameCategorySelect,
   handleGameCreateModal,
-  handleGameBet,
-  handleGameBetModal,
-  handleGameClose,
+  handleGameJoin,
+  handleGameLeave,
+  handleGameTeamAssign,
+  handleGameTeamSelect,
+  handleGameTeamUsers,
+  handleGameStart,
   handleGameResult,
-  handleGameResultSelect,
+  handleGameResultRank,
   handleGameCancel,
 } from './handlers/game-panel';
 import { commands, type Command } from './commands';
@@ -429,33 +433,42 @@ async function main() {
           return;
         }
 
-        // 게임 배팅 버튼
-        if (customId.startsWith('game_bet_A_')) {
-          const gameId = BigInt(customId.replace('game_bet_A_', ''));
-          await handleGameBet(interaction, container, 'A', gameId);
-          return;
-        }
-        if (customId.startsWith('game_bet_B_')) {
-          const gameId = BigInt(customId.replace('game_bet_B_', ''));
-          await handleGameBet(interaction, container, 'B', gameId);
+        // 내전 참가 버튼
+        if (customId.startsWith('game_join_')) {
+          const gameId = BigInt(customId.replace('game_join_', ''));
+          await handleGameJoin(interaction, container, gameId);
           return;
         }
 
-        // 배팅 마감 버튼
-        if (customId.startsWith('game_close_')) {
-          const gameId = BigInt(customId.replace('game_close_', ''));
-          await handleGameClose(interaction, container, gameId);
+        // 내전 참가 취소 버튼
+        if (customId.startsWith('game_leave_')) {
+          const gameId = BigInt(customId.replace('game_leave_', ''));
+          await handleGameLeave(interaction, container, gameId);
           return;
         }
 
-        // 게임 결과 입력 버튼
-        if (customId.startsWith('game_result_') && !customId.includes('select')) {
+        // 팀 배정 버튼 (관리자)
+        if (customId.startsWith('game_team_assign_')) {
+          const gameId = BigInt(customId.replace('game_team_assign_', ''));
+          await handleGameTeamAssign(interaction, container, gameId);
+          return;
+        }
+
+        // 경기 시작 버튼 (관리자)
+        if (customId.startsWith('game_start_')) {
+          const gameId = BigInt(customId.replace('game_start_', ''));
+          await handleGameStart(interaction, container, gameId);
+          return;
+        }
+
+        // 게임 결과 입력 버튼 (관리자)
+        if (customId.startsWith('game_result_') && !customId.includes('rank')) {
           const gameId = BigInt(customId.replace('game_result_', ''));
           await handleGameResult(interaction, container, gameId);
           return;
         }
 
-        // 경기 취소 버튼
+        // 경기 취소 버튼 (관리자)
         if (customId.startsWith('game_cancel_')) {
           const gameId = BigInt(customId.replace('game_cancel_', ''));
           await handleGameCancel(interaction, container, gameId);
@@ -494,16 +507,6 @@ async function main() {
           await handleGameCreateModal(interaction, container);
           return;
         }
-
-        // 게임 배팅 금액 모달
-        if (customId.startsWith('game_bet_modal_')) {
-          // game_bet_modal_{team}_{gameId}_{uniqueId}
-          const parts = customId.split('_');
-          const team = parts[3] as 'A' | 'B';
-          const gameId = BigInt(parts[4]!);
-          await handleGameBetModal(interaction, container, team, gameId);
-          return;
-        }
       } catch (error) {
         console.error(`[MODAL] Error handling ${customId}:`, error);
 
@@ -521,24 +524,48 @@ async function main() {
       return;
     }
 
-    // Select menu handler (for future use)
+    // String select menu handler
     if (interaction.isStringSelectMenu()) {
       const customId = interaction.customId;
 
       try {
         // 장터 목록 선택 - 상품 상세 보기 등 추가 핸들러 필요시 여기에 추가
 
-        // 게임 결과 선택
-        if (customId.startsWith('game_result_select_')) {
-          // game_result_select_{gameId}_{userId}
-          const parts = customId.split('_');
-          const gameId = BigInt(parts[3]!);
-          const winner = interaction.values[0] as 'A' | 'B';
-          await handleGameResultSelect(interaction, container, gameId, winner);
+        // 게임 카테고리 선택
+        if (customId.startsWith('game_category_select_')) {
+          await handleGameCategorySelect(interaction, container);
+          return;
+        }
+
+        // 게임 팀 선택 (팀 배정 시 어느 팀에 배정할지)
+        if (customId.startsWith('game_team_select_')) {
+          await handleGameTeamSelect(interaction, container);
+          return;
+        }
+
+        // 게임 결과 순위 선택
+        if (customId.startsWith('game_result_rank_')) {
+          await handleGameResultRank(interaction, container);
           return;
         }
       } catch (error) {
         console.error(`[SELECT] Error handling ${customId}:`, error);
+      }
+      return;
+    }
+
+    // User select menu handler
+    if (interaction.isUserSelectMenu()) {
+      const customId = interaction.customId;
+
+      try {
+        // 게임 팀 유저 선택 (팀에 배정할 유저들)
+        if (customId.startsWith('game_team_users_')) {
+          await handleGameTeamUsers(interaction, container);
+          return;
+        }
+      } catch (error) {
+        console.error(`[USER_SELECT] Error handling ${customId}:`, error);
       }
       return;
     }
@@ -1236,29 +1263,35 @@ async function main() {
       const currencySettingsResult = await container.currencyService.getSettings(guildId);
       const topyName = (currencySettingsResult.success && currencySettingsResult.data?.topyName) || '토피';
 
+      // 게임 설정 조회
+      const entryFee = gameSettings?.entryFee ?? 100n;
+      const rank1Percent = gameSettings?.rank1Percent ?? 50;
+      const rank2Percent = gameSettings?.rank2Percent ?? 30;
+      const rank3Percent = gameSettings?.rank3Percent ?? 15;
+      const rank4Percent = gameSettings?.rank4Percent ?? 5;
+
       // 패널 Embed 생성
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
-        .setTitle('🎮 게임센터')
+        .setTitle('🎮 내전 시스템')
         .setDescription(
-          '내전 배팅에 참여하세요!\n\n' +
-          `💰 **${topyName}**로 배팅하고 승리하면 배당금을 받아가세요.\n` +
-          '⚠️ 배팅은 1인 1회만 가능합니다.'
+          '참가비를 내고 내전에 참가하세요!\n\n' +
+          `💰 **참가비**: ${entryFee.toLocaleString()} ${topyName}\n` +
+          `🏆 **보상 비율**: 1등 ${rank1Percent}% | 2등 ${rank2Percent}% | 3등 ${rank3Percent}% | 4등 ${rank4Percent}%`
         )
         .addFields(
-          { name: '📋 배팅 방법', value: '1. 배팅 메시지에서 팀 버튼 클릭\n2. 금액 입력\n3. 결과 기다리기', inline: false },
-          { name: '💸 수수료', value: '당첨금의 20%가 수수료로 차감됩니다.', inline: false }
+          { name: '📋 참가 방법', value: '1. 내전 메시지에서 참가 버튼 클릭\n2. 참가비 자동 차감\n3. 관리자가 팀 배정\n4. 경기 후 순위 보상', inline: false }
         )
-        .setFooter({ text: '관리자만 배팅을 생성할 수 있습니다.' })
+        .setFooter({ text: '관리자만 내전을 생성할 수 있습니다.' })
         .setTimestamp();
 
       // 버튼 생성
       const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId('game_panel_create')
-          .setLabel('배팅 생성하기')
+          .setLabel('내전 생성하기')
           .setStyle(ButtonStyle.Primary)
-          .setEmoji('🎲')
+          .setEmoji('🎮')
       );
 
       // 채널에 패널 메시지 전송

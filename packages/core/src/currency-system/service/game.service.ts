@@ -6,14 +6,17 @@ import type {
   UpdateGameSettingsDto,
 } from '../domain/game-settings';
 import {
-  DEFAULT_BET_FEE_PERCENT,
-  DEFAULT_MIN_BET,
-  DEFAULT_MAX_BET,
+  DEFAULT_ENTRY_FEE,
+  DEFAULT_RANK1_PERCENT,
+  DEFAULT_RANK2_PERCENT,
+  DEFAULT_RANK3_PERCENT,
+  DEFAULT_RANK4_PERCENT,
   createDefaultGameSettings,
 } from '../domain/game-settings';
-import type { Game, CreateGameDto, GameTeam } from '../domain/game';
-import { calculateTeamOdds } from '../domain/game';
-import type { GameBet } from '../domain/game-bet';
+import type { Game, CreateGameDto, GameResult } from '../domain/game';
+import { calculateRankReward, calculatePerPlayerReward } from '../domain/game';
+import type { GameParticipant, RewardResult } from '../domain/game-participant';
+import type { GameCategory, CreateCategoryDto, UpdateCategoryDto } from '../domain/game-category';
 import type { CurrencyError } from '../errors';
 import { Result } from '../../shared/types/result';
 
@@ -27,7 +30,7 @@ export class GameService {
   // ========== 설정 관련 ==========
 
   /**
-   * 길드의 게임센터 설정 조회
+   * 길드의 내전 설정 조회
    */
   async getSettings(guildId: string): Promise<Result<GameSettings, CurrencyError>> {
     try {
@@ -37,7 +40,6 @@ export class GameService {
         return Result.ok(result);
       }
 
-      // 기본 설정 반환
       return Result.ok(createDefaultGameSettings(guildId));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -49,7 +51,7 @@ export class GameService {
   }
 
   /**
-   * 게임센터 설정 저장
+   * 내전 설정 저장
    */
   async saveSettings(
     guildId: string,
@@ -60,9 +62,11 @@ export class GameService {
         guildId,
         channelId: dto.channelId ?? undefined,
         messageId: dto.messageId ?? undefined,
-        betFeePercent: dto.betFeePercent,
-        minBet: dto.minBet,
-        maxBet: dto.maxBet,
+        entryFee: dto.entryFee,
+        rank1Percent: dto.rank1Percent,
+        rank2Percent: dto.rank2Percent,
+        rank3Percent: dto.rank3Percent,
+        rank4Percent: dto.rank4Percent,
       });
 
       return Result.ok(result);
@@ -85,6 +89,94 @@ export class GameService {
   ): Promise<Result<void, CurrencyError>> {
     try {
       await this.gameRepo.updatePanel(guildId, channelId, messageId);
+      return Result.ok(undefined);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  // ========== 카테고리 관련 ==========
+
+  /**
+   * 카테고리 생성
+   */
+  async createCategory(dto: CreateCategoryDto): Promise<Result<GameCategory, CurrencyError>> {
+    try {
+      const category = await this.gameRepo.createCategory(dto);
+      return Result.ok(category);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
+   * 카테고리 조회
+   */
+  async getCategories(guildId: string): Promise<Result<GameCategory[], CurrencyError>> {
+    try {
+      const categories = await this.gameRepo.findCategoriesByGuildId(guildId);
+      return Result.ok(categories);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
+   * 활성화된 카테고리 조회
+   */
+  async getEnabledCategories(guildId: string): Promise<Result<GameCategory[], CurrencyError>> {
+    try {
+      const categories = await this.gameRepo.findEnabledCategoriesByGuildId(guildId);
+      return Result.ok(categories);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
+   * 카테고리 업데이트
+   */
+  async updateCategory(
+    categoryId: number,
+    dto: UpdateCategoryDto
+  ): Promise<Result<GameCategory, CurrencyError>> {
+    try {
+      const category = await this.gameRepo.updateCategory(categoryId, dto);
+      if (!category) {
+        return Result.err({ type: 'CATEGORY_NOT_FOUND' });
+      }
+      return Result.ok(category);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
+   * 카테고리 삭제
+   */
+  async deleteCategory(categoryId: number): Promise<Result<void, CurrencyError>> {
+    try {
+      await this.gameRepo.deleteCategory(categoryId);
       return Result.ok(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -135,27 +227,6 @@ export class GameService {
   }
 
   /**
-   * 메시지 ID로 게임 조회
-   */
-  async getGameByMessageId(messageId: string): Promise<Result<Game, CurrencyError>> {
-    try {
-      const game = await this.gameRepo.findGameByMessageId(messageId);
-
-      if (!game) {
-        return Result.err({ type: 'GAME_NOT_FOUND' });
-      }
-
-      return Result.ok(game);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return Result.err({
-        type: 'REPOSITORY_ERROR',
-        cause: { type: 'QUERY_ERROR', message },
-      });
-    }
-  }
-
-  /**
    * 게임 메시지 ID 업데이트
    */
   async updateGameMessageId(gameId: bigint, messageId: string): Promise<Result<void, CurrencyError>> {
@@ -187,18 +258,16 @@ export class GameService {
     }
   }
 
-  // ========== 배팅 관련 ==========
+  // ========== 참가 관련 ==========
 
   /**
-   * 배팅하기
+   * 게임 참가
    */
-  async placeBet(
+  async joinGame(
     guildId: string,
     gameId: bigint,
-    userId: string,
-    team: GameTeam,
-    amount: bigint
-  ): Promise<Result<GameBet, CurrencyError>> {
+    userId: string
+  ): Promise<Result<GameParticipant, CurrencyError>> {
     try {
       // 1. 게임 조회
       const game = await this.gameRepo.findGameById(gameId);
@@ -211,26 +280,13 @@ export class GameService {
         return Result.err({ type: 'GAME_NOT_OPEN' });
       }
 
-      // 3. 이미 배팅했는지 확인
-      const existingBet = await this.gameRepo.findBetByGameAndUser(gameId, userId);
-      if (existingBet) {
-        return Result.err({ type: 'ALREADY_BET' });
+      // 3. 이미 참가했는지 확인
+      const existingParticipant = await this.gameRepo.findParticipantByGameAndUser(gameId, userId);
+      if (existingParticipant) {
+        return Result.err({ type: 'ALREADY_JOINED' });
       }
 
-      // 4. 설정 조회 (배팅 제한)
-      const settings = await this.gameRepo.findSettingsByGuildId(guildId);
-      const minBet = settings?.minBet ?? DEFAULT_MIN_BET;
-      const maxBet = settings?.maxBet ?? DEFAULT_MAX_BET;
-
-      // 5. 배팅 금액 검증
-      if (amount < minBet) {
-        return Result.err({ type: 'BET_AMOUNT_TOO_LOW', minBet });
-      }
-      if (amount > maxBet) {
-        return Result.err({ type: 'BET_AMOUNT_TOO_HIGH', maxBet });
-      }
-
-      // 6. 잔액 확인
+      // 4. 잔액 확인
       const walletResult = await this.topyWalletRepo.findByUser(guildId, userId);
       if (!walletResult.success) {
         return Result.err({
@@ -240,19 +296,19 @@ export class GameService {
       }
 
       const balance = walletResult.data?.balance ?? BigInt(0);
-      if (balance < amount) {
+      if (balance < game.entryFee) {
         return Result.err({
           type: 'INSUFFICIENT_BALANCE',
-          required: amount,
+          required: game.entryFee,
           available: balance,
         });
       }
 
-      // 7. 잔액 차감
+      // 5. 참가비 차감
       const deductResult = await this.topyWalletRepo.updateBalance(
         guildId,
         userId,
-        amount,
+        game.entryFee,
         'subtract'
       );
       if (!deductResult.success) {
@@ -262,32 +318,31 @@ export class GameService {
         });
       }
 
-      // 8. 배팅 생성
-      const bet = await this.gameRepo.createBet({
+      // 6. 참가자 등록
+      const participant = await this.gameRepo.createParticipant({
         gameId,
         guildId,
         userId,
-        team,
-        amount,
+        entryFeePaid: game.entryFee,
       });
 
-      // 9. 게임 풀 업데이트
-      await this.gameRepo.updateGamePool(gameId, team, amount);
+      // 7. 총 상금 풀 업데이트
+      await this.gameRepo.updateTotalPool(gameId, game.entryFee);
 
-      // 10. 거래 기록
+      // 8. 거래 기록
       await this.transactionRepo.save({
         guildId,
         userId,
         currencyType: 'topy',
-        transactionType: 'game_bet',
-        amount: -amount,
+        transactionType: 'game_entry',
+        amount: -game.entryFee,
         balanceAfter: deductResult.data.balance,
         fee: BigInt(0),
         relatedUserId: null,
-        description: `게임 배팅: ${game.title} - ${team === 'A' ? game.teamA : game.teamB}`,
+        description: `내전 참가: ${game.title}`,
       });
 
-      return Result.ok(bet);
+      return Result.ok(participant);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return Result.err({
@@ -298,12 +353,65 @@ export class GameService {
   }
 
   /**
-   * 유저의 배팅 조회
+   * 참가 취소
    */
-  async getUserBet(gameId: bigint, userId: string): Promise<Result<GameBet | null, CurrencyError>> {
+  async leaveGame(
+    guildId: string,
+    gameId: bigint,
+    userId: string
+  ): Promise<Result<void, CurrencyError>> {
     try {
-      const bet = await this.gameRepo.findBetByGameAndUser(gameId, userId);
-      return Result.ok(bet);
+      // 1. 게임 조회
+      const game = await this.gameRepo.findGameById(gameId);
+      if (!game) {
+        return Result.err({ type: 'GAME_NOT_FOUND' });
+      }
+
+      // 2. 게임 상태 확인 (open일 때만 취소 가능)
+      if (game.status !== 'open') {
+        return Result.err({ type: 'GAME_NOT_OPEN' });
+      }
+
+      // 3. 참가자 조회
+      const participant = await this.gameRepo.findParticipantByGameAndUser(gameId, userId);
+      if (!participant) {
+        return Result.err({ type: 'NOT_PARTICIPANT' });
+      }
+
+      // 4. 참가비 환불
+      const addResult = await this.topyWalletRepo.updateBalance(
+        guildId,
+        userId,
+        participant.entryFeePaid,
+        'add'
+      );
+      if (!addResult.success) {
+        return Result.err({
+          type: 'REPOSITORY_ERROR',
+          cause: addResult.error,
+        });
+      }
+
+      // 5. 참가자 삭제
+      await this.gameRepo.deleteParticipant(participant.id);
+
+      // 6. 총 상금 풀 감소
+      await this.gameRepo.updateTotalPool(gameId, -participant.entryFeePaid);
+
+      // 7. 거래 기록
+      await this.transactionRepo.save({
+        guildId,
+        userId,
+        currencyType: 'topy',
+        transactionType: 'game_refund',
+        amount: participant.entryFeePaid,
+        balanceAfter: addResult.data.balance,
+        fee: BigInt(0),
+        relatedUserId: null,
+        description: `내전 참가 취소: ${game.title}`,
+      });
+
+      return Result.ok(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return Result.err({
@@ -314,12 +422,113 @@ export class GameService {
   }
 
   /**
-   * 게임의 모든 배팅 조회
+   * 게임 참가자 조회
    */
-  async getGameBets(gameId: bigint): Promise<Result<GameBet[], CurrencyError>> {
+  async getParticipants(gameId: bigint): Promise<Result<GameParticipant[], CurrencyError>> {
     try {
-      const bets = await this.gameRepo.findBetsByGameId(gameId);
-      return Result.ok(bets);
+      const participants = await this.gameRepo.findParticipantsByGameId(gameId);
+      return Result.ok(participants);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
+   * 유저의 참가 정보 조회
+   */
+  async getParticipant(
+    gameId: bigint,
+    userId: string
+  ): Promise<Result<GameParticipant | null, CurrencyError>> {
+    try {
+      const participant = await this.gameRepo.findParticipantByGameAndUser(gameId, userId);
+      return Result.ok(participant);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  // ========== 팀 배정 ==========
+
+  /**
+   * 팀 배정 (관리자)
+   */
+  async assignTeam(
+    gameId: bigint,
+    teamNumber: number,
+    userIds: string[]
+  ): Promise<Result<void, CurrencyError>> {
+    try {
+      // 1. 게임 조회
+      const game = await this.gameRepo.findGameById(gameId);
+      if (!game) {
+        return Result.err({ type: 'GAME_NOT_FOUND' });
+      }
+
+      // 2. 팀 번호 유효성 확인
+      if (teamNumber < 1 || teamNumber > game.teamCount) {
+        return Result.err({ type: 'INVALID_TEAM_NUMBER' });
+      }
+
+      // 3. 각 유저가 참가자인지 확인하고 팀 배정
+      for (const userId of userIds) {
+        const participant = await this.gameRepo.findParticipantByGameAndUser(gameId, userId);
+        if (!participant) {
+          return Result.err({ type: 'NOT_PARTICIPANT', userId });
+        }
+        await this.gameRepo.assignTeam(participant.id, teamNumber);
+      }
+
+      return Result.ok(undefined);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
+   * 팀 배정 완료 → 경기 시작
+   */
+  async startGame(gameId: bigint): Promise<Result<Game, CurrencyError>> {
+    try {
+      // 1. 게임 조회
+      const game = await this.gameRepo.findGameById(gameId);
+      if (!game) {
+        return Result.err({ type: 'GAME_NOT_FOUND' });
+      }
+
+      // 2. 상태 확인
+      if (game.status !== 'open' && game.status !== 'team_assign') {
+        return Result.err({ type: 'GAME_NOT_OPEN' });
+      }
+
+      // 3. 모든 참가자가 팀 배정되었는지 확인
+      const participants = await this.gameRepo.findParticipantsByGameId(gameId);
+      const unassigned = participants.filter(p => p.teamNumber === null);
+      if (unassigned.length > 0) {
+        return Result.err({ type: 'UNASSIGNED_PARTICIPANTS', count: unassigned.length });
+      }
+
+      // 4. 상태 변경
+      await this.gameRepo.updateGameStatus(gameId, 'in_progress');
+
+      // 5. 참가자 상태 업데이트
+      for (const p of participants) {
+        await this.gameRepo.updateParticipantStatus(p.id, 'assigned');
+      }
+
+      return Result.ok({ ...game, status: 'in_progress' });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return Result.err({
@@ -332,42 +541,13 @@ export class GameService {
   // ========== 게임 종료/정산 ==========
 
   /**
-   * 배팅 마감 (경기 시작)
-   */
-  async closeGame(gameId: bigint): Promise<Result<Game, CurrencyError>> {
-    try {
-      // 1. 게임 조회
-      const game = await this.gameRepo.findGameById(gameId);
-      if (!game) {
-        return Result.err({ type: 'GAME_NOT_FOUND' });
-      }
-
-      // 2. 게임 상태 확인
-      if (game.status !== 'open') {
-        return Result.err({ type: 'GAME_NOT_OPEN' });
-      }
-
-      // 3. 상태 변경
-      await this.gameRepo.updateGameStatus(gameId, 'closed');
-
-      return Result.ok({ ...game, status: 'closed' });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return Result.err({
-        type: 'REPOSITORY_ERROR',
-        cause: { type: 'QUERY_ERROR', message },
-      });
-    }
-  }
-
-  /**
-   * 게임 종료 및 정산
+   * 게임 종료 및 순위별 정산
    */
   async finishGame(
     guildId: string,
     gameId: bigint,
-    winner: GameTeam
-  ): Promise<Result<{ game: Game; winningBets: GameBet[]; losingBets: GameBet[] }, CurrencyError>> {
+    results: { teamNumber: number; rank: number }[]
+  ): Promise<Result<{ game: Game; rewards: RewardResult[] }, CurrencyError>> {
     try {
       // 1. 게임 조회
       const game = await this.gameRepo.findGameById(gameId);
@@ -375,84 +555,86 @@ export class GameService {
         return Result.err({ type: 'GAME_NOT_FOUND' });
       }
 
-      // 2. 게임 상태 확인
+      // 2. 상태 확인
       if (game.status === 'finished' || game.status === 'cancelled') {
         return Result.err({ type: 'GAME_ALREADY_FINISHED' });
       }
 
-      // 3. 설정 조회 (수수료)
+      // 3. 설정 조회 (순위별 보상 비율)
       const settings = await this.gameRepo.findSettingsByGuildId(guildId);
-      const feePercent = settings?.betFeePercent ?? DEFAULT_BET_FEE_PERCENT;
+      const rankPercents = {
+        1: settings?.rank1Percent ?? DEFAULT_RANK1_PERCENT,
+        2: settings?.rank2Percent ?? DEFAULT_RANK2_PERCENT,
+        3: settings?.rank3Percent ?? DEFAULT_RANK3_PERCENT,
+        4: settings?.rank4Percent ?? DEFAULT_RANK4_PERCENT,
+      };
 
       // 4. 게임 종료 처리
-      const finishedGame = await this.gameRepo.finishGame(gameId, winner);
+      const finishedGame = await this.gameRepo.finishGame(gameId);
       if (!finishedGame) {
         return Result.err({ type: 'GAME_NOT_FOUND' });
       }
 
-      // 5. 모든 배팅 조회
-      const allBets = await this.gameRepo.findBetsByGameId(gameId);
+      // 5. 순위별 보상 계산 및 지급
+      const allRewards: RewardResult[] = [];
 
-      // 6. 승자/패자 배팅 분류
-      const winningBets = allBets.filter(bet => bet.team === winner);
-      const losingBets = allBets.filter(bet => bet.team !== winner);
+      for (const result of results) {
+        const { teamNumber, rank } = result;
+        const rewardPercent = rankPercents[rank as 1 | 2 | 3 | 4] || 0;
 
-      // 7. 배당률 계산
-      const { teamAOdds, teamBOdds } = calculateTeamOdds(game);
-      const winningOdds = winner === 'A' ? teamAOdds : teamBOdds;
+        if (rewardPercent === 0) continue;
 
-      // 8. 승자 배팅 정산
-      for (const bet of winningBets) {
-        // 당첨금 = 배팅금 * 배당률
-        const grossPayout = BigInt(Math.floor(Number(bet.amount) * winningOdds));
-        // 수수료 = 당첨금 * 수수료율
-        const fee = grossPayout * BigInt(feePercent) / BigInt(100);
-        // 실수령액 = 당첨금 - 수수료
-        const netPayout = grossPayout - fee;
+        // 팀 보상 계산
+        const teamReward = calculateRankReward(game.totalPool, rewardPercent);
 
-        // 배팅 정산 처리
-        await this.gameRepo.settleBet(bet.id, 'won', grossPayout, fee);
+        // 팀원 조회
+        const teamMembers = await this.gameRepo.findParticipantsByTeam(gameId, teamNumber);
+        if (teamMembers.length === 0) continue;
 
-        // 잔액 지급
-        const addResult = await this.topyWalletRepo.updateBalance(
-          guildId,
-          bet.userId,
-          netPayout,
-          'add'
-        );
+        // 1인당 보상 계산
+        const perPlayerReward = calculatePerPlayerReward(teamReward, teamMembers.length);
 
-        if (addResult.success) {
-          // 거래 기록
-          await this.transactionRepo.save({
+        // 결과 저장
+        await this.gameRepo.saveGameResult(gameId, teamNumber, rank, rewardPercent, teamReward);
+
+        // 각 팀원에게 보상 지급
+        for (const member of teamMembers) {
+          // 보상 지급
+          const addResult = await this.topyWalletRepo.updateBalance(
             guildId,
-            userId: bet.userId,
-            currencyType: 'topy',
-            transactionType: 'game_win',
-            amount: netPayout,
-            balanceAfter: addResult.data.balance,
-            fee,
-            relatedUserId: null,
-            description: `게임 당첨: ${game.title} (배당 ${winningOdds.toFixed(2)}배, 수수료 ${feePercent}%)`,
-          });
+            member.userId,
+            perPlayerReward,
+            'add'
+          );
+
+          if (addResult.success) {
+            // 참가자 정산 처리
+            await this.gameRepo.settleParticipant(member.id, perPlayerReward);
+
+            // 거래 기록
+            await this.transactionRepo.save({
+              guildId,
+              userId: member.userId,
+              currencyType: 'topy',
+              transactionType: 'game_reward',
+              amount: perPlayerReward,
+              balanceAfter: addResult.data.balance,
+              fee: BigInt(0),
+              relatedUserId: null,
+              description: `내전 ${rank}등 보상: ${game.title}`,
+            });
+
+            allRewards.push({
+              participant: { ...member, reward: perPlayerReward, status: 'rewarded' },
+              reward: perPlayerReward,
+            });
+          }
         }
-
-        // bet 객체 업데이트 (반환용)
-        bet.status = 'won';
-        bet.odds = winningOdds;
-        bet.payout = grossPayout;
-        bet.fee = fee;
-      }
-
-      // 9. 패자 배팅 정산
-      for (const bet of losingBets) {
-        await this.gameRepo.settleBet(bet.id, 'lost', BigInt(0), BigInt(0));
-        bet.status = 'lost';
       }
 
       return Result.ok({
         game: finishedGame,
-        winningBets,
-        losingBets,
+        rewards: allRewards,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -469,7 +651,7 @@ export class GameService {
   async cancelGame(
     guildId: string,
     gameId: bigint
-  ): Promise<Result<{ game: Game; refundedBets: GameBet[] }, CurrencyError>> {
+  ): Promise<Result<{ game: Game; refundedCount: number }, CurrencyError>> {
     try {
       // 1. 게임 조회
       const game = await this.gameRepo.findGameById(gameId);
@@ -477,7 +659,7 @@ export class GameService {
         return Result.err({ type: 'GAME_NOT_FOUND' });
       }
 
-      // 2. 게임 상태 확인
+      // 2. 상태 확인
       if (game.status === 'finished' || game.status === 'cancelled') {
         return Result.err({ type: 'GAME_ALREADY_FINISHED' });
       }
@@ -488,44 +670,43 @@ export class GameService {
         return Result.err({ type: 'GAME_NOT_FOUND' });
       }
 
-      // 4. 모든 배팅 조회
-      const allBets = await this.gameRepo.findBetsByGameId(gameId);
+      // 4. 모든 참가자에게 환불
+      const participants = await this.gameRepo.findParticipantsByGameId(gameId);
+      let refundedCount = 0;
 
-      // 5. 모든 배팅 환불
-      for (const bet of allBets) {
-        // 배팅 환불 처리
-        await this.gameRepo.settleBet(bet.id, 'refunded', bet.amount, BigInt(0));
-
-        // 잔액 환불
+      for (const participant of participants) {
+        // 환불
         const addResult = await this.topyWalletRepo.updateBalance(
           guildId,
-          bet.userId,
-          bet.amount,
+          participant.userId,
+          participant.entryFeePaid,
           'add'
         );
 
         if (addResult.success) {
+          // 참가자 상태 업데이트
+          await this.gameRepo.updateParticipantStatus(participant.id, 'refunded');
+
           // 거래 기록
           await this.transactionRepo.save({
             guildId,
-            userId: bet.userId,
+            userId: participant.userId,
             currencyType: 'topy',
             transactionType: 'game_refund',
-            amount: bet.amount,
+            amount: participant.entryFeePaid,
             balanceAfter: addResult.data.balance,
             fee: BigInt(0),
             relatedUserId: null,
-            description: `게임 취소 환불: ${game.title}`,
+            description: `내전 취소 환불: ${game.title}`,
           });
-        }
 
-        bet.status = 'refunded';
-        bet.payout = bet.amount;
+          refundedCount++;
+        }
       }
 
       return Result.ok({
         game: cancelledGame,
-        refundedBets: allBets,
+        refundedCount,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

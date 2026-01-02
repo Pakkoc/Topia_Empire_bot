@@ -46,13 +46,14 @@ export type CurrencyError =
   | { type: 'INSUFFICIENT_QUANTITY'; required: number; available: number }
   // 화폐 관리자 에러
   | { type: 'NOT_CURRENCY_MANAGER' }
-  // 게임센터 관련 에러
+  // 내전 시스템 관련 에러
   | { type: 'GAME_NOT_FOUND' }
   | { type: 'GAME_NOT_OPEN' }
   | { type: 'GAME_ALREADY_FINISHED' }
-  | { type: 'ALREADY_BET' }
-  | { type: 'BET_AMOUNT_TOO_LOW'; minBet: bigint }
-  | { type: 'BET_AMOUNT_TOO_HIGH'; maxBet: bigint }
-  | { type: 'INVALID_TEAM' }
+  | { type: 'ALREADY_JOINED' }
+  | { type: 'NOT_PARTICIPANT'; userId?: string }
+  | { type: 'CATEGORY_NOT_FOUND' }
+  | { type: 'INVALID_TEAM_NUMBER' }
+  | { type: 'UNASSIGNED_PARTICIPANTS'; count: number }
   // 세금 관련 에러
   | { type: 'ALREADY_PROCESSED' };

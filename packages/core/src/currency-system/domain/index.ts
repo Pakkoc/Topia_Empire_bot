@@ -19,10 +19,11 @@ export * from './user-item-v2';
 // 화폐 관리자
 export * from './currency-manager';
 
-// 게임센터
+// 내전 시스템
 export * from './game-settings';
 export * from './game';
-export * from './game-bet';
+export * from './game-participant';
+export * from './game-category';
 
 // 상점 패널
 export * from './shop-panel-settings';

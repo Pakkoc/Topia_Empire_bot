@@ -6,11 +6,14 @@ import type {
   UpdateGameSettingsDto,
   Game,
   CreateGameDto,
-  GameTeam,
   GameStatus,
-  GameBet,
-  CreateGameBetDto,
-  GameBetStatus,
+  GameResult,
+  GameParticipant,
+  CreateParticipantDto,
+  ParticipantStatus,
+  GameCategory,
+  CreateCategoryDto,
+  UpdateCategoryDto,
 } from '@topia/core';
 
 // ========== Row Types ==========
@@ -20,43 +23,61 @@ interface GameSettingsRow extends RowDataPacket {
   channel_id: string | null;
   message_id: string | null;
   manager_role_id: string | null;
-  bet_fee_percent: number;
-  min_bet: string; // bigint as string
-  max_bet: string;
+  entry_fee: string;
+  rank1_percent: number;
+  rank2_percent: number;
+  rank3_percent: number;
+  rank4_percent: number;
   created_at: Date;
   updated_at: Date;
 }
 
 interface GameRow extends RowDataPacket {
-  id: string; // bigint as string
+  id: string;
   guild_id: string;
   channel_id: string;
   message_id: string | null;
+  category_id: number | null;
   title: string;
-  team_a: string;
-  team_b: string;
-  team_a_pool: string;
-  team_b_pool: string;
+  team_count: number;
+  entry_fee: string;
+  total_pool: string;
   status: GameStatus;
-  winner: GameTeam | null;
   created_by: string;
   created_at: Date;
   finished_at: Date | null;
 }
 
-interface GameBetRow extends RowDataPacket {
+interface GameParticipantRow extends RowDataPacket {
   id: string;
   game_id: string;
   guild_id: string;
   user_id: string;
-  team: GameTeam;
-  amount: string;
-  odds: string;
-  payout: string;
-  fee: string;
-  status: GameBetStatus;
+  team_number: number | null;
+  entry_fee_paid: string;
+  reward: string;
+  status: ParticipantStatus;
   created_at: Date;
   settled_at: Date | null;
+}
+
+interface GameCategoryRow extends RowDataPacket {
+  id: number;
+  guild_id: string;
+  name: string;
+  team_count: number;
+  enabled: number;
+  created_at: Date;
+}
+
+interface GameResultRow extends RowDataPacket {
+  id: string;
+  game_id: string;
+  team_number: number;
+  rank: number;
+  reward_percent: number;
+  total_reward: string;
+  created_at: Date;
 }
 
 // ========== Row to Entity ==========
@@ -67,9 +88,11 @@ function settingsRowToEntity(row: GameSettingsRow): GameSettings {
     channelId: row.channel_id,
     messageId: row.message_id,
     managerRoleId: row.manager_role_id,
-    betFeePercent: row.bet_fee_percent,
-    minBet: BigInt(row.min_bet),
-    maxBet: BigInt(row.max_bet),
+    entryFee: BigInt(row.entry_fee),
+    rank1Percent: row.rank1_percent,
+    rank2Percent: row.rank2_percent,
+    rank3Percent: row.rank3_percent,
+    rank4Percent: row.rank4_percent,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -81,33 +104,53 @@ function gameRowToEntity(row: GameRow): Game {
     guildId: row.guild_id,
     channelId: row.channel_id,
     messageId: row.message_id,
+    categoryId: row.category_id,
     title: row.title,
-    teamA: row.team_a,
-    teamB: row.team_b,
-    teamAPool: BigInt(row.team_a_pool),
-    teamBPool: BigInt(row.team_b_pool),
+    teamCount: row.team_count,
+    entryFee: BigInt(row.entry_fee),
+    totalPool: BigInt(row.total_pool),
     status: row.status,
-    winner: row.winner,
     createdBy: row.created_by,
     createdAt: row.created_at,
     finishedAt: row.finished_at,
   };
 }
 
-function betRowToEntity(row: GameBetRow): GameBet {
+function participantRowToEntity(row: GameParticipantRow): GameParticipant {
   return {
     id: BigInt(row.id),
     gameId: BigInt(row.game_id),
     guildId: row.guild_id,
     userId: row.user_id,
-    team: row.team,
-    amount: BigInt(row.amount),
-    odds: parseFloat(row.odds),
-    payout: BigInt(row.payout),
-    fee: BigInt(row.fee),
+    teamNumber: row.team_number,
+    entryFeePaid: BigInt(row.entry_fee_paid),
+    reward: BigInt(row.reward),
     status: row.status,
     createdAt: row.created_at,
     settledAt: row.settled_at,
+  };
+}
+
+function categoryRowToEntity(row: GameCategoryRow): GameCategory {
+  return {
+    id: row.id,
+    guildId: row.guild_id,
+    name: row.name,
+    teamCount: row.team_count,
+    enabled: row.enabled === 1,
+    createdAt: row.created_at,
+  };
+}
+
+function resultRowToEntity(row: GameResultRow): GameResult {
+  return {
+    id: BigInt(row.id),
+    gameId: BigInt(row.game_id),
+    teamNumber: row.team_number,
+    rank: row.rank,
+    rewardPercent: row.reward_percent,
+    totalReward: BigInt(row.total_reward),
+    createdAt: row.created_at,
   };
 }
 
@@ -116,7 +159,7 @@ function betRowToEntity(row: GameBetRow): GameBet {
 export class GameRepository implements GameRepositoryPort {
   constructor(private readonly pool: Pool) {}
 
-  // ========== 게임센터 설정 ==========
+  // ========== 내전 설정 ==========
 
   async findSettingsByGuildId(guildId: string): Promise<GameSettings | null> {
     const [rows] = await this.pool.query<GameSettingsRow[]>(
@@ -133,24 +176,28 @@ export class GameRepository implements GameRepositoryPort {
 
   async upsertSettings(dto: CreateGameSettingsDto): Promise<GameSettings> {
     await this.pool.query<ResultSetHeader>(
-      `INSERT INTO game_settings (guild_id, channel_id, message_id, manager_role_id, bet_fee_percent, min_bet, max_bet)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO game_settings (guild_id, channel_id, message_id, manager_role_id, entry_fee, rank1_percent, rank2_percent, rank3_percent, rank4_percent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          channel_id = COALESCE(VALUES(channel_id), channel_id),
          message_id = COALESCE(VALUES(message_id), message_id),
          manager_role_id = COALESCE(VALUES(manager_role_id), manager_role_id),
-         bet_fee_percent = COALESCE(VALUES(bet_fee_percent), bet_fee_percent),
-         min_bet = COALESCE(VALUES(min_bet), min_bet),
-         max_bet = COALESCE(VALUES(max_bet), max_bet),
+         entry_fee = COALESCE(VALUES(entry_fee), entry_fee),
+         rank1_percent = COALESCE(VALUES(rank1_percent), rank1_percent),
+         rank2_percent = COALESCE(VALUES(rank2_percent), rank2_percent),
+         rank3_percent = COALESCE(VALUES(rank3_percent), rank3_percent),
+         rank4_percent = COALESCE(VALUES(rank4_percent), rank4_percent),
          updated_at = CURRENT_TIMESTAMP`,
       [
         dto.guildId,
         dto.channelId ?? null,
         dto.messageId ?? null,
         dto.managerRoleId ?? null,
-        dto.betFeePercent ?? 20,
-        dto.minBet?.toString() ?? '100',
-        dto.maxBet?.toString() ?? '10000',
+        dto.entryFee?.toString() ?? '100',
+        dto.rank1Percent ?? 50,
+        dto.rank2Percent ?? 30,
+        dto.rank3Percent ?? 15,
+        dto.rank4Percent ?? 5,
       ]
     );
 
@@ -177,17 +224,25 @@ export class GameRepository implements GameRepositoryPort {
       updates.push('manager_role_id = ?');
       values.push(dto.managerRoleId);
     }
-    if (dto.betFeePercent !== undefined) {
-      updates.push('bet_fee_percent = ?');
-      values.push(dto.betFeePercent);
+    if (dto.entryFee !== undefined) {
+      updates.push('entry_fee = ?');
+      values.push(dto.entryFee.toString());
     }
-    if (dto.minBet !== undefined) {
-      updates.push('min_bet = ?');
-      values.push(dto.minBet.toString());
+    if (dto.rank1Percent !== undefined) {
+      updates.push('rank1_percent = ?');
+      values.push(dto.rank1Percent);
     }
-    if (dto.maxBet !== undefined) {
-      updates.push('max_bet = ?');
-      values.push(dto.maxBet.toString());
+    if (dto.rank2Percent !== undefined) {
+      updates.push('rank2_percent = ?');
+      values.push(dto.rank2Percent);
+    }
+    if (dto.rank3Percent !== undefined) {
+      updates.push('rank3_percent = ?');
+      values.push(dto.rank3Percent);
+    }
+    if (dto.rank4Percent !== undefined) {
+      updates.push('rank4_percent = ?');
+      values.push(dto.rank4Percent);
     }
 
     if (updates.length === 0) {
@@ -224,13 +279,102 @@ export class GameRepository implements GameRepositoryPort {
     }
   }
 
+  // ========== 카테고리 ==========
+
+  async createCategory(dto: CreateCategoryDto): Promise<GameCategory> {
+    const [result] = await this.pool.query<ResultSetHeader>(
+      `INSERT INTO game_categories (guild_id, name, team_count) VALUES (?, ?, ?)`,
+      [dto.guildId, dto.name, dto.teamCount]
+    );
+
+    const category = await this.findCategoryById(result.insertId);
+    return category!;
+  }
+
+  async findCategoryById(categoryId: number): Promise<GameCategory | null> {
+    const [rows] = await this.pool.query<GameCategoryRow[]>(
+      `SELECT * FROM game_categories WHERE id = ?`,
+      [categoryId]
+    );
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    return categoryRowToEntity(rows[0]!);
+  }
+
+  async findCategoriesByGuildId(guildId: string): Promise<GameCategory[]> {
+    const [rows] = await this.pool.query<GameCategoryRow[]>(
+      `SELECT * FROM game_categories WHERE guild_id = ? ORDER BY name ASC`,
+      [guildId]
+    );
+
+    return rows.map(categoryRowToEntity);
+  }
+
+  async findEnabledCategoriesByGuildId(guildId: string): Promise<GameCategory[]> {
+    const [rows] = await this.pool.query<GameCategoryRow[]>(
+      `SELECT * FROM game_categories WHERE guild_id = ? AND enabled = 1 ORDER BY name ASC`,
+      [guildId]
+    );
+
+    return rows.map(categoryRowToEntity);
+  }
+
+  async updateCategory(categoryId: number, dto: UpdateCategoryDto): Promise<GameCategory | null> {
+    const updates: string[] = [];
+    const values: (string | number)[] = [];
+
+    if (dto.name !== undefined) {
+      updates.push('name = ?');
+      values.push(dto.name);
+    }
+    if (dto.teamCount !== undefined) {
+      updates.push('team_count = ?');
+      values.push(dto.teamCount);
+    }
+    if (dto.enabled !== undefined) {
+      updates.push('enabled = ?');
+      values.push(dto.enabled ? 1 : 0);
+    }
+
+    if (updates.length === 0) {
+      return this.findCategoryById(categoryId);
+    }
+
+    values.push(categoryId);
+
+    await this.pool.query<ResultSetHeader>(
+      `UPDATE game_categories SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+
+    return this.findCategoryById(categoryId);
+  }
+
+  async deleteCategory(categoryId: number): Promise<void> {
+    await this.pool.query<ResultSetHeader>(
+      `DELETE FROM game_categories WHERE id = ?`,
+      [categoryId]
+    );
+  }
+
   // ========== 게임 ==========
 
   async createGame(dto: CreateGameDto): Promise<Game> {
     const [result] = await this.pool.query<ResultSetHeader>(
-      `INSERT INTO games (guild_id, channel_id, title, team_a, team_b, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [dto.guildId, dto.channelId, dto.title, dto.teamA, dto.teamB, dto.createdBy]
+      `INSERT INTO games (guild_id, channel_id, category_id, title, team_count, entry_fee, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        dto.guildId,
+        dto.channelId,
+        dto.categoryId ?? null,
+        dto.title,
+        dto.teamCount,
+        dto.entryFee.toString(),
+        dto.createdBy,
+      ]
     );
 
     const game = await this.findGameById(BigInt(result.insertId));
@@ -265,7 +409,7 @@ export class GameRepository implements GameRepositoryPort {
 
   async findOpenGamesByGuildId(guildId: string): Promise<Game[]> {
     const [rows] = await this.pool.query<GameRow[]>(
-      `SELECT * FROM games WHERE guild_id = ? AND status = 'open' ORDER BY created_at DESC`,
+      `SELECT * FROM games WHERE guild_id = ? AND status IN ('open', 'team_assign', 'in_progress') ORDER BY created_at DESC`,
       [guildId]
     );
 
@@ -279,10 +423,9 @@ export class GameRepository implements GameRepositoryPort {
     );
   }
 
-  async updateGamePool(gameId: bigint, team: GameTeam, amount: bigint): Promise<void> {
-    const column = team === 'A' ? 'team_a_pool' : 'team_b_pool';
+  async updateTotalPool(gameId: bigint, amount: bigint): Promise<void> {
     await this.pool.query<ResultSetHeader>(
-      `UPDATE games SET ${column} = ${column} + ? WHERE id = ?`,
+      `UPDATE games SET total_pool = total_pool + ? WHERE id = ?`,
       [amount.toString(), gameId.toString()]
     );
   }
@@ -294,10 +437,10 @@ export class GameRepository implements GameRepositoryPort {
     );
   }
 
-  async finishGame(gameId: bigint, winner: GameTeam): Promise<Game | null> {
+  async finishGame(gameId: bigint): Promise<Game | null> {
     await this.pool.query<ResultSetHeader>(
-      `UPDATE games SET status = 'finished', winner = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [winner, gameId.toString()]
+      `UPDATE games SET status = 'finished', finished_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [gameId.toString()]
     );
 
     return this.findGameById(gameId);
@@ -312,35 +455,35 @@ export class GameRepository implements GameRepositoryPort {
     return this.findGameById(gameId);
   }
 
-  // ========== 배팅 ==========
+  // ========== 참가자 ==========
 
-  async createBet(dto: CreateGameBetDto): Promise<GameBet> {
+  async createParticipant(dto: CreateParticipantDto): Promise<GameParticipant> {
     const [result] = await this.pool.query<ResultSetHeader>(
-      `INSERT INTO game_bets (game_id, guild_id, user_id, team, amount)
-       VALUES (?, ?, ?, ?, ?)`,
-      [dto.gameId.toString(), dto.guildId, dto.userId, dto.team, dto.amount.toString()]
+      `INSERT INTO game_participants (game_id, guild_id, user_id, entry_fee_paid)
+       VALUES (?, ?, ?, ?)`,
+      [dto.gameId.toString(), dto.guildId, dto.userId, dto.entryFeePaid.toString()]
     );
 
-    const bet = await this.findBetById(BigInt(result.insertId));
-    return bet!;
+    const participant = await this.findParticipantById(BigInt(result.insertId));
+    return participant!;
   }
 
-  async findBetById(betId: bigint): Promise<GameBet | null> {
-    const [rows] = await this.pool.query<GameBetRow[]>(
-      `SELECT * FROM game_bets WHERE id = ?`,
-      [betId.toString()]
+  async findParticipantById(participantId: bigint): Promise<GameParticipant | null> {
+    const [rows] = await this.pool.query<GameParticipantRow[]>(
+      `SELECT * FROM game_participants WHERE id = ?`,
+      [participantId.toString()]
     );
 
     if (rows.length === 0) {
       return null;
     }
 
-    return betRowToEntity(rows[0]!);
+    return participantRowToEntity(rows[0]!);
   }
 
-  async findBetByGameAndUser(gameId: bigint, userId: string): Promise<GameBet | null> {
-    const [rows] = await this.pool.query<GameBetRow[]>(
-      `SELECT * FROM game_bets WHERE game_id = ? AND user_id = ?`,
+  async findParticipantByGameAndUser(gameId: bigint, userId: string): Promise<GameParticipant | null> {
+    const [rows] = await this.pool.query<GameParticipantRow[]>(
+      `SELECT * FROM game_participants WHERE game_id = ? AND user_id = ?`,
       [gameId.toString(), userId]
     );
 
@@ -348,56 +491,94 @@ export class GameRepository implements GameRepositoryPort {
       return null;
     }
 
-    return betRowToEntity(rows[0]!);
+    return participantRowToEntity(rows[0]!);
   }
 
-  async findBetsByGameId(gameId: bigint): Promise<GameBet[]> {
-    const [rows] = await this.pool.query<GameBetRow[]>(
-      `SELECT * FROM game_bets WHERE game_id = ? ORDER BY created_at ASC`,
+  async findParticipantsByGameId(gameId: bigint): Promise<GameParticipant[]> {
+    const [rows] = await this.pool.query<GameParticipantRow[]>(
+      `SELECT * FROM game_participants WHERE game_id = ? ORDER BY created_at ASC`,
       [gameId.toString()]
     );
 
-    return rows.map(betRowToEntity);
+    return rows.map(participantRowToEntity);
   }
 
-  async findBetsByGameAndTeam(gameId: bigint, team: GameTeam): Promise<GameBet[]> {
-    const [rows] = await this.pool.query<GameBetRow[]>(
-      `SELECT * FROM game_bets WHERE game_id = ? AND team = ? ORDER BY created_at ASC`,
-      [gameId.toString(), team]
+  async findParticipantsByTeam(gameId: bigint, teamNumber: number): Promise<GameParticipant[]> {
+    const [rows] = await this.pool.query<GameParticipantRow[]>(
+      `SELECT * FROM game_participants WHERE game_id = ? AND team_number = ? ORDER BY created_at ASC`,
+      [gameId.toString(), teamNumber]
     );
 
-    return rows.map(betRowToEntity);
+    return rows.map(participantRowToEntity);
   }
 
-  async updateBetStatus(betId: bigint, status: GameBetStatus): Promise<void> {
+  async assignTeam(participantId: bigint, teamNumber: number): Promise<void> {
     await this.pool.query<ResultSetHeader>(
-      `UPDATE game_bets SET status = ?, settled_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [status, betId.toString()]
+      `UPDATE game_participants SET team_number = ?, status = 'assigned' WHERE id = ?`,
+      [teamNumber, participantId.toString()]
     );
   }
 
-  async settleBet(
-    betId: bigint,
-    status: GameBetStatus,
-    payout: bigint,
-    fee: bigint
-  ): Promise<void> {
+  async assignTeamBulk(participantIds: bigint[], teamNumber: number): Promise<void> {
+    if (participantIds.length === 0) return;
+
+    const ids = participantIds.map(id => id.toString());
     await this.pool.query<ResultSetHeader>(
-      `UPDATE game_bets SET status = ?, payout = ?, fee = ?, settled_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [status, payout.toString(), fee.toString(), betId.toString()]
+      `UPDATE game_participants SET team_number = ?, status = 'assigned' WHERE id IN (?)`,
+      [teamNumber, ids]
     );
   }
 
-  async settleBetsByGame(
+  async updateParticipantStatus(participantId: bigint, status: ParticipantStatus): Promise<void> {
+    await this.pool.query<ResultSetHeader>(
+      `UPDATE game_participants SET status = ? WHERE id = ?`,
+      [status, participantId.toString()]
+    );
+  }
+
+  async settleParticipant(participantId: bigint, reward: bigint): Promise<void> {
+    await this.pool.query<ResultSetHeader>(
+      `UPDATE game_participants SET reward = ?, status = 'rewarded', settled_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [reward.toString(), participantId.toString()]
+    );
+  }
+
+  async deleteParticipant(participantId: bigint): Promise<void> {
+    await this.pool.query<ResultSetHeader>(
+      `DELETE FROM game_participants WHERE id = ?`,
+      [participantId.toString()]
+    );
+  }
+
+  // ========== 결과 ==========
+
+  async saveGameResult(
     gameId: bigint,
-    winnerTeam: GameTeam,
-    feePercent: number
-  ): Promise<{ winningBets: GameBet[]; losingBets: GameBet[] }> {
-    // 이 메서드는 GameService에서 개별 처리하므로 여기서는 간단히 조회만
-    const allBets = await this.findBetsByGameId(gameId);
-    return {
-      winningBets: allBets.filter(b => b.team === winnerTeam),
-      losingBets: allBets.filter(b => b.team !== winnerTeam),
-    };
+    teamNumber: number,
+    rank: number,
+    rewardPercent: number,
+    totalReward: bigint
+  ): Promise<GameResult> {
+    const [result] = await this.pool.query<ResultSetHeader>(
+      `INSERT INTO game_results (game_id, team_number, rank, reward_percent, total_reward)
+       VALUES (?, ?, ?, ?, ?)`,
+      [gameId.toString(), teamNumber, rank, rewardPercent, totalReward.toString()]
+    );
+
+    const [rows] = await this.pool.query<GameResultRow[]>(
+      `SELECT * FROM game_results WHERE id = ?`,
+      [result.insertId]
+    );
+
+    return resultRowToEntity(rows[0]!);
+  }
+
+  async findGameResults(gameId: bigint): Promise<GameResult[]> {
+    const [rows] = await this.pool.query<GameResultRow[]>(
+      `SELECT * FROM game_results WHERE game_id = ? ORDER BY rank ASC`,
+      [gameId.toString()]
+    );
+
+    return rows.map(resultRowToEntity);
   }
 }

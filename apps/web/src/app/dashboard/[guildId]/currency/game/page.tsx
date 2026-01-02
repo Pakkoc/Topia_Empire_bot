@@ -4,8 +4,12 @@ import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   useGameSettings,
+  useGameCategories,
   useCreateGamePanel,
   useUpdateGameSettings,
+  useCreateGameCategory,
+  useUpdateGameCategory,
+  useDeleteGameCategory,
   useTextChannels,
   useCurrencySettings,
   useRoles,
@@ -19,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Icon } from "@iconify/react";
 
@@ -32,16 +37,26 @@ export default function GameCenterPage() {
 
   // 게임 설정
   const [managerRoleId, setManagerRoleId] = useState<string | null>(null);
-  const [betFeePercent, setBetFeePercent] = useState("20");
-  const [minBet, setMinBet] = useState("100");
-  const [maxBet, setMaxBet] = useState("10000");
+  const [entryFee, setEntryFee] = useState("100");
+  const [rank1Percent, setRank1Percent] = useState("50");
+  const [rank2Percent, setRank2Percent] = useState("30");
+  const [rank3Percent, setRank3Percent] = useState("15");
+  const [rank4Percent, setRank4Percent] = useState("5");
+
+  // 새 카테고리
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryTeamCount, setNewCategoryTeamCount] = useState("2");
 
   const { data: currencySettings } = useCurrencySettings(guildId);
   const { data: settings, isLoading } = useGameSettings(guildId);
+  const { data: categories } = useGameCategories(guildId);
   const { data: channels } = useTextChannels(guildId);
   const { data: roles } = useRoles(guildId);
   const createPanelMutation = useCreateGamePanel(guildId);
   const updateSettingsMutation = useUpdateGameSettings(guildId);
+  const createCategoryMutation = useCreateGameCategory(guildId);
+  const updateCategoryMutation = useUpdateGameCategory(guildId);
+  const deleteCategoryMutation = useDeleteGameCategory(guildId);
 
   const topyName = currencySettings?.topyName ?? "토피";
 
@@ -52,9 +67,11 @@ export default function GameCenterPage() {
         setSelectedChannelId(settings.channelId);
       }
       setManagerRoleId(settings.managerRoleId);
-      setBetFeePercent(String(settings.betFeePercent));
-      setMinBet(settings.minBet);
-      setMaxBet(settings.maxBet);
+      setEntryFee(settings.entryFee);
+      setRank1Percent(String(settings.rank1Percent));
+      setRank2Percent(String(settings.rank2Percent));
+      setRank3Percent(String(settings.rank3Percent));
+      setRank4Percent(String(settings.rank4Percent));
     }
   }, [settings]);
 
@@ -66,23 +83,75 @@ export default function GameCenterPage() {
 
     try {
       await createPanelMutation.mutateAsync(selectedChannelId);
-      toast({ title: "게임센터 패널이 설치되었습니다!" });
+      toast({ title: "내전 패널이 설치되었습니다!" });
     } catch {
       toast({ title: "패널 설치에 실패했습니다.", variant: "destructive" });
     }
   };
 
   const handleSaveSettings = async () => {
+    const r1 = parseInt(rank1Percent) || 0;
+    const r2 = parseInt(rank2Percent) || 0;
+    const r3 = parseInt(rank3Percent) || 0;
+    const r4 = parseInt(rank4Percent) || 0;
+    const total = r1 + r2 + r3 + r4;
+
+    if (total !== 100) {
+      toast({
+        title: `순위 비율의 합계는 100%여야 합니다. 현재: ${total}%`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await updateSettingsMutation.mutateAsync({
         managerRoleId,
-        betFeePercent: parseFloat(betFeePercent) || 20,
-        minBet,
-        maxBet,
+        entryFee,
+        rank1Percent: r1,
+        rank2Percent: r2,
+        rank3Percent: r3,
+        rank4Percent: r4,
       });
       toast({ title: "설정이 저장되었습니다!" });
     } catch {
       toast({ title: "설정 저장에 실패했습니다.", variant: "destructive" });
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) {
+      toast({ title: "카테고리 이름을 입력해주세요.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await createCategoryMutation.mutateAsync({
+        name: newCategoryName.trim(),
+        teamCount: parseInt(newCategoryTeamCount) || 2,
+      });
+      setNewCategoryName("");
+      setNewCategoryTeamCount("2");
+      toast({ title: "카테고리가 생성되었습니다!" });
+    } catch {
+      toast({ title: "카테고리 생성에 실패했습니다.", variant: "destructive" });
+    }
+  };
+
+  const handleToggleCategory = async (categoryId: number, enabled: boolean) => {
+    try {
+      await updateCategoryMutation.mutateAsync({ id: categoryId, enabled });
+    } catch {
+      toast({ title: "카테고리 변경에 실패했습니다.", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: number) => {
+    try {
+      await deleteCategoryMutation.mutateAsync(categoryId);
+      toast({ title: "카테고리가 삭제되었습니다." });
+    } catch {
+      toast({ title: "카테고리 삭제에 실패했습니다.", variant: "destructive" });
     }
   };
 
@@ -101,26 +170,26 @@ export default function GameCenterPage() {
     <div className="space-y-8">
       {/* Page Header */}
       <div className="animate-fade-up">
-        <h1 className="text-2xl md:text-3xl font-bold text-white">게임센터</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-white">내전 시스템</h1>
         <p className="text-white/50 mt-1">
-          내전 배팅 게임을 생성하고 관리합니다
+          참가비 기반 내전 게임을 생성하고 관리합니다
         </p>
       </div>
 
-      {/* 게임센터 안내 */}
+      {/* 내전 시스템 안내 */}
       <div className="bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-2xl border border-violet-500/20 p-6">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center flex-shrink-0">
             <Icon icon="solar:gamepad-bold" className="h-5 w-5 text-violet-400" />
           </div>
           <div className="space-y-2">
-            <h3 className="font-semibold text-white">게임센터 안내</h3>
+            <h3 className="font-semibold text-white">내전 시스템 안내</h3>
             <ul className="text-sm text-white/60 space-y-1">
-              <li>• <strong className="text-white/80">관리자</strong>가 패널에서 배팅 게임을 생성합니다</li>
-              <li>• 유저들이 <strong className="text-white/80">A팀 / B팀</strong>에 {topyName}를 걸고 참여합니다</li>
-              <li>• 배당률은 배팅 풀에 따라 <strong className="text-white/80">실시간</strong>으로 변동됩니다</li>
-              <li>• 게임 종료 후 관리자가 <strong className="text-white/80">승자를 선택</strong>하면 자동 정산됩니다</li>
-              <li>• 정산된 메시지는 <strong className="text-white/80">10분 후 자동 삭제</strong>됩니다</li>
+              <li>• <strong className="text-white/80">관리자</strong>가 패널에서 내전을 생성합니다</li>
+              <li>• 유저들이 <strong className="text-white/80">참가비</strong>를 내고 참가합니다</li>
+              <li>• 관리자가 참가자들을 <strong className="text-white/80">팀별로 배정</strong>합니다</li>
+              <li>• 경기 종료 후 관리자가 <strong className="text-white/80">순위를 입력</strong>하면 자동 보상</li>
+              <li>• 순위별로 상금풀의 일정 비율을 <strong className="text-white/80">팀원끼리 균등 분배</strong></li>
             </ul>
           </div>
         </div>
@@ -133,8 +202,8 @@ export default function GameCenterPage() {
             <Icon icon="solar:widget-add-bold" className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-white">게임센터 패널 설치</h3>
-            <p className="text-white/50 text-sm">디스코드 채널에 게임센터 패널을 설치합니다</p>
+            <h3 className="font-semibold text-white">내전 패널 설치</h3>
+            <p className="text-white/50 text-sm">디스코드 채널에 내전 패널을 설치합니다</p>
           </div>
         </div>
 
@@ -187,7 +256,7 @@ export default function GameCenterPage() {
         <p className="text-white/40 text-xs mt-2">
           {settings?.channelId && settings?.messageId
             ? "패널이 설치되어 있습니다. 다른 채널을 선택하면 기존 패널은 삭제됩니다."
-            : "선택한 채널에 게임센터 패널이 생성됩니다. 관리자가 버튼을 눌러 배팅을 생성할 수 있습니다."}
+            : "선택한 채널에 내전 패널이 생성됩니다. 관리자가 버튼을 눌러 내전을 생성할 수 있습니다."}
         </p>
       </div>
 
@@ -199,7 +268,7 @@ export default function GameCenterPage() {
           </div>
           <div>
             <h3 className="font-semibold text-white">관리 역할 설정</h3>
-            <p className="text-white/50 text-sm">배팅 생성/결과 입력/취소 권한을 가진 역할을 지정합니다</p>
+            <p className="text-white/50 text-sm">내전 생성/팀배정/결과 입력 권한을 가진 역할을 지정합니다</p>
           </div>
         </div>
 
@@ -231,67 +300,111 @@ export default function GameCenterPage() {
         </div>
         <p className="text-white/40 text-xs mt-2">
           {managerRoleId
-            ? "선택한 역할 또는 서버 관리 권한을 가진 유저가 게임을 관리할 수 있습니다."
-            : "서버 관리 권한을 가진 유저만 게임을 관리할 수 있습니다."}
+            ? "선택한 역할 또는 서버 관리 권한을 가진 유저가 내전을 관리할 수 있습니다."
+            : "서버 관리 권한을 가진 유저만 내전을 관리할 수 있습니다."}
         </p>
       </div>
 
-      {/* 게임 설정 */}
+      {/* 참가비 및 보상 설정 */}
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-            <Icon icon="solar:settings-bold" className="h-5 w-5 text-white" />
+            <Icon icon="solar:wallet-money-bold" className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-white">게임 설정</h3>
-            <p className="text-white/50 text-sm">배팅 수수료 및 제한 금액을 설정합니다</p>
+            <h3 className="font-semibold text-white">참가비 및 보상 설정</h3>
+            <p className="text-white/50 text-sm">참가비와 순위별 보상 비율을 설정합니다</p>
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3 mb-4">
+        <div className="space-y-6">
+          {/* 참가비 */}
           <div>
-            <label className="text-white/70 text-sm block mb-2">수수료 (%)</label>
+            <label className="text-white/70 text-sm block mb-2">참가비 ({topyName})</label>
             <Input
               type="number"
-              step="1"
               min="0"
-              max="100"
-              value={betFeePercent}
-              onChange={(e) => setBetFeePercent(e.target.value)}
-              className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"
+              value={entryFee}
+              onChange={(e) => setEntryFee(e.target.value)}
+              className="bg-white/5 border-white/10 text-white focus:border-amber-500/50 w-full sm:w-48"
             />
-            <p className="text-xs text-white/40 mt-1">당첨금에서 차감되는 수수료</p>
+            <p className="text-xs text-white/40 mt-1">참가 시 차감되는 금액 (0이면 무료)</p>
           </div>
+
+          {/* 순위별 보상 비율 */}
           <div>
-            <label className="text-white/70 text-sm block mb-2">최소 배팅 ({topyName})</label>
-            <Input
-              type="number"
-              min="1"
-              value={minBet}
-              onChange={(e) => setMinBet(e.target.value)}
-              className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"
-            />
-            <p className="text-xs text-white/40 mt-1">한 번에 배팅 가능한 최소 금액</p>
-          </div>
-          <div>
-            <label className="text-white/70 text-sm block mb-2">최대 배팅 ({topyName})</label>
-            <Input
-              type="number"
-              min="1"
-              value={maxBet}
-              onChange={(e) => setMaxBet(e.target.value)}
-              className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"
-            />
-            <p className="text-xs text-white/40 mt-1">한 번에 배팅 가능한 최대 금액</p>
+            <label className="text-white/70 text-sm block mb-2">순위별 보상 비율 (%)</label>
+            <div className="grid gap-4 sm:grid-cols-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">🥇</span>
+                  <span className="text-white/70 text-sm">1등</span>
+                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={rank1Percent}
+                  onChange={(e) => setRank1Percent(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">🥈</span>
+                  <span className="text-white/70 text-sm">2등</span>
+                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={rank2Percent}
+                  onChange={(e) => setRank2Percent(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">🥉</span>
+                  <span className="text-white/70 text-sm">3등</span>
+                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={rank3Percent}
+                  onChange={(e) => setRank3Percent(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">4️⃣</span>
+                  <span className="text-white/70 text-sm">4등</span>
+                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={rank4Percent}
+                  onChange={(e) => setRank4Percent(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-white/40 mt-2">
+              합계: {(parseInt(rank1Percent) || 0) + (parseInt(rank2Percent) || 0) + (parseInt(rank3Percent) || 0) + (parseInt(rank4Percent) || 0)}% (100%가 되어야 합니다)
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-6">
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex-1 mr-4">
             <div className="flex items-start gap-2">
               <Icon icon="solar:info-circle-linear" className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-amber-300/70">
-                수수료는 당첨 시에만 적용됩니다. 예: 100 {topyName} 당첨 시 20% 수수료 → 80 {topyName} 지급
+                예: 참가자 10명, 참가비 100 {topyName} → 상금풀 1000 {topyName}<br />
+                1등팀 (2명): 500 {topyName} ÷ 2 = 250 {topyName}/인
               </p>
             </div>
           </div>
@@ -305,52 +418,91 @@ export default function GameCenterPage() {
         </div>
       </div>
 
-      {/* 배당률 설명 */}
+      {/* 카테고리 관리 */}
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
-            <Icon icon="solar:calculator-bold" className="h-5 w-5 text-white" />
+            <Icon icon="solar:tag-bold" className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-white">배당률 계산 방식</h3>
-            <p className="text-white/50 text-sm">토토 방식의 동적 배당률</p>
+            <h3 className="font-semibold text-white">게임 카테고리</h3>
+            <p className="text-white/50 text-sm">내전 생성 시 선택할 수 있는 카테고리를 관리합니다</p>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-white/5 rounded-xl p-4">
-            <h4 className="text-white font-medium mb-2">배당률 공식</h4>
-            <code className="text-emerald-400 text-sm bg-black/30 px-3 py-1 rounded">
-              배당률 = 전체 풀 ÷ 해당 팀 풀
-            </code>
-          </div>
+        {/* 새 카테고리 추가 */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <Input
+            placeholder="카테고리 이름 (예: 발로란트)"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            className="bg-white/5 border-white/10 text-white focus:border-emerald-500/50 sm:w-48"
+          />
+          <Select
+            value={newCategoryTeamCount}
+            onValueChange={setNewCategoryTeamCount}
+          >
+            <SelectTrigger className="bg-white/5 border-white/10 text-white sm:w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2">2팀</SelectItem>
+              <SelectItem value="3">3팀</SelectItem>
+              <SelectItem value="4">4팀</SelectItem>
+              <SelectItem value="5">5팀</SelectItem>
+              <SelectItem value="6">6팀</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={handleCreateCategory}
+            disabled={!newCategoryName.trim() || createCategoryMutation.isPending}
+            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+          >
+            {createCategoryMutation.isPending ? "추가 중..." : "카테고리 추가"}
+          </Button>
+        </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-xl p-4">
-              <h5 className="text-blue-400 font-medium mb-2">예시: A팀 배당률</h5>
-              <div className="text-sm text-white/60 space-y-1">
-                <p>• 전체 풀: 10,000 {topyName}</p>
-                <p>• A팀 풀: 2,000 {topyName}</p>
-                <p>• B팀 풀: 8,000 {topyName}</p>
-                <p className="text-blue-300 font-medium pt-2">→ A팀 배당률: 5.0배</p>
+        {/* 카테고리 목록 */}
+        <div className="space-y-2">
+          {categories && categories.length > 0 ? (
+            categories.map((category) => (
+              <div
+                key={category.id}
+                className="flex items-center justify-between bg-white/5 rounded-xl p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                    <Icon icon="solar:gamepad-linear" className="h-4 w-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">{category.name}</p>
+                    <p className="text-white/40 text-xs">{category.teamCount}팀</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={category.enabled}
+                    onCheckedChange={(checked) => handleToggleCategory(category.id, checked)}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteCategory(category.id)}
+                    disabled={deleteCategoryMutation.isPending}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  >
+                    <Icon icon="solar:trash-bin-trash-bold" className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-white/40">
+              <Icon icon="solar:box-linear" className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>등록된 카테고리가 없습니다</p>
+              <p className="text-xs mt-1">카테고리를 추가하면 내전 생성 시 선택할 수 있습니다</p>
             </div>
-
-            <div className="bg-gradient-to-br from-rose-500/10 to-pink-500/10 border border-rose-500/20 rounded-xl p-4">
-              <h5 className="text-rose-400 font-medium mb-2">예시: B팀 배당률</h5>
-              <div className="text-sm text-white/60 space-y-1">
-                <p>• 전체 풀: 10,000 {topyName}</p>
-                <p>• A팀 풀: 2,000 {topyName}</p>
-                <p>• B팀 풀: 8,000 {topyName}</p>
-                <p className="text-rose-300 font-medium pt-2">→ B팀 배당률: 1.25배</p>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-white/40 text-xs">
-            * 배당률이 높을수록 해당 팀에 배팅한 사람이 적다는 의미입니다.
-            당첨 시 배팅금 × 배당률 - 수수료만큼 지급됩니다.
-          </p>
+          )}
         </div>
       </div>
     </div>

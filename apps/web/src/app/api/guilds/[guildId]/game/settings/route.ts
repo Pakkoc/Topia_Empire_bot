@@ -8,12 +8,14 @@ import { z } from "zod";
 
 const updateSettingsSchema = z.object({
   managerRoleId: z.string().nullable().optional(),
-  betFeePercent: z.number().min(0).max(100).optional(),
-  minBet: z.string().optional(),
-  maxBet: z.string().optional(),
+  entryFee: z.string().optional(),
+  rank1Percent: z.number().min(0).max(100).optional(),
+  rank2Percent: z.number().min(0).max(100).optional(),
+  rank3Percent: z.number().min(0).max(100).optional(),
+  rank4Percent: z.number().min(0).max(100).optional(),
 });
 
-// ========== GET: 게임센터 설정 조회 ==========
+// ========== GET: 내전 설정 조회 ==========
 
 export async function GET(
   request: NextRequest,
@@ -43,9 +45,11 @@ export async function GET(
       channelId: settings.channelId,
       messageId: settings.messageId,
       managerRoleId: settings.managerRoleId,
-      betFeePercent: settings.betFeePercent,
-      minBet: settings.minBet.toString(),
-      maxBet: settings.maxBet.toString(),
+      entryFee: settings.entryFee.toString(),
+      rank1Percent: settings.rank1Percent,
+      rank2Percent: settings.rank2Percent,
+      rank3Percent: settings.rank3Percent,
+      rank4Percent: settings.rank4Percent,
     });
   } catch (error) {
     console.error("[API] Failed to fetch game settings:", error);
@@ -56,7 +60,7 @@ export async function GET(
   }
 }
 
-// ========== PATCH: 게임센터 설정 업데이트 ==========
+// ========== PATCH: 내전 설정 업데이트 ==========
 
 export async function PATCH(
   request: NextRequest,
@@ -81,13 +85,32 @@ export async function PATCH(
     }
 
     const data = parseResult.data;
+
+    // 순위 비율 합계 검증 (4개 모두 제공된 경우)
+    if (
+      data.rank1Percent !== undefined &&
+      data.rank2Percent !== undefined &&
+      data.rank3Percent !== undefined &&
+      data.rank4Percent !== undefined
+    ) {
+      const total = data.rank1Percent + data.rank2Percent + data.rank3Percent + data.rank4Percent;
+      if (total !== 100) {
+        return NextResponse.json(
+          { error: `순위 비율의 합계는 100%여야 합니다. 현재: ${total}%` },
+          { status: 400 }
+        );
+      }
+    }
+
     const container = createContainer();
 
     const result = await container.gameService.saveSettings(guildId, {
       managerRoleId: data.managerRoleId,
-      betFeePercent: data.betFeePercent,
-      minBet: data.minBet ? BigInt(data.minBet) : undefined,
-      maxBet: data.maxBet ? BigInt(data.maxBet) : undefined,
+      entryFee: data.entryFee ? BigInt(data.entryFee) : undefined,
+      rank1Percent: data.rank1Percent,
+      rank2Percent: data.rank2Percent,
+      rank3Percent: data.rank3Percent,
+      rank4Percent: data.rank4Percent,
     });
 
     if (!result.success) {
@@ -103,9 +126,11 @@ export async function PATCH(
       channelId: settings.channelId,
       messageId: settings.messageId,
       managerRoleId: settings.managerRoleId,
-      betFeePercent: settings.betFeePercent,
-      minBet: settings.minBet.toString(),
-      maxBet: settings.maxBet.toString(),
+      entryFee: settings.entryFee.toString(),
+      rank1Percent: settings.rank1Percent,
+      rank2Percent: settings.rank2Percent,
+      rank3Percent: settings.rank3Percent,
+      rank4Percent: settings.rank4Percent,
     });
   } catch (error) {
     console.error("[API] Failed to update game settings:", error);

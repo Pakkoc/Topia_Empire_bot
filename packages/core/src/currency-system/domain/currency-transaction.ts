@@ -19,8 +19,10 @@ export type TransactionType =
   | 'fee'            // 수수료
   | 'admin_add'      // 관리자 추가
   | 'admin_remove'   // 관리자 제거
-  | 'game_bet'       // 게임 배팅
-  | 'game_win'       // 게임 당첨
+  | 'game_bet'       // 게임 배팅 (레거시)
+  | 'game_win'       // 게임 당첨 (레거시)
+  | 'game_entry'     // 내전 참가비
+  | 'game_reward'    // 내전 보상
   | 'game_refund';   // 게임 환불
 
 /**

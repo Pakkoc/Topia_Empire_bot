@@ -3,27 +3,36 @@ import type {
   CreateGameSettingsDto,
   UpdateGameSettingsDto,
 } from '../domain/game-settings';
-import type { Game, CreateGameDto, GameTeam, GameStatus } from '../domain/game';
-import type { GameBet, CreateGameBetDto, GameBetStatus } from '../domain/game-bet';
+import type { Game, CreateGameDto, GameStatus, GameResult } from '../domain/game';
+import type {
+  GameParticipant,
+  CreateParticipantDto,
+  ParticipantStatus,
+} from '../domain/game-participant';
+import type {
+  GameCategory,
+  CreateCategoryDto,
+  UpdateCategoryDto,
+} from '../domain/game-category';
 
 /**
- * 게임센터 레포지토리 포트
+ * 내전 시스템 레포지토리 포트
  */
 export interface GameRepositoryPort {
-  // ========== 게임센터 설정 ==========
+  // ========== 내전 설정 ==========
 
   /**
-   * 길드의 게임센터 설정 조회
+   * 길드의 내전 설정 조회
    */
   findSettingsByGuildId(guildId: string): Promise<GameSettings | null>;
 
   /**
-   * 게임센터 설정 생성 또는 업데이트 (upsert)
+   * 내전 설정 생성 또는 업데이트 (upsert)
    */
   upsertSettings(dto: CreateGameSettingsDto): Promise<GameSettings>;
 
   /**
-   * 게임센터 설정 업데이트
+   * 내전 설정 업데이트
    */
   updateSettings(guildId: string, dto: UpdateGameSettingsDto): Promise<GameSettings | null>;
 
@@ -35,6 +44,38 @@ export interface GameRepositoryPort {
     channelId: string | null,
     messageId: string | null
   ): Promise<void>;
+
+  // ========== 카테고리 ==========
+
+  /**
+   * 카테고리 생성
+   */
+  createCategory(dto: CreateCategoryDto): Promise<GameCategory>;
+
+  /**
+   * 카테고리 ID로 조회
+   */
+  findCategoryById(categoryId: number): Promise<GameCategory | null>;
+
+  /**
+   * 길드의 모든 카테고리 조회
+   */
+  findCategoriesByGuildId(guildId: string): Promise<GameCategory[]>;
+
+  /**
+   * 길드의 활성화된 카테고리 조회
+   */
+  findEnabledCategoriesByGuildId(guildId: string): Promise<GameCategory[]>;
+
+  /**
+   * 카테고리 업데이트
+   */
+  updateCategory(categoryId: number, dto: UpdateCategoryDto): Promise<GameCategory | null>;
+
+  /**
+   * 카테고리 삭제
+   */
+  deleteCategory(categoryId: number): Promise<void>;
 
   // ========== 게임 ==========
 
@@ -64,9 +105,9 @@ export interface GameRepositoryPort {
   updateGameMessageId(gameId: bigint, messageId: string): Promise<void>;
 
   /**
-   * 게임 풀 금액 업데이트
+   * 총 상금 풀 업데이트
    */
-  updateGamePool(gameId: bigint, team: GameTeam, amount: bigint): Promise<void>;
+  updateTotalPool(gameId: bigint, amount: bigint): Promise<void>;
 
   /**
    * 게임 상태 변경
@@ -74,63 +115,82 @@ export interface GameRepositoryPort {
   updateGameStatus(gameId: bigint, status: GameStatus): Promise<void>;
 
   /**
-   * 게임 종료 (승자 설정)
+   * 게임 종료
    */
-  finishGame(gameId: bigint, winner: GameTeam): Promise<Game | null>;
+  finishGame(gameId: bigint): Promise<Game | null>;
 
   /**
-   * 게임 취소 (환불)
+   * 게임 취소
    */
   cancelGame(gameId: bigint): Promise<Game | null>;
 
-  // ========== 배팅 ==========
+  // ========== 참가자 ==========
 
   /**
-   * 배팅 생성
+   * 참가자 등록
    */
-  createBet(dto: CreateGameBetDto): Promise<GameBet>;
+  createParticipant(dto: CreateParticipantDto): Promise<GameParticipant>;
 
   /**
-   * 배팅 ID로 조회
+   * 참가자 ID로 조회
    */
-  findBetById(betId: bigint): Promise<GameBet | null>;
+  findParticipantById(participantId: bigint): Promise<GameParticipant | null>;
 
   /**
-   * 유저의 특정 게임 배팅 조회
+   * 유저의 특정 게임 참가 조회
    */
-  findBetByGameAndUser(gameId: bigint, userId: string): Promise<GameBet | null>;
+  findParticipantByGameAndUser(gameId: bigint, userId: string): Promise<GameParticipant | null>;
 
   /**
-   * 게임의 모든 배팅 조회
+   * 게임의 모든 참가자 조회
    */
-  findBetsByGameId(gameId: bigint): Promise<GameBet[]>;
+  findParticipantsByGameId(gameId: bigint): Promise<GameParticipant[]>;
 
   /**
-   * 게임의 특정 팀 배팅 조회
+   * 게임의 특정 팀 참가자 조회
    */
-  findBetsByGameAndTeam(gameId: bigint, team: GameTeam): Promise<GameBet[]>;
+  findParticipantsByTeam(gameId: bigint, teamNumber: number): Promise<GameParticipant[]>;
 
   /**
-   * 배팅 상태 업데이트
+   * 팀 배정
    */
-  updateBetStatus(betId: bigint, status: GameBetStatus): Promise<void>;
+  assignTeam(participantId: bigint, teamNumber: number): Promise<void>;
 
   /**
-   * 배팅 정산 (payout, fee, status 업데이트)
+   * 여러 참가자에게 팀 배정
    */
-  settleBet(
-    betId: bigint,
-    status: GameBetStatus,
-    payout: bigint,
-    fee: bigint
-  ): Promise<void>;
+  assignTeamBulk(participantIds: bigint[], teamNumber: number): Promise<void>;
 
   /**
-   * 게임의 모든 배팅 일괄 정산
+   * 참가자 상태 업데이트
    */
-  settleBetsByGame(
+  updateParticipantStatus(participantId: bigint, status: ParticipantStatus): Promise<void>;
+
+  /**
+   * 보상 지급 (reward, status 업데이트)
+   */
+  settleParticipant(participantId: bigint, reward: bigint): Promise<void>;
+
+  /**
+   * 참가 취소 (삭제)
+   */
+  deleteParticipant(participantId: bigint): Promise<void>;
+
+  // ========== 결과 ==========
+
+  /**
+   * 게임 결과 저장 (팀별 순위)
+   */
+  saveGameResult(
     gameId: bigint,
-    winnerTeam: GameTeam,
-    feePercent: number
-  ): Promise<{ winningBets: GameBet[]; losingBets: GameBet[] }>;
+    teamNumber: number,
+    rank: number,
+    rewardPercent: number,
+    totalReward: bigint
+  ): Promise<GameResult>;
+
+  /**
+   * 게임 결과 조회
+   */
+  findGameResults(gameId: bigint): Promise<GameResult[]>;
 }

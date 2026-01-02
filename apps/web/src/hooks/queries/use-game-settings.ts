@@ -5,9 +5,19 @@ export interface GameSettings {
   channelId: string | null;
   messageId: string | null;
   managerRoleId: string | null;
-  betFeePercent: number;
-  minBet: string;
-  maxBet: string;
+  entryFee: string;
+  rank1Percent: number;
+  rank2Percent: number;
+  rank3Percent: number;
+  rank4Percent: number;
+}
+
+export interface GameCategory {
+  id: number;
+  guildId: string;
+  name: string;
+  teamCount: number;
+  enabled: boolean;
 }
 
 // Fetch game settings
@@ -19,6 +29,21 @@ export function useGameSettings(guildId: string) {
       if (!res.ok) {
         if (res.status === 404) return null;
         throw new Error("Failed to fetch game settings");
+      }
+      return res.json();
+    },
+  });
+}
+
+// Fetch game categories
+export function useGameCategories(guildId: string) {
+  return useQuery<GameCategory[]>({
+    queryKey: ["game-categories", guildId],
+    queryFn: async () => {
+      const res = await fetch(`/api/guilds/${guildId}/game/categories`);
+      if (!res.ok) {
+        if (res.status === 404) return [];
+        throw new Error("Failed to fetch game categories");
       }
       return res.json();
     },
@@ -67,6 +92,72 @@ export function useUpdateGameSettings(guildId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["game-settings", guildId] });
+    },
+  });
+}
+
+// Create game category
+export function useCreateGameCategory(guildId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<GameCategory, Error, { name: string; teamCount: number }>({
+    mutationFn: async (data) => {
+      const res = await fetch(`/api/guilds/${guildId}/game/categories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create category");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["game-categories", guildId] });
+    },
+  });
+}
+
+// Update game category
+export function useUpdateGameCategory(guildId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<GameCategory, Error, { id: number; name?: string; teamCount?: number; enabled?: boolean }>({
+    mutationFn: async ({ id, ...data }) => {
+      const res = await fetch(`/api/guilds/${guildId}/game/categories/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update category");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["game-categories", guildId] });
+    },
+  });
+}
+
+// Delete game category
+export function useDeleteGameCategory(guildId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, number>({
+    mutationFn: async (categoryId) => {
+      const res = await fetch(`/api/guilds/${guildId}/game/categories/${categoryId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to delete category");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["game-categories", guildId] });
     },
   });
 }
