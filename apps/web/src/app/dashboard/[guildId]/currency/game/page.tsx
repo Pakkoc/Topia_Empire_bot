@@ -48,6 +48,13 @@ export default function GameCenterPage() {
   const [newCategoryTeamCount, setNewCategoryTeamCount] = useState("2");
   const [newCategoryMaxPlayers, setNewCategoryMaxPlayers] = useState("");
   const [newCategoryWinnerTakesAll, setNewCategoryWinnerTakesAll] = useState(true);
+  const [newCategoryUseCustomRewards, setNewCategoryUseCustomRewards] = useState(false);
+  const [newCategoryRankRewards, setNewCategoryRankRewards] = useState<{ rank: number; percent: string }[]>([
+    { rank: 1, percent: "50" },
+    { rank: 2, percent: "30" },
+    { rank: 3, percent: "15" },
+    { rank: 4, percent: "5" },
+  ]);
 
   const { data: currencySettings } = useCurrencySettings(guildId);
   const { data: settings, isLoading } = useGameSettings(guildId);
@@ -120,6 +127,31 @@ export default function GameCenterPage() {
     }
   };
 
+  const handleAddRank = () => {
+    const nextRank = newCategoryRankRewards.length + 1;
+    setNewCategoryRankRewards([...newCategoryRankRewards, { rank: nextRank, percent: "0" }]);
+  };
+
+  const handleRemoveRank = (index: number) => {
+    if (newCategoryRankRewards.length <= 1) return;
+    const updated = newCategoryRankRewards.filter((_, i) => i !== index);
+    // Re-number ranks
+    setNewCategoryRankRewards(updated.map((r, i) => ({ ...r, rank: i + 1 })));
+  };
+
+  const handleRankPercentChange = (index: number, percent: string) => {
+    const updated = [...newCategoryRankRewards];
+    const current = updated[index];
+    if (current) {
+      updated[index] = { rank: current.rank, percent };
+      setNewCategoryRankRewards(updated);
+    }
+  };
+
+  const getRankRewardsTotal = () => {
+    return newCategoryRankRewards.reduce((sum, r) => sum + (parseInt(r.percent) || 0), 0);
+  };
+
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
       toast({ title: "카테고리 이름을 입력해주세요.", variant: "destructive" });
@@ -128,17 +160,43 @@ export default function GameCenterPage() {
 
     const teamCount = parseInt(newCategoryTeamCount) || 2;
 
+    // 커스텀 보상 사용 시 합계 검증
+    if (newCategoryUseCustomRewards) {
+      const total = getRankRewardsTotal();
+      if (total !== 100) {
+        toast({ title: `순위 비율의 합계는 100%여야 합니다. 현재: ${total}%`, variant: "destructive" });
+        return;
+      }
+    }
+
+    // rankRewards 객체 생성
+    let rankRewards: Record<number, number> | undefined;
+    if (newCategoryUseCustomRewards) {
+      rankRewards = {};
+      newCategoryRankRewards.forEach(r => {
+        rankRewards![r.rank] = parseInt(r.percent) || 0;
+      });
+    }
+
     try {
       await createCategoryMutation.mutateAsync({
         name: newCategoryName.trim(),
         teamCount,
         maxPlayersPerTeam: newCategoryMaxPlayers ? parseInt(newCategoryMaxPlayers) : null,
         winnerTakesAll: teamCount === 2 ? newCategoryWinnerTakesAll : undefined,
+        rankRewards,
       });
       setNewCategoryName("");
       setNewCategoryTeamCount("2");
       setNewCategoryMaxPlayers("");
       setNewCategoryWinnerTakesAll(true);
+      setNewCategoryUseCustomRewards(false);
+      setNewCategoryRankRewards([
+        { rank: 1, percent: "50" },
+        { rank: 2, percent: "30" },
+        { rank: 3, percent: "15" },
+        { rank: 4, percent: "5" },
+      ]);
       toast({ title: "카테고리가 생성되었습니다!" });
     } catch {
       toast({ title: "카테고리 생성에 실패했습니다.", variant: "destructive" });
@@ -446,31 +504,30 @@ export default function GameCenterPage() {
               onChange={(e) => setNewCategoryName(e.target.value)}
               className="bg-white/5 border-white/10 text-white focus:border-emerald-500/50 sm:w-48"
             />
-            <Select
-              value={newCategoryTeamCount}
-              onValueChange={setNewCategoryTeamCount}
-            >
-              <SelectTrigger className="bg-white/5 border-white/10 text-white sm:w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="2">2팀 (일반 내전)</SelectItem>
-                <SelectItem value="4">4팀 (더블업/소규모)</SelectItem>
-                <SelectItem value="8">8팀 (개인전/롤체)</SelectItem>
-                <SelectItem value="3">3팀</SelectItem>
-                <SelectItem value="5">5팀</SelectItem>
-                <SelectItem value="6">6팀</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              type="number"
-              placeholder="팀당 인원 (선택)"
-              value={newCategoryMaxPlayers}
-              onChange={(e) => setNewCategoryMaxPlayers(e.target.value)}
-              min="1"
-              max="25"
-              className="bg-white/5 border-white/10 text-white focus:border-emerald-500/50 sm:w-32"
-            />
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                placeholder="팀 수"
+                value={newCategoryTeamCount}
+                onChange={(e) => setNewCategoryTeamCount(e.target.value)}
+                min="2"
+                max="100"
+                className="bg-white/5 border-white/10 text-white focus:border-emerald-500/50 w-20"
+              />
+              <span className="text-white/50 text-sm">팀</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                placeholder="인원"
+                value={newCategoryMaxPlayers}
+                onChange={(e) => setNewCategoryMaxPlayers(e.target.value)}
+                min="1"
+                max="25"
+                className="bg-white/5 border-white/10 text-white focus:border-emerald-500/50 w-20"
+              />
+              <span className="text-white/50 text-sm">명/팀</span>
+            </div>
             <Button
               onClick={handleCreateCategory}
               disabled={!newCategoryName.trim() || createCategoryMutation.isPending}
@@ -479,7 +536,8 @@ export default function GameCenterPage() {
               {createCategoryMutation.isPending ? "추가 중..." : "카테고리 추가"}
             </Button>
           </div>
-          {newCategoryTeamCount === "2" && (
+          {/* 2팀 승자독식 옵션 */}
+          {newCategoryTeamCount === "2" && !newCategoryUseCustomRewards && (
             <label className="flex items-center gap-2 text-white/70 text-sm cursor-pointer">
               <input
                 type="checkbox"
@@ -489,6 +547,70 @@ export default function GameCenterPage() {
               />
               2팀 승자 독식 (1등 100%, 2등 0%)
             </label>
+          )}
+
+          {/* 커스텀 보상 설정 토글 */}
+          <label className="flex items-center gap-2 text-white/70 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={newCategoryUseCustomRewards}
+              onChange={(e) => setNewCategoryUseCustomRewards(e.target.checked)}
+              className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/50"
+            />
+            커스텀 순위 보상 설정
+          </label>
+
+          {/* 커스텀 보상 입력 UI */}
+          {newCategoryUseCustomRewards && (
+            <div className="bg-white/5 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-white/70 text-sm">순위별 보상 비율</span>
+                <span className={`text-xs ${getRankRewardsTotal() === 100 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  합계: {getRankRewardsTotal()}%
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {newCategoryRankRewards.map((reward, index) => (
+                  <div key={index} className="flex items-center gap-1">
+                    <span className="text-white/50 text-xs w-6">{reward.rank}등</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={reward.percent}
+                      onChange={(e) => handleRankPercentChange(index, e.target.value)}
+                      className="bg-white/5 border-white/10 text-white text-sm h-8 w-16"
+                    />
+                    <span className="text-white/50 text-xs">%</span>
+                    {newCategoryRankRewards.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRank(index)}
+                        className="text-red-400 hover:text-red-300 p-1"
+                      >
+                        <Icon icon="solar:close-circle-linear" className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddRank}
+                className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+              >
+                <Icon icon="solar:add-circle-linear" className="h-4 w-4 mr-1" />
+                순위 추가
+              </Button>
+
+              <p className="text-white/40 text-xs">
+                예: 배그 10등까지 → 1등 30%, 2등 20%, 3등 15%, ... 순위 추가해서 설정
+              </p>
+            </div>
           )}
         </div>
 

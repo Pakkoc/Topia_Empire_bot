@@ -1,15 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+export type RankRewards = Record<number, number>;
+
 export interface GameSettings {
   guildId: string;
   channelId: string | null;
   messageId: string | null;
   managerRoleId: string | null;
   entryFee: string;
-  rank1Percent: number;
-  rank2Percent: number;
-  rank3Percent: number;
-  rank4Percent: number;
+  rankRewards: RankRewards;
 }
 
 export interface GameCategory {
@@ -17,6 +16,9 @@ export interface GameCategory {
   guildId: string;
   name: string;
   teamCount: number;
+  maxPlayersPerTeam: number | null;
+  rankRewards: RankRewards | null;
+  winnerTakesAll: boolean;
   enabled: boolean;
 }
 
@@ -77,7 +79,11 @@ export function useCreateGamePanel(guildId: string) {
 export function useUpdateGameSettings(guildId: string) {
   const queryClient = useQueryClient();
 
-  return useMutation<GameSettings, Error, Partial<GameSettings>>({
+  return useMutation<GameSettings, Error, {
+    managerRoleId?: string | null;
+    entryFee?: string;
+    rankRewards?: RankRewards;
+  }>({
     mutationFn: async (data) => {
       const res = await fetch(`/api/guilds/${guildId}/game/settings`, {
         method: "PATCH",
@@ -100,7 +106,13 @@ export function useUpdateGameSettings(guildId: string) {
 export function useCreateGameCategory(guildId: string) {
   const queryClient = useQueryClient();
 
-  return useMutation<GameCategory, Error, { name: string; teamCount: number }>({
+  return useMutation<GameCategory, Error, {
+    name: string;
+    teamCount: number;
+    maxPlayersPerTeam?: number | null;
+    rankRewards?: RankRewards;
+    winnerTakesAll?: boolean;
+  }>({
     mutationFn: async (data) => {
       const res = await fetch(`/api/guilds/${guildId}/game/categories`, {
         method: "POST",
