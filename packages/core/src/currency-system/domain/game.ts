@@ -1,3 +1,5 @@
+import type { RankRewards } from './game-category';
+
 /**
  * 내전 게임 상태
  */
@@ -21,6 +23,10 @@ export interface Game {
   createdAt: Date;
   finishedAt: Date | null;
   maxPlayersPerTeam: number | null; // 팀당 최대 인원
+  // 일회성 커스텀 설정 (봇에서 직접 입력)
+  customRankRewards: RankRewards | null; // 커스텀 순위보상
+  customWinnerTakesAll: boolean | null; // 승자독식 (null = 기본값 사용)
+  customEntryFee: bigint | null; // 커스텀 참가비 (null = 전역 설정)
 }
 
 /**
@@ -35,6 +41,10 @@ export interface CreateGameDto {
   entryFee: bigint;
   createdBy: string;
   maxPlayersPerTeam?: number | null;
+  // 일회성 커스텀 설정 (봇에서 직접 입력)
+  customRankRewards?: RankRewards | null;
+  customWinnerTakesAll?: boolean | null;
+  customEntryFee?: bigint | null;
 }
 
 /**

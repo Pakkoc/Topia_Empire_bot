@@ -15,7 +15,7 @@ import {
   type UserSelectMenuInteraction,
   type StringSelectMenuInteraction,
 } from 'discord.js';
-import type { GameService, CurrencyService, Game, GameParticipant, GameCategory } from '@topia/core';
+import type { GameService, CurrencyService, Game, GameParticipant, GameCategory, RankRewards } from '@topia/core';
 
 interface Container {
   gameService: GameService;
@@ -93,19 +93,44 @@ function createGameEmbed(
   );
 
   // 보상 비율 표시 (동적 순위 지원)
-  if (rankRewards && game.status === 'open') {
-    const rewardEntries = Object.entries(rankRewards)
-      .sort(([a], [b]) => parseInt(a) - parseInt(b))
-      .filter(([, percent]) => percent > 0)
-      .map(([rank, percent]) => `${rank}등: ${percent}%`)
-      .join(' | ');
-
-    if (rewardEntries) {
+  if (game.status === 'open') {
+    // 커스텀 설정 우선 표시
+    if (game.customWinnerTakesAll) {
       embed.addFields({
         name: '🎁 순위별 보상',
+        value: '🏆 **승자 독식** (1등 100%)',
+        inline: false,
+      });
+    } else if (game.customRankRewards) {
+      // 비율 정규화하여 표시
+      const total = Object.values(game.customRankRewards).reduce((a, b) => a + b, 0);
+      const rewardEntries = Object.entries(game.customRankRewards)
+        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+        .map(([rank, ratio]) => {
+          const percent = total > 0 ? Math.round((ratio / total) * 100) : 0;
+          return `${rank}등: ${percent}%`;
+        })
+        .join(' | ');
+
+      embed.addFields({
+        name: '🎁 순위별 보상 (커스텀)',
         value: rewardEntries,
         inline: false,
       });
+    } else if (rankRewards) {
+      const rewardEntries = Object.entries(rankRewards)
+        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+        .filter(([, percent]) => percent > 0)
+        .map(([rank, percent]) => `${rank}등: ${percent}%`)
+        .join(' | ');
+
+      if (rewardEntries) {
+        embed.addFields({
+          name: '🎁 순위별 보상',
+          value: rewardEntries,
+          inline: false,
+        });
+      }
     }
   }
 
@@ -288,7 +313,7 @@ export async function handleGamePanelCreate(
   const userId = interaction.user.id;
   const uniqueId = `${userId}_${Date.now()}`;
 
-  // 항상 직접 입력 모달 표시
+  // 직접 입력 모달 표시 (5개 필드)
   const modal = new ModalBuilder()
     .setCustomId(`game_create_modal_${uniqueId}`)
     .setTitle('🎮 새 내전 생성');
@@ -310,9 +335,36 @@ export async function handleGamePanelCreate(
     .setMaxLength(3)
     .setRequired(true);
 
+  const maxPlayersInput = new TextInputBuilder()
+    .setCustomId('max_players')
+    .setLabel('팀당 인원 (선택사항, 비워두면 무제한)')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('예: 5')
+    .setMaxLength(3)
+    .setRequired(false);
+
+  const rewardsInput = new TextInputBuilder()
+    .setCustomId('rewards')
+    .setLabel('순위보상 (선택사항, 비율로 입력)')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('예: 3,2,1 또는 승자독식')
+    .setMaxLength(50)
+    .setRequired(false);
+
+  const entryFeeInput = new TextInputBuilder()
+    .setCustomId('entry_fee')
+    .setLabel('참가비 (선택사항, 비워두면 기본값)')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('예: 1000')
+    .setMaxLength(15)
+    .setRequired(false);
+
   modal.addComponents(
     new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(teamCountInput)
+    new ActionRowBuilder<TextInputBuilder>().addComponents(teamCountInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(maxPlayersInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(rewardsInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(entryFeeInput)
   );
 
   await interaction.showModal(modal);
@@ -423,6 +475,55 @@ export async function handleGameCategorySelect(
 }
 
 /**
+ * 순위보상 문자열 파싱 (비율 기반)
+ * @param rewardsRaw 사용자 입력 (예: "3,2,1" 또는 "승자독식")
+ * @returns { customRankRewards, customWinnerTakesAll, error }
+ */
+function parseRewardsInput(rewardsRaw: string): {
+  customRankRewards: RankRewards | null;
+  customWinnerTakesAll: boolean | null;
+  error: string | null;
+} {
+  const trimmed = rewardsRaw.trim().toLowerCase();
+
+  if (!trimmed) {
+    return { customRankRewards: null, customWinnerTakesAll: null, error: null };
+  }
+
+  // 승자독식 체크
+  if (trimmed === '승자독식' || trimmed === 'winner' || trimmed === '독식') {
+    return { customRankRewards: null, customWinnerTakesAll: true, error: null };
+  }
+
+  // 비율 파싱 (예: "3,2,1" 또는 "50,30,15,5")
+  const parts = trimmed.split(',').map(s => parseInt(s.trim()));
+
+  if (parts.some(isNaN) || parts.length === 0) {
+    return {
+      customRankRewards: null,
+      customWinnerTakesAll: null,
+      error: '순위보상 형식이 올바르지 않습니다.\n예: `3,2,1` 또는 `승자독식`',
+    };
+  }
+
+  if (parts.some(p => p < 0)) {
+    return {
+      customRankRewards: null,
+      customWinnerTakesAll: null,
+      error: '순위보상은 0 이상이어야 합니다.',
+    };
+  }
+
+  // 비율로 저장 (finishGame에서 자동 정규화됨)
+  const customRankRewards: RankRewards = {};
+  parts.forEach((ratio, index) => {
+    customRankRewards[index + 1] = ratio;
+  });
+
+  return { customRankRewards, customWinnerTakesAll: null, error: null };
+}
+
+/**
  * 내전 생성 모달 제출 핸들러
  */
 export async function handleGameCreateModal(
@@ -446,6 +547,10 @@ export async function handleGameCreateModal(
 
   let teamCount = 2;
   let selectedCategoryId: number | undefined = categoryId;
+  let maxPlayersPerTeam: number | null = null;
+  let customRankRewards: RankRewards | null = null;
+  let customWinnerTakesAll: boolean | null = null;
+  let customEntryFee: bigint | null = null;
 
   if (categoryId) {
     // 카테고리에서 팀 수 가져오기
@@ -458,19 +563,63 @@ export async function handleGameCreateModal(
       }
     }
   } else {
-    // 직접 입력한 팀 수
+    // 직접 입력한 값들 파싱
     const teamCountStr = interaction.fields.getTextInputValue('team_count');
     teamCount = parseInt(teamCountStr) || 2;
     if (teamCount < 2) teamCount = 2;
     if (teamCount > 100) teamCount = 100;
+
+    // 팀당 인원 파싱
+    try {
+      const maxPlayersRaw = interaction.fields.getTextInputValue('max_players');
+      if (maxPlayersRaw.trim()) {
+        const parsed = parseInt(maxPlayersRaw.trim());
+        if (!isNaN(parsed) && parsed > 0) {
+          maxPlayersPerTeam = parsed;
+        }
+      }
+    } catch {
+      // 필드가 없을 수 있음 (카테고리 선택 시)
+    }
+
+    // 순위보상 파싱
+    try {
+      const rewardsRaw = interaction.fields.getTextInputValue('rewards');
+      const parsed = parseRewardsInput(rewardsRaw);
+      if (parsed.error) {
+        await interaction.editReply({ content: `❌ ${parsed.error}` });
+        scheduleEphemeralDelete(interaction);
+        return;
+      }
+      customRankRewards = parsed.customRankRewards;
+      customWinnerTakesAll = parsed.customWinnerTakesAll;
+    } catch {
+      // 필드가 없을 수 있음
+    }
+
+    // 참가비 파싱
+    try {
+      const entryFeeRaw = interaction.fields.getTextInputValue('entry_fee');
+      if (entryFeeRaw.trim()) {
+        const parsed = parseInt(entryFeeRaw.trim());
+        if (!isNaN(parsed) && parsed >= 0) {
+          customEntryFee = BigInt(parsed);
+        }
+      }
+    } catch {
+      // 필드가 없을 수 있음
+    }
   }
 
   // 설정 조회
   const settingsResult = await container.gameService.getSettings(guildId);
-  const entryFee = settingsResult.success ? settingsResult.data.entryFee : BigInt(100);
-  const rankRewards = settingsResult.success
+  const defaultEntryFee = settingsResult.success ? settingsResult.data.entryFee : BigInt(100);
+  const defaultRankRewards = settingsResult.success
     ? settingsResult.data.rankRewards
     : { 1: 50, 2: 30, 3: 15, 4: 5 };
+
+  // 실제 적용될 참가비
+  const actualEntryFee = customEntryFee ?? defaultEntryFee;
 
   // 화폐 설정 조회
   const currencySettingsResult = await container.currencyService.getSettings(guildId);
@@ -483,8 +632,12 @@ export async function handleGameCreateModal(
     categoryId: selectedCategoryId,
     title,
     teamCount,
-    entryFee,
+    entryFee: defaultEntryFee, // 기본값 전달 (서비스에서 customEntryFee 우선 적용)
     createdBy: userId,
+    maxPlayersPerTeam,
+    customRankRewards,
+    customWinnerTakesAll,
+    customEntryFee,
   });
 
   if (!createResult.success) {
@@ -495,9 +648,17 @@ export async function handleGameCreateModal(
 
   const game = createResult.data;
 
+  // Embed에 표시할 순위보상 결정
+  let displayRankRewards = defaultRankRewards;
+  if (customRankRewards) {
+    displayRankRewards = customRankRewards;
+  } else if (customWinnerTakesAll) {
+    displayRankRewards = { 1: 100, 2: 0 };
+  }
+
   // 채널에 내전 메시지 전송
   const channel = interaction.channel as TextChannel;
-  const embed = createGameEmbed(game, topyName, [], rankRewards);
+  const embed = createGameEmbed(game, topyName, [], displayRankRewards);
   const buttons = createGameButtons(game, true);
 
   const message = await channel.send({
@@ -508,9 +669,21 @@ export async function handleGameCreateModal(
   // 메시지 ID 저장
   await container.gameService.updateGameMessageId(game.id, message.id);
 
-  await interaction.editReply({
-    content: `✅ 내전이 생성되었습니다!\n\n**${title}**\n팀 수: ${teamCount}팀\n참가비: ${entryFee.toLocaleString()} ${topyName}`,
-  });
+  // 응답 메시지 생성
+  let replyContent = `✅ 내전이 생성되었습니다!\n\n**${title}**\n팀 수: ${teamCount}팀\n참가비: ${actualEntryFee.toLocaleString()} ${topyName}`;
+  if (maxPlayersPerTeam) {
+    replyContent += `\n팀당 인원: ${maxPlayersPerTeam}명`;
+  }
+  if (customWinnerTakesAll) {
+    replyContent += `\n보상: 🏆 승자 독식`;
+  } else if (customRankRewards) {
+    const rewardText = Object.entries(customRankRewards)
+      .map(([rank, ratio]) => `${rank}등: ${ratio}`)
+      .join(', ');
+    replyContent += `\n보상 비율: ${rewardText}`;
+  }
+
+  await interaction.editReply({ content: replyContent });
   scheduleEphemeralDelete(interaction);
 }
 

@@ -199,9 +199,16 @@ export class GameService {
         }
       }
 
+      // 실제 참가비 결정: 커스텀 참가비 > dto.entryFee (전역 설정)
+      const actualEntryFee = dto.customEntryFee ?? dto.entryFee;
+
       const game = await this.gameRepo.createGame({
         ...dto,
+        entryFee: actualEntryFee,
         maxPlayersPerTeam,
+        customRankRewards: dto.customRankRewards ?? null,
+        customWinnerTakesAll: dto.customWinnerTakesAll ?? null,
+        customEntryFee: dto.customEntryFee ?? null,
       });
       return Result.ok(game);
     } catch (error) {
@@ -605,19 +612,26 @@ export class GameService {
         category = await this.gameRepo.findCategoryById(game.categoryId);
       }
 
-      // 4. 순위 비율 결정
+      // 4. 순위 비율 결정 (우선순위: 일회성 설정 > 카테고리 설정 > 전역 설정)
       let rankPercents: RankRewards;
 
-      // Case 1: 2팀 게임 + 승자독식 모드 (기본값: true)
-      if (game.teamCount === 2 && (category?.winnerTakesAll ?? true)) {
-        // 2팀 게임은 기본적으로 승자 독식 (1등 100%, 2등 0%)
+      // Case 1: 일회성 커스텀 순위보상 (최우선)
+      if (game.customRankRewards) {
+        rankPercents = this.normalizeRankPercents(game.customRankRewards, results);
+      }
+      // Case 2: 일회성 승자독식 설정
+      else if (game.customWinnerTakesAll === true && game.teamCount === 2) {
         rankPercents = { 1: 100, 2: 0 };
       }
-      // Case 2: 카테고리에 커스텀 비율이 설정된 경우
+      // Case 3: 카테고리에 커스텀 비율이 설정된 경우
       else if (category?.rankRewards) {
         rankPercents = this.normalizeRankPercents(category.rankRewards, results);
       }
-      // Case 3: 전역 설정 사용
+      // Case 4: 카테고리 승자독식 모드 (2팀 게임, 기본값: true)
+      else if (game.teamCount === 2 && (category?.winnerTakesAll ?? true)) {
+        rankPercents = { 1: 100, 2: 0 };
+      }
+      // Case 5: 전역 설정 사용
       else {
         const settings = await this.gameRepo.findSettingsByGuildId(guildId);
         const rawRankRewards = settings?.rankRewards ?? { ...DEFAULT_RANK_REWARDS };

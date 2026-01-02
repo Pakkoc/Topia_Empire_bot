@@ -46,6 +46,10 @@ interface GameRow extends RowDataPacket {
   created_at: Date;
   finished_at: Date | null;
   max_players_per_team: number | null;
+  // 일회성 커스텀 설정
+  custom_rank_rewards: string | null; // JSON string
+  custom_winner_takes_all: number | null; // 0 or 1 or null
+  custom_entry_fee: string | null;
 }
 
 interface GameParticipantRow extends RowDataPacket {
@@ -113,6 +117,20 @@ function settingsRowToEntity(row: GameSettingsRow): GameSettings {
   };
 }
 
+function parseNullableRankRewards(json: string | null): RankRewards | null {
+  if (!json) return null;
+  try {
+    const parsed = JSON.parse(json);
+    const result: RankRewards = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      result[parseInt(key, 10)] = value as number;
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 function gameRowToEntity(row: GameRow): Game {
   return {
     id: BigInt(row.id),
@@ -129,6 +147,10 @@ function gameRowToEntity(row: GameRow): Game {
     createdAt: row.created_at,
     finishedAt: row.finished_at,
     maxPlayersPerTeam: row.max_players_per_team,
+    // 일회성 커스텀 설정
+    customRankRewards: parseNullableRankRewards(row.custom_rank_rewards),
+    customWinnerTakesAll: row.custom_winner_takes_all === null ? null : row.custom_winner_takes_all === 1,
+    customEntryFee: row.custom_entry_fee ? BigInt(row.custom_entry_fee) : null,
   };
 }
 
@@ -390,9 +412,13 @@ export class GameRepository implements GameRepositoryPort {
   // ========== 게임 ==========
 
   async createGame(dto: CreateGameDto): Promise<Game> {
+    const customRankRewardsJson = dto.customRankRewards
+      ? JSON.stringify(dto.customRankRewards)
+      : null;
+
     const [result] = await this.pool.query<ResultSetHeader>(
-      `INSERT INTO games (guild_id, channel_id, category_id, title, team_count, entry_fee, created_by, max_players_per_team)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO games (guild_id, channel_id, category_id, title, team_count, entry_fee, created_by, max_players_per_team, custom_rank_rewards, custom_winner_takes_all, custom_entry_fee)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         dto.guildId,
         dto.channelId,
@@ -402,6 +428,11 @@ export class GameRepository implements GameRepositoryPort {
         dto.entryFee.toString(),
         dto.createdBy,
         dto.maxPlayersPerTeam ?? null,
+        customRankRewardsJson,
+        dto.customWinnerTakesAll === undefined || dto.customWinnerTakesAll === null
+          ? null
+          : dto.customWinnerTakesAll ? 1 : 0,
+        dto.customEntryFee?.toString() ?? null,
       ]
     );
 
