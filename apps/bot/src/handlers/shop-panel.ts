@@ -4,14 +4,13 @@ import {
   StringSelectMenuBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
   type ButtonInteraction,
   type StringSelectMenuInteraction,
 } from 'discord.js';
-import type { ShopItemV2, ShopService, CurrencyService } from '@topia/core';
+import type { ShopItemV2, ShopService, CurrencyService, CurrencyType } from '@topia/core';
 import { getItemPrice } from '@topia/core';
 
 const ITEMS_PER_PAGE = 5;
@@ -24,6 +23,10 @@ interface Container {
 /** 상점 아이템을 Embed 형식으로 변환 */
 function createShopEmbed(
   items: ShopItemV2[],
+  currentMode: CurrencyType,
+  currencyName: string,
+  topyBalance: bigint,
+  rubyBalance: bigint,
   topyName: string,
   rubyName: string,
   page: number = 0,
@@ -33,21 +36,22 @@ function createShopEmbed(
   const startIdx = page * itemsPerPage;
   const pageItems = items.slice(startIdx, startIdx + itemsPerPage);
 
+  const color = currentMode === 'topy' ? 0xFFD700 : 0xE91E63;
+  const emoji = currentMode === 'topy' ? '💰' : '💎';
+
   const embed = new EmbedBuilder()
-    .setColor(0x5865F2)
-    .setTitle('🛒 상점')
+    .setColor(color)
+    .setTitle(`${emoji} ${currencyName} 상점`)
     .setDescription(
       items.length > 0
-        ? '아래 메뉴에서 구매할 아이템을 선택하세요.\n구매한 아이템은 `/인벤토리` 명령어에서 사용할 수 있습니다.'
+        ? `${currencyName}로 구매할 수 있는 아이템입니다.\n아래 메뉴에서 구매할 아이템을 선택하세요.`
         : '현재 판매 중인 아이템이 없습니다.'
     )
     .setTimestamp();
 
   if (pageItems.length > 0) {
     const fields = pageItems.map((item, idx) => {
-      const currencyForItem = item.currencyType === 'both' ? 'topy' : item.currencyType;
-      const currencyName = currencyForItem === 'topy' ? topyName : rubyName;
-      const price = getItemPrice(item, currencyForItem) ?? BigInt(0);
+      const price = getItemPrice(item, currentMode) ?? BigInt(0);
 
       let info = `💰 **${price.toLocaleString()}** ${currencyName}`;
 
@@ -77,6 +81,13 @@ function createShopEmbed(
     embed.addFields(fields);
   }
 
+  // 잔액 정보 추가
+  embed.addFields({
+    name: '💳 보유 잔액',
+    value: `💰 ${topyBalance.toLocaleString()} ${topyName}  |  💎 ${rubyBalance.toLocaleString()} ${rubyName}`,
+    inline: false,
+  });
+
   if (totalPages > 1) {
     embed.setFooter({ text: `페이지 ${page + 1}/${totalPages}` });
   }
@@ -84,17 +95,34 @@ function createShopEmbed(
   return embed;
 }
 
+/** 모드 전환 버튼 생성 */
+function createModeButtons(
+  currentMode: CurrencyType,
+  userId: string,
+  topyName: string,
+  rubyName: string
+): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`shop_mode_topy_${userId}`)
+      .setLabel(`💰 ${topyName} 상점`)
+      .setStyle(currentMode === 'topy' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`shop_mode_ruby_${userId}`)
+      .setLabel(`💎 ${rubyName} 상점`)
+      .setStyle(currentMode === 'ruby' ? ButtonStyle.Danger : ButtonStyle.Secondary)
+  );
+}
+
 /** 아이템 선택 메뉴 생성 */
 function createSelectMenu(
   items: ShopItemV2[],
-  topyName: string,
-  rubyName: string,
-  customId: string
+  currencyName: string,
+  customId: string,
+  currencyType: CurrencyType
 ): StringSelectMenuBuilder {
   const options = items.slice(0, 25).map((item) => {
-    const currencyForItem = item.currencyType === 'both' ? 'topy' : item.currencyType;
-    const currencyName = currencyForItem === 'topy' ? topyName : rubyName;
-    const price = getItemPrice(item, currencyForItem) ?? BigInt(0);
+    const price = getItemPrice(item, currencyType) ?? BigInt(0);
     const durationInfo = item.durationDays > 0 ? ` (${item.durationDays}일)` : ' (영구)';
 
     return {
@@ -127,59 +155,60 @@ export async function handleShopPanelButton(
   await interaction.deferReply({ ephemeral: true });
 
   try {
-    // 상점 아이템 조회 (V2 시스템 사용)
-    const itemsResult = await container.shopV2Service.getEnabledShopItems(guildId);
-    if (!itemsResult.success) {
-      await interaction.editReply({
-        content: '상점 정보를 불러오는 중 오류가 발생했습니다.',
-      });
-      setTimeout(async () => {
-        try { await interaction.deleteReply(); } catch { /* 이미 삭제됨 */ }
-      }, 5000);
-      return;
-    }
-
-    const items = itemsResult.data;
-
     // 화폐 설정 조회
     const settingsResult = await container.currencyService.getSettings(guildId);
     const topyName = (settingsResult.success && settingsResult.data?.topyName) || '토피';
     const rubyName = (settingsResult.success && settingsResult.data?.rubyName) || '루비';
 
-    // 상점이 비어있는 경우
-    if (items.length === 0) {
-      const embed = new EmbedBuilder()
-        .setColor(0x5865F2)
-        .setTitle('🛒 상점')
-        .setDescription('현재 판매 중인 아이템이 없습니다.')
-        .setTimestamp();
-
-      await interaction.editReply({ embeds: [embed] });
-      // 5초 후 자동 삭제
-      setTimeout(async () => {
-        try {
-          await interaction.deleteReply();
-        } catch {
-          // 이미 삭제됨
-        }
-      }, 5000);
-      return;
+    // 잔액 조회
+    const walletsResult = await container.currencyService.getWallets(guildId, userId);
+    let topyBalance = BigInt(0);
+    let rubyBalance = BigInt(0);
+    if (walletsResult.success && walletsResult.data) {
+      topyBalance = walletsResult.data.topy?.balance ?? BigInt(0);
+      rubyBalance = walletsResult.data.ruby?.balance ?? BigInt(0);
     }
 
+    // 초기 모드: 토피
+    let currentMode: CurrencyType = 'topy';
     let currentPage = 0;
-    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+
+    // 모드별 아이템 조회
+    const fetchItems = async (mode: CurrencyType) => {
+      const result = await container.shopV2Service.getEnabledShopItemsByCurrency(guildId, mode);
+      return result.success ? result.data : [];
+    };
+
+    let items = await fetchItems(currentMode);
+
+    // 잔액 새로고침 함수
+    const refreshBalances = async () => {
+      const result = await container.currencyService.getWallets(guildId, userId);
+      if (result.success && result.data) {
+        topyBalance = result.data.topy?.balance ?? BigInt(0);
+        rubyBalance = result.data.ruby?.balance ?? BigInt(0);
+      }
+    };
+
+    const getCurrencyName = () => currentMode === 'topy' ? topyName : rubyName;
 
     const getComponents = () => {
       const components: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = [];
+      const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
 
-      // 아이템 선택 메뉴
-      components.push(
-        new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          createSelectMenu(items, topyName, rubyName, `shop_panel_select_${userId}`)
-        )
-      );
+      // Row 1: 모드 전환 버튼
+      components.push(createModeButtons(currentMode, userId, topyName, rubyName));
 
-      // 페이지네이션 버튼 (여러 페이지일 경우)
+      // Row 2: 아이템 선택 메뉴 (아이템이 있을 경우)
+      if (items.length > 0) {
+        components.push(
+          new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+            createSelectMenu(items, getCurrencyName(), `shop_panel_select_${userId}`, currentMode)
+          )
+        );
+      }
+
+      // Row 3: 페이지네이션 버튼 (여러 페이지일 경우)
       if (totalPages > 1) {
         components.push(
           new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -196,7 +225,7 @@ export async function handleShopPanelButton(
             new ButtonBuilder()
               .setCustomId(`shop_panel_refresh_${userId}`)
               .setLabel('🔄 새로고침')
-              .setStyle(ButtonStyle.Primary)
+              .setStyle(ButtonStyle.Secondary)
           )
         );
       }
@@ -205,7 +234,16 @@ export async function handleShopPanelButton(
     };
 
     // 상점 Embed 생성
-    const embed = createShopEmbed(items, topyName, rubyName, currentPage);
+    const embed = createShopEmbed(
+      items,
+      currentMode,
+      getCurrencyName(),
+      topyBalance,
+      rubyBalance,
+      topyName,
+      rubyName,
+      currentPage
+    );
 
     const response = await interaction.editReply({
       embeds: [embed],
@@ -219,34 +257,69 @@ export async function handleShopPanelButton(
     });
 
     collector.on('collect', async (componentInteraction) => {
-      // 페이지네이션
+      // 모드 전환: 토피
+      if (componentInteraction.customId === `shop_mode_topy_${userId}`) {
+        if (currentMode === 'topy') {
+          await componentInteraction.deferUpdate();
+          return;
+        }
+        currentMode = 'topy';
+        currentPage = 0;
+        items = await fetchItems(currentMode);
+        await refreshBalances();
+
+        await componentInteraction.update({
+          embeds: [createShopEmbed(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage)],
+          components: getComponents(),
+        });
+        return;
+      }
+
+      // 모드 전환: 루비
+      if (componentInteraction.customId === `shop_mode_ruby_${userId}`) {
+        if (currentMode === 'ruby') {
+          await componentInteraction.deferUpdate();
+          return;
+        }
+        currentMode = 'ruby';
+        currentPage = 0;
+        items = await fetchItems(currentMode);
+        await refreshBalances();
+
+        await componentInteraction.update({
+          embeds: [createShopEmbed(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage)],
+          components: getComponents(),
+        });
+        return;
+      }
+
+      // 페이지네이션: 이전
       if (componentInteraction.customId === `shop_panel_prev_${userId}`) {
         currentPage = Math.max(0, currentPage - 1);
         await componentInteraction.update({
-          embeds: [createShopEmbed(items, topyName, rubyName, currentPage)],
+          embeds: [createShopEmbed(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage)],
           components: getComponents(),
         });
         return;
       }
 
+      // 페이지네이션: 다음
       if (componentInteraction.customId === `shop_panel_next_${userId}`) {
+        const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
         currentPage = Math.min(totalPages - 1, currentPage + 1);
         await componentInteraction.update({
-          embeds: [createShopEmbed(items, topyName, rubyName, currentPage)],
+          embeds: [createShopEmbed(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage)],
           components: getComponents(),
         });
         return;
       }
 
+      // 새로고침
       if (componentInteraction.customId === `shop_panel_refresh_${userId}`) {
-        // 아이템 다시 조회
-        const refreshResult = await container.shopV2Service.getEnabledShopItems(guildId);
-        if (refreshResult.success) {
-          items.length = 0;
-          items.push(...refreshResult.data);
-        }
+        items = await fetchItems(currentMode);
+        await refreshBalances();
         await componentInteraction.update({
-          embeds: [createShopEmbed(items, topyName, rubyName, currentPage)],
+          embeds: [createShopEmbed(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage)],
           components: getComponents(),
         });
         return;
@@ -254,12 +327,11 @@ export async function handleShopPanelButton(
 
       // 아이템 선택
       if (componentInteraction.customId === `shop_panel_select_${userId}` && componentInteraction.isStringSelectMenu()) {
-        await handleItemSelection(componentInteraction, container, items, topyName, rubyName);
+        await handleItemSelection(componentInteraction, container, items, currentMode, topyName, rubyName, topyBalance, rubyBalance);
       }
     });
 
     collector.on('end', async (_, reason) => {
-      // 아이템 선택으로 끝난 경우는 handleItemSelection에서 처리
       if (reason === 'time') {
         try {
           await interaction.deleteReply();
@@ -296,14 +368,15 @@ function scheduleMessageDelete(interaction: StringSelectMenuInteraction, delay: 
 function createQuantitySelectEmbed(
   item: ShopItemV2,
   currencyName: string,
-  currencyType: 'topy' | 'ruby',
+  currencyType: CurrencyType,
   currentQuantity: number
 ): EmbedBuilder {
   const price = getItemPrice(item, currencyType) ?? BigInt(0);
   const totalPrice = price * BigInt(currentQuantity);
+  const color = currencyType === 'topy' ? 0xFFD700 : 0xE91E63;
 
   const embed = new EmbedBuilder()
-    .setColor(0x5865F2)
+    .setColor(color)
     .setTitle('🔢 수량 선택')
     .setDescription(`**${item.name}**을(를) 몇 개 구매하시겠습니까?`)
     .addFields(
@@ -392,14 +465,18 @@ async function handleItemSelection(
   interaction: StringSelectMenuInteraction,
   container: Container,
   items: ShopItemV2[],
+  currencyType: CurrencyType,
   topyName: string,
-  rubyName: string
+  rubyName: string,
+  topyBalance: bigint,
+  rubyBalance: bigint
 ) {
   const guildId = interaction.guildId!;
   const userId = interaction.user.id;
   const itemId = parseInt(interaction.values[0]!, 10);
 
   const selectedItem = items.find((item) => item.id === itemId);
+  const currencyName = currencyType === 'topy' ? topyName : rubyName;
 
   if (!selectedItem) {
     await interaction.update({
@@ -414,9 +491,6 @@ async function handleItemSelection(
     scheduleMessageDelete(interaction);
     return;
   }
-
-  const currencyType = selectedItem.currencyType === 'both' ? 'topy' : selectedItem.currencyType;
-  const currencyName = currencyType === 'topy' ? topyName : rubyName;
 
   // 현재 보유 수량 조회 (인당 제한 확인용)
   const userItemResult = await container.shopV2Service.getUserItem(guildId, userId, itemId);
@@ -534,12 +608,13 @@ async function handleItemSelection(
 
         await componentInteraction.deferUpdate();
 
-        // 구매 처리
+        // 구매 처리 (currencyType 전달)
         const purchaseResult = await container.shopV2Service.purchaseItem(
           guildId,
           userId,
           itemId,
-          confirmQty
+          confirmQty,
+          currencyType
         );
 
         if (!purchaseResult.success) {
