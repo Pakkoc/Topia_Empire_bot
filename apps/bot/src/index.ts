@@ -28,6 +28,7 @@ import { handleTopyShopPanelButton } from './handlers/shop-topy-panel';
 import { handleRubyShopPanelButton } from './handlers/shop-ruby-panel';
 import {
   handleGamePanelCreate,
+  handleGamePanelCategory,
   handleGameCategorySelect,
   handleGameCreateModal,
   handleGameJoin,
@@ -427,9 +428,15 @@ async function main() {
           return;
         }
 
-        // 게임센터 패널 버튼
+        // 게임센터 패널 버튼 - 직접 입력
         if (customId === 'game_panel_create') {
           await handleGamePanelCreate(interaction, container);
+          return;
+        }
+
+        // 게임센터 패널 버튼 - 카테고리 선택
+        if (customId === 'game_panel_category') {
+          await handleGamePanelCategory(interaction, container);
           return;
         }
 
@@ -1289,13 +1296,18 @@ async function main() {
         .setFooter({ text: '관리자만 내전을 생성할 수 있습니다.' })
         .setTimestamp();
 
-      // 버튼 생성
+      // 버튼 생성 (2개: 내전 생성, 카테고리)
       const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId('game_panel_create')
-          .setLabel('내전 생성하기')
+          .setLabel('내전 생성')
           .setStyle(ButtonStyle.Primary)
-          .setEmoji('🎮')
+          .setEmoji('🎮'),
+        new ButtonBuilder()
+          .setCustomId('game_panel_category')
+          .setLabel('카테고리')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('⚙️')
       );
 
       // 채널에 패널 메시지 전송

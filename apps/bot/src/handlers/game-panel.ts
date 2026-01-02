@@ -258,9 +258,70 @@ function isAdminUser(interaction: ButtonInteraction | UserSelectMenuInteraction 
 // ============================================================
 
 /**
- * 내전 패널 - 내전 생성 버튼
+ * 내전 패널 - 내전 생성 버튼 (직접 입력)
  */
 export async function handleGamePanelCreate(
+  interaction: ButtonInteraction,
+  container: Container
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 설정 조회
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  // 관리자 권한 확인
+  if (!isAdminUser(interaction, managerRoleId)) {
+    await interaction.reply({
+      content: '❌ 관리자만 내전을 생성할 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const userId = interaction.user.id;
+  const uniqueId = `${userId}_${Date.now()}`;
+
+  // 항상 직접 입력 모달 표시
+  const modal = new ModalBuilder()
+    .setCustomId(`game_create_modal_${uniqueId}`)
+    .setTitle('🎮 새 내전 생성');
+
+  const titleInput = new TextInputBuilder()
+    .setCustomId('title')
+    .setLabel('제목')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('예: 발로란트 내전 1차')
+    .setMaxLength(200)
+    .setRequired(true);
+
+  const teamCountInput = new TextInputBuilder()
+    .setCustomId('team_count')
+    .setLabel('팀 수')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('예: 2 (최대 100)')
+    .setValue('2')
+    .setMaxLength(3)
+    .setRequired(true);
+
+  modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(teamCountInput)
+  );
+
+  await interaction.showModal(modal);
+}
+
+/**
+ * 내전 패널 - 카테고리 선택 버튼
+ */
+export async function handleGamePanelCategory(
   interaction: ButtonInteraction,
   container: Container
 ) {
@@ -314,34 +375,12 @@ export async function handleGamePanelCreate(
     });
     scheduleEphemeralDelete(interaction);
   } else {
-    // 카테고리가 없으면 모달로 직접 입력
-    const modal = new ModalBuilder()
-      .setCustomId(`game_create_modal_${uniqueId}`)
-      .setTitle('🎮 새 내전 생성');
-
-    const titleInput = new TextInputBuilder()
-      .setCustomId('title')
-      .setLabel('제목')
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder('예: 발로란트 내전 1차')
-      .setMaxLength(200)
-      .setRequired(true);
-
-    const teamCountInput = new TextInputBuilder()
-      .setCustomId('team_count')
-      .setLabel('팀 수')
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder('예: 2 (최대 100)')
-      .setValue('2')
-      .setMaxLength(3)
-      .setRequired(true);
-
-    modal.addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(teamCountInput)
-    );
-
-    await interaction.showModal(modal);
+    // 카테고리가 없으면 안내 메시지
+    await interaction.reply({
+      content: '⚠️ 등록된 카테고리가 없습니다.\n웹 대시보드에서 카테고리를 먼저 생성해주세요.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
   }
 }
 
