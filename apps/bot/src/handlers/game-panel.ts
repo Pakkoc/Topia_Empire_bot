@@ -118,10 +118,15 @@ function createGameEmbed(
         inline: false,
       });
     } else if (rankRewards) {
+      // 비율 정규화하여 표시
+      const total = Object.values(rankRewards).reduce((a, b) => a + b, 0);
       const rewardEntries = Object.entries(rankRewards)
         .sort(([a], [b]) => parseInt(a) - parseInt(b))
-        .filter(([, percent]) => percent > 0)
-        .map(([rank, percent]) => `${rank}등: ${percent}%`)
+        .filter(([, ratio]) => ratio > 0)
+        .map(([rank, ratio]) => {
+          const percent = total > 0 ? Math.round((ratio / total) * 100) : 0;
+          return `${rank}등: ${percent}%`;
+        })
         .join(' | ');
 
       if (rewardEntries) {
