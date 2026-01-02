@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { createContainer } from "@topia/infra";
 import { z } from "zod";
 
@@ -24,6 +25,7 @@ export async function GET(
     }
 
     const { guildId } = await params;
+    db(); // Initialize pool
     const container = createContainer();
     const result = await container.gameService.getCategories(guildId);
 
@@ -70,6 +72,7 @@ export async function POST(
     }
 
     const { name, teamCount } = parseResult.data;
+    db(); // Initialize pool
     const container = createContainer();
 
     const result = await container.gameService.createCategory({ guildId, name, teamCount });

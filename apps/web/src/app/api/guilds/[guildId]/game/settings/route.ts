@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { createContainer } from "@topia/infra";
 import { z } from "zod";
 
@@ -28,6 +29,7 @@ export async function GET(
     }
 
     const { guildId } = await params;
+    db(); // Initialize pool
     const container = createContainer();
     const result = await container.gameService.getSettings(guildId);
 
@@ -102,6 +104,7 @@ export async function PATCH(
       }
     }
 
+    db(); // Initialize pool
     const container = createContainer();
 
     const result = await container.gameService.saveSettings(guildId, {

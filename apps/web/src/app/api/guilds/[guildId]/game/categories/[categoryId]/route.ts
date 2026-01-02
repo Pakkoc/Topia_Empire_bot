@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { createContainer } from "@topia/infra";
 import { z } from "zod";
 
@@ -37,6 +38,7 @@ export async function PATCH(
     }
 
     const data = parseResult.data;
+    db(); // Initialize pool
     const container = createContainer();
 
     const result = await container.gameService.updateCategory(
@@ -80,6 +82,7 @@ export async function DELETE(
     }
 
     const { categoryId } = await params;
+    db(); // Initialize pool
     const container = createContainer();
 
     const result = await container.gameService.deleteCategory(parseInt(categoryId, 10));
