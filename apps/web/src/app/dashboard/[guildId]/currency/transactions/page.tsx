@@ -34,6 +34,8 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   admin_remove: "관리자 차감",
   game_bet: "게임 배팅",
   game_win: "게임 당첨",
+  game_entry: "내전 참가비",
+  game_reward: "내전 보상",
   game_refund: "게임 환불",
 };
 
@@ -52,6 +54,8 @@ const TRANSACTION_TYPE_ICONS: Record<TransactionType, string> = {
   admin_remove: "solar:minus-circle-bold",
   game_bet: "solar:gamepad-bold",
   game_win: "solar:cup-star-bold",
+  game_entry: "solar:ticket-bold",
+  game_reward: "solar:medal-ribbons-star-bold",
   game_refund: "solar:undo-left-bold",
 };
 
@@ -70,6 +74,8 @@ const TRANSACTION_TYPE_COLORS: Record<TransactionType, string> = {
   admin_remove: "text-red-400",
   game_bet: "text-amber-400",
   game_win: "text-emerald-400",
+  game_entry: "text-orange-400",
+  game_reward: "text-emerald-400",
   game_refund: "text-slate-400",
 };
 
@@ -110,7 +116,7 @@ export default function TransactionsPage() {
   const formatAmount = (amount: string, type: TransactionType) => {
     let value = BigInt(amount);
     if (value < 0) value = -value; // 절대값
-    const isNegative = type === "transfer_out" || type === "shop_purchase" || type === "market_buy" || type === "tax" || type === "fee" || type === "admin_remove" || type === "game_bet";
+    const isNegative = type === "transfer_out" || type === "shop_purchase" || type === "market_buy" || type === "tax" || type === "fee" || type === "admin_remove" || type === "game_bet" || type === "game_entry";
     return `${isNegative ? "-" : "+"}${value.toLocaleString()}`;
   };
 
@@ -325,7 +331,8 @@ export default function TransactionsPage() {
                     tx.transactionType === "tax" ||
                     tx.transactionType === "fee" ||
                     tx.transactionType === "admin_remove" ||
-                    tx.transactionType === "game_bet"
+                    tx.transactionType === "game_bet" ||
+                    tx.transactionType === "game_entry"
                       ? "text-red-400"
                       : "text-green-400"
                   }`}>

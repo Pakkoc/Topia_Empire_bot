@@ -18,6 +18,8 @@ export type TransactionType =
   | "admin_remove"
   | "game_bet"
   | "game_win"
+  | "game_entry"
+  | "game_reward"
   | "game_refund";
 
 export interface CurrencyTransaction {
