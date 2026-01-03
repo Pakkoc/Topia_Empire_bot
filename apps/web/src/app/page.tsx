@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Icon } from "@iconify/react";
 import { DiscordIcon } from "@/components/icons/discord-icon";
 
@@ -67,11 +68,8 @@ export default function Home() {
 
       {/* Navigation */}
       <nav className="relative z-10 flex items-center justify-between px-6 lg:px-12 py-4 max-w-7xl mx-auto">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-            <Icon icon="solar:crown-bold" className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-xl font-bold text-white">Topia Empire</span>
+        <Link href="/" className="flex items-center">
+          <Image src="/logo.png" alt="Nexus" width={140} height={48} className="h-12 w-auto" />
         </Link>
 
         <div className="flex items-center gap-4">
@@ -259,14 +257,9 @@ export default function Home() {
       <footer className="relative z-10 border-t border-white/10 mt-12">
         <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                <Icon icon="solar:crown-bold" className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-white/70 font-medium">Topia Empire</span>
-            </div>
+            <Image src="/logo.png" alt="Nexus" width={100} height={32} className="h-8 w-auto" />
             <p className="text-white/40 text-sm">
-              © 2025 Topia Empire. All rights reserved.
+              © 2025 Nexus. All rights reserved.
             </p>
           </div>
         </div>

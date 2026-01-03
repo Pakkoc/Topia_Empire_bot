@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,11 +19,8 @@ export function DashboardHeader() {
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-white/5 bg-black/40 backdrop-blur-xl px-6">
-      <Link href="/dashboard" className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-          <Icon icon="solar:crown-bold" className="w-4 h-4 text-white" />
-        </div>
-        <span className="text-lg font-bold text-white">Topia Empire</span>
+      <Link href="/dashboard" className="flex items-center">
+        <Image src="/logo.png" alt="Nexus" width={120} height={40} className="h-10 w-auto" />
       </Link>
 
       <div className="flex items-center gap-4">

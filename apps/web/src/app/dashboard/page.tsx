@@ -3,6 +3,7 @@
 import { useGuilds } from "@/hooks/queries/use-guilds";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@iconify/react";
@@ -40,11 +41,8 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="relative z-10 border-b border-white/5 bg-black/40 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 lg:px-12 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <Icon icon="solar:crown-bold" className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-bold text-white">Topia Empire</span>
+          <Link href="/" className="flex items-center">
+            <Image src="/logo.png" alt="Nexus" width={140} height={48} className="h-12 w-auto" />
           </Link>
 
           <div className="flex items-center gap-4">

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useState, useMemo } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { NavigationLink } from "@/components/navigation-link";
 import { Icon } from "@iconify/react";
@@ -232,14 +233,8 @@ export function DashboardSidebar({ guildId, guildName, guildIcon }: SidebarProps
 
       {/* Footer */}
       <div className="p-4 border-t border-white/5">
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-            <Icon icon="solar:crown-bold" className="w-4 h-4 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-white">Topia Empire</p>
-            <p className="text-[10px] text-white/40">v1.0.0</p>
-          </div>
+        <div className="flex items-center justify-center px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
+          <Image src="/logo.png" alt="Nexus" width={100} height={32} className="h-8 w-auto" />
         </div>
       </div>
     </aside>

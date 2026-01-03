@@ -16,7 +16,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Topia Empire",
+  title: "Nexus",
   description: "디스코드 서버 관리 봇 + 웹 대시보드",
 };
 
