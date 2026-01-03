@@ -555,7 +555,8 @@ export class CurrencyService {
     fromUserId: string,
     toUserId: string,
     amount: bigint,
-    currencyType: CurrencyType
+    currencyType: CurrencyType,
+    reason?: string
   ): Promise<Result<TransferResult, CurrencyError>> {
     // 1. 자기 자신에게 이체 불가
     if (fromUserId === toUserId) {
@@ -587,9 +588,9 @@ export class CurrencyService {
     const totalRequired = amount + fee;
 
     if (currencyType === 'topy') {
-      return this.transferTopy(guildId, fromUserId, toUserId, amount, fee, totalRequired);
+      return this.transferTopy(guildId, fromUserId, toUserId, amount, fee, totalRequired, reason);
     } else {
-      return this.transferRuby(guildId, fromUserId, toUserId, amount);
+      return this.transferRuby(guildId, fromUserId, toUserId, amount, reason);
     }
   }
 
@@ -599,7 +600,8 @@ export class CurrencyService {
     toUserId: string,
     amount: bigint,
     fee: bigint,
-    totalRequired: bigint
+    totalRequired: bigint,
+    reason?: string
   ): Promise<Result<TransferResult, CurrencyError>> {
     // 송금자 지갑 확인
     const fromWalletResult = await this.topyWalletRepo.findByUser(guildId, fromUserId);
@@ -643,12 +645,14 @@ export class CurrencyService {
       createTransaction(guildId, fromUserId, 'topy', 'transfer_out', amount, fromBalance + fee, {
         fee,
         relatedUserId: toUserId,
+        description: reason,
       })
     );
 
     await this.transactionRepo.save(
       createTransaction(guildId, toUserId, 'topy', 'transfer_in', amount, toBalance, {
         relatedUserId: fromUserId,
+        description: reason,
       })
     );
 
@@ -673,7 +677,8 @@ export class CurrencyService {
     guildId: string,
     fromUserId: string,
     toUserId: string,
-    amount: bigint
+    amount: bigint,
+    reason?: string
   ): Promise<Result<TransferResult, CurrencyError>> {
     // 송금자 지갑 확인
     const fromWalletResult = await this.rubyWalletRepo.findByUser(guildId, fromUserId);
@@ -710,12 +715,14 @@ export class CurrencyService {
     await this.transactionRepo.save(
       createTransaction(guildId, fromUserId, 'ruby', 'transfer_out', amount, fromBalance, {
         relatedUserId: toUserId,
+        description: reason,
       })
     );
 
     await this.transactionRepo.save(
       createTransaction(guildId, toUserId, 'ruby', 'transfer_in', amount, toBalance, {
         relatedUserId: fromUserId,
+        description: reason,
       })
     );
 

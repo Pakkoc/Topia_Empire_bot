@@ -27,6 +27,13 @@ export const transferCommand: Command = {
         .setDescription('송금할 화폐 종류')
         .setRequired(true)
         .setAutocomplete(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName('사유')
+        .setDescription('이체 사유 (선택)')
+        .setRequired(false)
+        .setMaxLength(100)
     ),
 
   async autocomplete(interaction, container) {
@@ -54,6 +61,7 @@ export const transferCommand: Command = {
     const receiver = interaction.options.getUser('받는사람', true);
     const amount = interaction.options.getInteger('금액', true);
     const currencyType = interaction.options.getString('화폐', true) as 'topy' | 'ruby';
+    const reason = interaction.options.getString('사유');
 
     if (!guildId) {
       await interaction.reply({
@@ -86,7 +94,8 @@ export const transferCommand: Command = {
         senderId,
         receiver.id,
         BigInt(amount),
-        currencyType
+        currencyType,
+        reason ?? undefined
       );
 
       if (!result.success) {
@@ -118,12 +127,13 @@ export const transferCommand: Command = {
 
       const { amount: transferAmount, fee, fromBalance } = result.data;
       const feeText = fee > BigInt(0) ? `\n수수료: ${fee.toLocaleString()} ${currencyName}` : '';
+      const reasonText = reason ? `\n사유: ${reason}` : '';
 
       const embed = new EmbedBuilder()
         .setColor(0x00FF00)
         .setTitle('✅ 이체 완료!')
         .setDescription(
-          `**${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${feeText}`
+          `**${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${feeText}${reasonText}`
         )
         .addFields(
           { name: '💰 남은 잔액', value: `${fromBalance.toLocaleString()} ${currencyName}`, inline: true },
