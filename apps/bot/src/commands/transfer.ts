@@ -139,15 +139,19 @@ export const transferCommand: Command = {
       }
 
       const { amount: transferAmount, fee, fromBalance, toBalance } = result.data;
-      const feeText = fee > BigInt(0) ? `\n수수료: ${fee.toLocaleString()} ${currencyName}` : '';
+      const totalDeducted = transferAmount + fee;
+      const hasFee = fee > BigInt(0);
       const reasonText = reason ? `\n사유: ${reason}` : '';
+
+      // 채널 응답
+      const replyDescription = hasFee
+        ? `**${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.\n총 **${totalDeducted.toLocaleString()} ${currencyName}** 차감 (송금 ${transferAmount.toLocaleString()} + 수수료 ${fee.toLocaleString()})${reasonText}`
+        : `**${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${reasonText}`;
 
       const embed = new EmbedBuilder()
         .setColor(0x00FF00)
         .setTitle('✅ 이체 완료!')
-        .setDescription(
-          `**${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${feeText}${reasonText}`
-        )
+        .setDescription(replyDescription)
         .addFields(
           { name: '💰 남은 잔액', value: `${fromBalance.toLocaleString()} ${currencyName}`, inline: true },
         )
@@ -159,12 +163,14 @@ export const transferCommand: Command = {
       const guildName = interaction.guild?.name ?? '서버';
 
       // 보내는 사람에게 DM
+      const senderDmDescription = hasFee
+        ? `**${guildName}**에서 **${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.\n총 **${totalDeducted.toLocaleString()} ${currencyName}** 차감 (송금 ${transferAmount.toLocaleString()} + 수수료 ${fee.toLocaleString()})${reasonText}`
+        : `**${guildName}**에서 **${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${reasonText}`;
+
       const senderDmEmbed = new EmbedBuilder()
         .setColor(0xFFA500)
         .setTitle('💸 이체 알림')
-        .setDescription(
-          `**${guildName}**에서 **${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${feeText}${reasonText}`
-        )
+        .setDescription(senderDmDescription)
         .addFields(
           { name: '💰 남은 잔액', value: `${fromBalance.toLocaleString()} ${currencyName}`, inline: true },
         )
