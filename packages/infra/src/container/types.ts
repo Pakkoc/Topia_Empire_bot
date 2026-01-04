@@ -11,6 +11,7 @@ import type {
   TaxService,
   ShopPanelService,
   DataRetentionService,
+  VaultService,
 } from '@topia/core';
 
 export interface Container {
@@ -37,4 +38,7 @@ export interface Container {
 
   // 데이터 보존
   dataRetentionService: DataRetentionService;
+
+  // 금고
+  vaultService: VaultService;
 }

@@ -8,3 +8,4 @@ export * from './inventory.service';
 export * from './game.service';
 export * from './tax.service';
 export * from './shop-panel.service';
+export * from './vault.service';

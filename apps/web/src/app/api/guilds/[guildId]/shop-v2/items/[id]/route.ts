@@ -10,6 +10,7 @@ interface ShopItemV2Row extends RowDataPacket {
   guild_id: string;
   name: string;
   description: string | null;
+  item_type: string | null;
   topy_price: string | null;
   ruby_price: string | null;
   currency_type: "topy" | "ruby" | "both";
@@ -26,6 +27,7 @@ function rowToShopItemV2(row: ShopItemV2Row) {
     guildId: row.guild_id,
     name: row.name,
     description: row.description,
+    itemType: row.item_type ?? "custom",
     topyPrice: row.topy_price ? Number(row.topy_price) : null,
     rubyPrice: row.ruby_price ? Number(row.ruby_price) : null,
     currencyType: row.currency_type,
@@ -142,6 +144,10 @@ export async function PATCH(
       if (validatedData.enabled !== undefined) {
         updates.push("enabled = ?");
         values.push(validatedData.enabled ? 1 : 0);
+      }
+      if (validatedData.itemType !== undefined) {
+        updates.push("item_type = ?");
+        values.push(validatedData.itemType);
       }
 
       // Update shop item if there are changes

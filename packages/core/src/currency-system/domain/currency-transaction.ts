@@ -23,7 +23,10 @@ export type TransactionType =
   | 'game_win'       // 게임 당첨 (레거시)
   | 'game_entry'     // 내전 참가비
   | 'game_reward'    // 내전 보상
-  | 'game_refund';   // 게임 환불
+  | 'game_refund'    // 게임 환불
+  | 'vault_deposit'  // 금고 예금
+  | 'vault_withdraw' // 금고 출금
+  | 'vault_interest'; // 금고 이자
 
 /**
  * 화폐 거래 기록

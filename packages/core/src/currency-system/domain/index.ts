@@ -6,6 +6,7 @@ export * from './channel-category';
 export * from './category-multiplier';
 export * from './daily-reward';
 export * from './shop-item';
+export * from './default-shop-items';
 export * from './user-item';
 export * from './purchase-history';
 export * from './color-option';
@@ -27,3 +28,6 @@ export * from './game-category';
 
 // 상점 패널
 export * from './shop-panel-settings';
+
+// 금고
+export * from './user-vault';

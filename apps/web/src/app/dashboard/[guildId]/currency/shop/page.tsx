@@ -15,7 +15,9 @@ import {
   useRoles,
   useTextChannels,
   useCreateShopPanel,
+  useSeedDefaultItems,
 } from "@/hooks/queries";
+import type { ItemType } from "@/types/shop-v2";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -46,6 +48,24 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Icon } from "@iconify/react";
 import type { ShopItemV2, InlineRoleOption } from "@/types/shop-v2";
+
+// 아이템 타입별 한글 라벨
+const ITEM_TYPE_LABELS: Record<ItemType, string> = {
+  custom: "일반",
+  warning_reduction: "경고차감권",
+  tax_exemption: "세금면제권",
+  transfer_fee_reduction: "이체수수료감면권",
+  activity_boost: "활동부스트권",
+  premium_afk: "프리미엄잠수방",
+  vip_lounge: "VIP라운지",
+  dito_silver: "디토실버",
+  dito_gold: "디토골드",
+};
+
+// 시스템 아이템 타입인지 확인
+function isSystemItemType(itemType: ItemType): boolean {
+  return itemType !== "custom";
+}
 
 // Pending role option for inline management
 interface PendingRoleOption {
@@ -105,6 +125,7 @@ export default function ShopV2Page() {
   const updateItem = useUpdateShopItemV2(guildId);
   const deleteItem = useDeleteShopItemV2(guildId);
   const createShopPanelMutation = useCreateShopPanel(guildId);
+  const seedDefaultItems = useSeedDefaultItems(guildId);
 
   const topyName = settings?.topyName ?? "토피";
   const rubyName = settings?.rubyName ?? "루비";
@@ -351,6 +372,29 @@ export default function ShopV2Page() {
       toast({ title: "통합 상점 패널이 설치되었습니다!" });
     } catch {
       toast({ title: "패널 설치에 실패했습니다.", variant: "destructive" });
+    }
+  };
+
+  const handleSeedDefaultItems = async () => {
+    try {
+      const result = await seedDefaultItems.mutateAsync();
+      if (result.seeded > 0) {
+        toast({
+          title: "기본 아이템 추가 완료",
+          description: `${result.seeded}개의 아이템이 추가되었습니다.`,
+        });
+      } else {
+        toast({
+          title: "추가할 아이템 없음",
+          description: result.message,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "기본 아이템 추가 실패",
+        description: error instanceof Error ? error.message : "오류가 발생했습니다.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -869,23 +913,39 @@ export default function ShopV2Page() {
           </p>
         </div>
 
-        <Dialog open={isCreateOpen} onOpenChange={(open) => {
-          setIsCreateOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-amber-600 to-orange-600">
-              <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
-              아이템 추가
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSeedDefaultItems}
+            disabled={seedDefaultItems.isPending}
+            className="border-white/20 text-white/70 hover:bg-white/10"
+          >
+            {seedDefaultItems.isPending ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+            ) : (
+              <Icon icon="solar:box-minimalistic-linear" className="mr-2 h-4 w-4" />
+            )}
+            기본 아이템 추가
+          </Button>
+
+          <Dialog open={isCreateOpen} onOpenChange={(open) => {
+            setIsCreateOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-amber-600 to-orange-600">
+                <Icon icon="solar:add-circle-linear" className="mr-2 h-4 w-4" />
+                아이템 추가
+              </Button>
+            </DialogTrigger>
           <DialogContent className="bg-zinc-900 border-white/10 max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-white">새 상점 아이템 추가</DialogTitle>
             </DialogHeader>
             {formContent}
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Edit Dialog */}
@@ -1101,6 +1161,15 @@ export default function ShopV2Page() {
                       >
                         {item.enabled ? "활성" : "비활성"}
                       </Badge>
+                      {item.itemType && isSystemItemType(item.itemType as ItemType) && (
+                        <Badge
+                          variant="secondary"
+                          className="bg-blue-500/20 text-blue-400 border-0"
+                        >
+                          <Icon icon="solar:box-minimalistic-linear" className="h-3 w-3 mr-1" />
+                          {ITEM_TYPE_LABELS[item.itemType as ItemType] ?? item.itemType}
+                        </Badge>
+                      )}
                       {item.roleTicket && (
                         <Badge
                           variant="secondary"

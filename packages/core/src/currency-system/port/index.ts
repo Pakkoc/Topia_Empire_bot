@@ -20,3 +20,6 @@ export * from './game-repository.port';
 
 // 상점 패널
 export * from './shop-panel-settings-repository.port';
+
+// 금고
+export * from './vault-repository.port';

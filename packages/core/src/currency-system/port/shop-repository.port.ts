@@ -2,6 +2,7 @@ import type { Result } from '../../shared/types/result';
 import type { RepositoryError } from '../errors';
 import type {
   ShopItem,
+  ShopItemType,
   CreateShopItemInput,
   UpdateShopItemInput,
 } from '../domain/shop-item';
@@ -16,6 +17,8 @@ export interface ShopRepositoryPort {
     currencyType: 'topy' | 'ruby'
   ): Promise<Result<ShopItem[], RepositoryError>>;
   findById(id: number): Promise<Result<ShopItem | null, RepositoryError>>;
+  findByItemType(guildId: string, itemType: ShopItemType): Promise<Result<ShopItem | null, RepositoryError>>;
+  findAllByItemTypes(guildId: string, itemTypes: ShopItemType[]): Promise<Result<ShopItem[], RepositoryError>>;
   create(input: CreateShopItemInput): Promise<Result<ShopItem, RepositoryError>>;
   update(id: number, input: UpdateShopItemInput): Promise<Result<void, RepositoryError>>;
   delete(id: number): Promise<Result<void, RepositoryError>>;
@@ -28,6 +31,11 @@ export interface ShopRepositoryPort {
     shopItemId: number
   ): Promise<Result<UserItemV2 | null, RepositoryError>>;
   findUserItems(guildId: string, userId: string): Promise<Result<UserItemV2[], RepositoryError>>;
+  findUserItemByType(
+    guildId: string,
+    userId: string,
+    itemType: ShopItemType
+  ): Promise<Result<UserItemV2 | null, RepositoryError>>;
   findExpiredItems(before: Date): Promise<Result<UserItemV2[], RepositoryError>>;
 
   // 아이템 구매 (수량 증가 또는 생성)

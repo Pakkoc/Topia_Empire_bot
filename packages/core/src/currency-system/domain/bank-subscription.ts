@@ -25,6 +25,7 @@ export interface BankBenefits {
   transferFeeExempt: boolean;
   purchaseFeePercent: number;  // 0 = 면제
   marketFeePercent: number;
+  interestRate: number;  // 월 이자율 (%) - 금고 예금에 적용
 }
 
 /**
@@ -51,6 +52,7 @@ export function getBankBenefits(tier: BankTier | null): BankBenefits {
       transferFeeExempt: true,
       purchaseFeePercent: 0,      // 면제
       marketFeePercent: 3,        // 3%
+      interestRate: 2,            // 월 2%
     };
   }
 
@@ -61,6 +63,7 @@ export function getBankBenefits(tier: BankTier | null): BankBenefits {
       transferFeeExempt: true,
       purchaseFeePercent: 1.2,    // 1.2%
       marketFeePercent: 5,        // 5%
+      interestRate: 1,            // 월 1%
     };
   }
 
@@ -71,6 +74,7 @@ export function getBankBenefits(tier: BankTier | null): BankBenefits {
     transferFeeExempt: false,
     purchaseFeePercent: 1.2,      // 1.2%
     marketFeePercent: 5,          // 5%
+    interestRate: 0,              // 이자 없음
   };
 }
 

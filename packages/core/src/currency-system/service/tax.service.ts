@@ -4,6 +4,7 @@ import type { CurrencySettingsRepositoryPort } from '../port/currency-settings-r
 import type { TopyWalletRepositoryPort } from '../port/topy-wallet-repository.port';
 import type { CurrencyTransactionRepositoryPort } from '../port/currency-transaction-repository.port';
 import type { TaxHistoryRepositoryPort, CreateTaxHistoryInput } from '../port/tax-history-repository.port';
+import type { ShopRepositoryPort } from '../port/shop-repository.port';
 import { Result } from '../../shared/types/result';
 import { createTransaction } from '../domain/currency-transaction';
 
@@ -44,8 +45,51 @@ export class TaxService {
     private readonly topyWalletRepo: TopyWalletRepositoryPort,
     private readonly transactionRepo: CurrencyTransactionRepositoryPort,
     private readonly taxHistoryRepo: TaxHistoryRepositoryPort,
+    private readonly shopRepo: ShopRepositoryPort,
     private readonly clock: ClockPort
   ) {}
+
+  /**
+   * 세금면제권 확인 (미리보기용 - 소모하지 않음)
+   */
+  private async checkTaxExemption(
+    guildId: string,
+    userId: string
+  ): Promise<{ hasExemption: boolean }> {
+    const itemResult = await this.shopRepo.findUserItemByType(guildId, userId, 'tax_exemption');
+    if (!itemResult.success) {
+      return { hasExemption: false };
+    }
+
+    const item = itemResult.data;
+    if (item && item.quantity > 0) {
+      return { hasExemption: true };
+    }
+
+    return { hasExemption: false };
+  }
+
+  /**
+   * 세금면제권 사용 (실제 소모)
+   */
+  private async useTaxExemption(
+    guildId: string,
+    userId: string
+  ): Promise<{ used: boolean; reason?: string }> {
+    const itemResult = await this.shopRepo.findUserItemByType(guildId, userId, 'tax_exemption');
+    if (!itemResult.success) {
+      return { used: false };
+    }
+
+    const item = itemResult.data;
+    if (item && item.quantity > 0) {
+      // 세금면제권 1개 소모
+      await this.shopRepo.decreaseUserItemQuantity(item.id, 1);
+      return { used: true, reason: '세금면제권 사용' };
+    }
+
+    return { used: false };
+  }
 
   /**
    * 월말 세금 미리보기 (실제 차감 없음)
@@ -73,9 +117,10 @@ export class TaxService {
 
       const taxAmount = calculateMonthlyTax(wallet.balance, settings.monthlyTaxPercent);
 
-      // TODO: 세금 면제권 확인 로직 추가 예정
-      const exempted = false;
-      const exemptionReason = undefined;
+      // 세금면제권 확인 (미리보기에서는 소모하지 않음)
+      const { hasExemption } = await this.checkTaxExemption(guildId, wallet.userId);
+      const exempted = hasExemption;
+      const exemptionReason = exempted ? '세금면제권 보유' : undefined;
 
       results.push({
         userId: wallet.userId,
@@ -144,9 +189,8 @@ export class TaxService {
 
       const taxAmount = calculateMonthlyTax(wallet.balance, settings.monthlyTaxPercent);
 
-      // TODO: 세금 면제권 확인 로직 추가 예정
-      const exempted = false;
-      const exemptionReason: string | undefined = undefined;
+      // 세금면제권 사용 시도 (실제 소모)
+      const { used: exempted, reason: exemptionReason } = await this.useTaxExemption(guildId, wallet.userId);
 
       const balanceAfter = exempted ? wallet.balance : wallet.balance - taxAmount;
       const actualTaxAmount = exempted ? BigInt(0) : taxAmount;

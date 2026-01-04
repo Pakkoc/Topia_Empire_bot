@@ -5,12 +5,15 @@ import type { TopyWalletRepositoryPort } from '../port/topy-wallet-repository.po
 import type { RubyWalletRepositoryPort } from '../port/ruby-wallet-repository.port';
 import type { CurrencyTransactionRepositoryPort } from '../port/currency-transaction-repository.port';
 import type { CurrencySettingsRepositoryPort } from '../port/currency-settings-repository.port';
+import type { BankSubscriptionRepositoryPort } from '../port/bank-subscription-repository.port';
 import type {
   ShopItem,
+  ShopItemType,
   CreateShopItemInput,
   UpdateShopItemInput,
 } from '../domain/shop-item';
 import type { UserItemV2 } from '../domain/user-item-v2';
+import type { BankTier } from '../domain/bank-subscription';
 import { Result } from '../../shared/types/result';
 import { isPeriodItem, getItemPrice } from '../domain/shop-item';
 import { createTransaction, type CurrencyType } from '../domain/currency-transaction';
@@ -30,7 +33,8 @@ export class ShopService {
     private readonly rubyWalletRepo: RubyWalletRepositoryPort,
     private readonly transactionRepo: CurrencyTransactionRepositoryPort,
     private readonly currencySettingsRepo: CurrencySettingsRepositoryPort,
-    private readonly clock: ClockPort
+    private readonly clock: ClockPort,
+    private readonly bankSubscriptionRepo?: BankSubscriptionRepositoryPort
   ) {}
 
   // ========== 상점 아이템 CRUD ==========
@@ -254,6 +258,33 @@ export class ShopService {
       );
     }
 
+    // 9. 디토뱅크 구독 처리 (dito_silver, dito_gold)
+    if (this.bankSubscriptionRepo && (item.itemType === 'dito_silver' || item.itemType === 'dito_gold')) {
+      const tier: BankTier = item.itemType === 'dito_silver' ? 'silver' : 'gold';
+      const daysToAdd = (item.durationDays || 30) * quantity;
+
+      // 기존 구독 확인
+      const existingResult = await this.bankSubscriptionRepo.findByUserAndTier(guildId, userId, tier);
+      const existing = existingResult.success ? existingResult.data : null;
+
+      if (existing) {
+        // 기존 구독 연장
+        const newExpiresAt = new Date(existing.expiresAt.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+        await this.bankSubscriptionRepo.extendExpiration(existing.id, newExpiresAt);
+      } else {
+        // 새 구독 생성
+        const startsAt = now;
+        const expiresAt = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+        await this.bankSubscriptionRepo.save({
+          guildId,
+          userId,
+          tier,
+          startsAt,
+          expiresAt,
+        });
+      }
+    }
+
     return {
       success: true,
       data: {
@@ -288,6 +319,68 @@ export class ShopService {
       return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
     }
     return result;
+  }
+
+  // ========== 감면권 관련 ==========
+
+  /**
+   * 특정 타입의 아이템 보유 여부 확인
+   */
+  async checkItemByType(
+    guildId: string,
+    userId: string,
+    itemType: ShopItemType
+  ): Promise<Result<{ hasItem: boolean; userItemId?: bigint; quantity?: number }, CurrencyError>> {
+    const result = await this.shopRepo.findUserItemByType(guildId, userId, itemType);
+    if (!result.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
+    }
+
+    const item = result.data;
+    if (item && item.quantity > 0) {
+      return {
+        success: true,
+        data: { hasItem: true, userItemId: item.id, quantity: item.quantity },
+      };
+    }
+
+    return { success: true, data: { hasItem: false } };
+  }
+
+  /**
+   * 이체수수료감면권 확인
+   */
+  async checkTransferFeeReduction(
+    guildId: string,
+    userId: string
+  ): Promise<Result<{ hasReduction: boolean; userItemId?: bigint }, CurrencyError>> {
+    const result = await this.checkItemByType(guildId, userId, 'transfer_fee_reduction');
+    if (!result.success) {
+      return result;
+    }
+
+    return {
+      success: true,
+      data: {
+        hasReduction: result.data.hasItem,
+        userItemId: result.data.userItemId,
+      },
+    };
+  }
+
+  /**
+   * 이체수수료감면권 사용 (1개 소모)
+   */
+  async useTransferFeeReduction(
+    guildId: string,
+    userId: string,
+    userItemId: bigint
+  ): Promise<Result<void, CurrencyError>> {
+    const result = await this.shopRepo.decreaseUserItemQuantity(userItemId, 1);
+    if (!result.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
+    }
+    return { success: true, data: undefined };
   }
 }
 

@@ -118,3 +118,31 @@ export function useCreateShopPanel(guildId: string) {
     },
   });
 }
+
+// Seed default shop items
+interface SeedResult {
+  success: boolean;
+  message: string;
+  seeded: number;
+  items?: string[];
+}
+
+export function useSeedDefaultItems(guildId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<SeedResult, Error, void>({
+    mutationFn: async () => {
+      const res = await fetch(`/api/guilds/${guildId}/shop-v2/seed`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to seed default items");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shop-items-v2", guildId] });
+    },
+  });
+}

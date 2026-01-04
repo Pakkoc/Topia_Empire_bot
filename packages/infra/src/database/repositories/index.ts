@@ -29,3 +29,6 @@ export * from './shop-panel-settings.repository';
 export * from './data-retention-settings.repository';
 export * from './left-member.repository';
 export * from './user-data-cleanup.repository';
+
+// 금고
+export * from './vault.repository';

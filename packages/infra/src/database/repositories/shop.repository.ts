@@ -2,6 +2,7 @@ import type { Pool, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type {
   ShopRepositoryPort,
   ShopItem,
+  ShopItemType,
   CreateShopItemInput,
   UpdateShopItemInput,
   UserItemV2,
@@ -19,6 +20,7 @@ interface ShopItemRow extends RowDataPacket {
   topy_price: string | null;
   ruby_price: string | null;
   currency_type: 'topy' | 'ruby' | 'both';
+  item_type: ShopItemType | null;
   duration_days: number;
   stock: number | null;
   max_per_user: number | null;
@@ -52,6 +54,7 @@ function toShopItem(row: ShopItemRow): ShopItem {
     topyPrice: row.topy_price ? BigInt(row.topy_price) : null,
     rubyPrice: row.ruby_price ? BigInt(row.ruby_price) : null,
     currencyType: row.currency_type,
+    itemType: row.item_type ?? 'custom',
     durationDays: row.duration_days,
     stock: row.stock,
     maxPerUser: row.max_per_user,
@@ -154,12 +157,60 @@ export class ShopRepository implements ShopRepositoryPort {
     }
   }
 
+  async findByItemType(
+    guildId: string,
+    itemType: ShopItemType
+  ): Promise<Result<ShopItem | null, RepositoryError>> {
+    try {
+      const [rows] = await this.pool.execute<ShopItemRow[]>(
+        'SELECT * FROM shop_items_v2 WHERE guild_id = ? AND item_type = ? LIMIT 1',
+        [guildId, itemType]
+      );
+
+      const firstRow = rows[0];
+      if (!firstRow) {
+        return Result.ok(null);
+      }
+
+      return Result.ok(toShopItem(firstRow));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async findAllByItemTypes(
+    guildId: string,
+    itemTypes: ShopItemType[]
+  ): Promise<Result<ShopItem[], RepositoryError>> {
+    try {
+      if (itemTypes.length === 0) {
+        return Result.ok([]);
+      }
+
+      const placeholders = itemTypes.map(() => '?').join(', ');
+      const [rows] = await this.pool.execute<ShopItemRow[]>(
+        `SELECT * FROM shop_items_v2 WHERE guild_id = ? AND item_type IN (${placeholders}) ORDER BY id ASC`,
+        [guildId, ...itemTypes]
+      );
+
+      return Result.ok(rows.map(toShopItem));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
   async create(input: CreateShopItemInput): Promise<Result<ShopItem, RepositoryError>> {
     try {
       const [result] = await this.pool.execute<ResultSetHeader>(
         `INSERT INTO shop_items_v2
-         (guild_id, name, description, topy_price, ruby_price, currency_type, duration_days, stock, max_per_user, enabled)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (guild_id, name, description, topy_price, ruby_price, currency_type, item_type, duration_days, stock, max_per_user, enabled)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           input.guildId,
           input.name,
@@ -167,6 +218,7 @@ export class ShopRepository implements ShopRepositoryPort {
           input.topyPrice?.toString() ?? null,
           input.rubyPrice?.toString() ?? null,
           input.currencyType,
+          input.itemType ?? 'custom',
           input.durationDays ?? 0,
           input.stock ?? null,
           input.maxPerUser ?? null,
@@ -215,6 +267,10 @@ export class ShopRepository implements ShopRepositoryPort {
       if (input.currencyType !== undefined) {
         fields.push('currency_type = ?');
         values.push(input.currencyType);
+      }
+      if (input.itemType !== undefined) {
+        fields.push('item_type = ?');
+        values.push(input.itemType);
       }
       if (input.durationDays !== undefined) {
         fields.push('duration_days = ?');
@@ -316,6 +372,35 @@ export class ShopRepository implements ShopRepositoryPort {
         [guildId, userId]
       );
       return Result.ok(rows.map(toUserItemV2));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async findUserItemByType(
+    guildId: string,
+    userId: string,
+    itemType: ShopItemType
+  ): Promise<Result<UserItemV2 | null, RepositoryError>> {
+    try {
+      // shop_items_v2와 조인하여 item_type으로 유저 아이템 조회
+      const [rows] = await this.pool.execute<UserItemV2Row[]>(
+        `SELECT ui.* FROM user_items_v2 ui
+         INNER JOIN shop_items_v2 si ON ui.shop_item_id = si.id
+         WHERE ui.guild_id = ? AND ui.user_id = ? AND si.item_type = ?
+         LIMIT 1`,
+        [guildId, userId, itemType]
+      );
+
+      const firstRow = rows[0];
+      if (!firstRow) {
+        return Result.ok(null);
+      }
+
+      return Result.ok(toUserItemV2(firstRow));
     } catch (error) {
       return Result.err({
         type: 'QUERY_ERROR',

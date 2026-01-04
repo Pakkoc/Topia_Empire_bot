@@ -12,6 +12,7 @@ import {
   TaxService,
   ShopPanelService,
   DataRetentionService,
+  VaultService,
 } from '@topia/core';
 import { getPool } from '../database/pool';
 import {
@@ -35,6 +36,7 @@ import {
   DataRetentionSettingsRepository,
   LeftMemberRepository,
   UserDataCleanupRepository,
+  VaultRepository,
 } from '../database/repositories';
 import { SystemClock } from '../clock';
 import type { Container } from './types';
@@ -81,6 +83,9 @@ export function createContainer(): Container {
   const leftMemberRepo = new LeftMemberRepository(pool);
   const userDataCleanupRepo = new UserDataCleanupRepository(pool);
 
+  // 금고
+  const vaultRepo = new VaultRepository(pool);
+
   // Services (repositories needed for tax service)
   const xpService = new XpService(xpRepo, xpSettingsRepo, clock);
   const currencyService = new CurrencyService(
@@ -98,7 +103,8 @@ export function createContainer(): Container {
     rubyWalletRepo,
     currencyTransactionRepo,
     currencySettingsRepo,
-    clock
+    clock,
+    bankSubscriptionRepo
   );
   const marketService = new MarketService(
     marketRepo,
@@ -117,7 +123,8 @@ export function createContainer(): Container {
     rubyWalletRepo,
     currencyTransactionRepo,
     currencySettingsRepo,
-    clock
+    clock,
+    bankSubscriptionRepo
   );
   const roleTicketService = new RoleTicketService(roleTicketRepo, shopV2Repo);
   const inventoryService = new InventoryService(shopV2Repo, roleTicketRepo, clock);
@@ -135,6 +142,7 @@ export function createContainer(): Container {
     topyWalletRepo,
     currencyTransactionRepo,
     taxHistoryRepo,
+    shopRepo,
     clock
   );
 
@@ -146,6 +154,15 @@ export function createContainer(): Container {
     dataRetentionSettingsRepo,
     leftMemberRepo,
     userDataCleanupRepo
+  );
+
+  // 금고 서비스
+  const vaultService = new VaultService(
+    vaultRepo,
+    topyWalletRepo,
+    currencyTransactionRepo,
+    bankSubscriptionRepo,
+    clock
   );
 
   return {
@@ -172,5 +189,8 @@ export function createContainer(): Container {
 
     // 데이터 보존
     dataRetentionService,
+
+    // 금고
+    vaultService,
   };
 }

@@ -58,4 +58,8 @@ export type CurrencyError =
   | { type: 'GAME_FULL'; maxPlayers: number; currentPlayers: number }
   | { type: 'TEAM_FULL'; teamNumber: number; maxPlayers: number; currentPlayers: number }
   // 세금 관련 에러
-  | { type: 'ALREADY_PROCESSED' };
+  | { type: 'ALREADY_PROCESSED' }
+  // 금고 관련 에러
+  | { type: 'NO_SUBSCRIPTION' }
+  | { type: 'VAULT_LIMIT_EXCEEDED'; limit: bigint; current: bigint; requested: bigint }
+  | { type: 'INSUFFICIENT_VAULT_BALANCE'; required: bigint; available: bigint };

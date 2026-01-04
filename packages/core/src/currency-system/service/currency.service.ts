@@ -548,7 +548,32 @@ export class CurrencyService {
   }
 
   /**
+   * 이체 수수료 계산
+   */
+  async calculateTransferFee(
+    guildId: string,
+    amount: bigint,
+    currencyType: CurrencyType
+  ): Promise<Result<{ fee: bigint; feePercent: number; minAmount: bigint }, CurrencyError>> {
+    const settingsResult = await this.settingsRepo.findByGuild(guildId);
+    const settings = settingsResult.success ? settingsResult.data : null;
+
+    const minAmount = currencyType === 'topy'
+      ? BigInt(settings?.minTransferTopy ?? CURRENCY_DEFAULTS.MIN_TRANSFER_TOPY)
+      : BigInt(settings?.minTransferRuby ?? CURRENCY_DEFAULTS.MIN_TRANSFER_RUBY);
+
+    const feePercent = currencyType === 'topy'
+      ? (settings?.transferFeeTopyPercent ?? CURRENCY_DEFAULTS.TRANSFER_FEE_TOPY_PERCENT)
+      : (settings?.transferFeeRubyPercent ?? CURRENCY_DEFAULTS.TRANSFER_FEE_RUBY_PERCENT);
+
+    const fee = feePercent > 0 ? (amount * BigInt(Math.round(feePercent * 10))) / BigInt(1000) : BigInt(0);
+
+    return Result.ok({ fee, feePercent, minAmount });
+  }
+
+  /**
    * 화폐 이체
+   * @param skipFee - true면 수수료 면제 (감면권 사용 시)
    */
   async transfer(
     guildId: string,
@@ -556,7 +581,8 @@ export class CurrencyService {
     toUserId: string,
     amount: bigint,
     currencyType: CurrencyType,
-    reason?: string
+    reason?: string,
+    skipFee?: boolean
   ): Promise<Result<TransferResult, CurrencyError>> {
     // 1. 자기 자신에게 이체 불가
     if (fromUserId === toUserId) {
@@ -578,13 +604,15 @@ export class CurrencyService {
       });
     }
 
-    // 3. 수수료 계산 (설정 기반)
-    const feePercent = currencyType === 'topy'
-      ? (settings?.transferFeeTopyPercent ?? CURRENCY_DEFAULTS.TRANSFER_FEE_TOPY_PERCENT)
-      : (settings?.transferFeeRubyPercent ?? CURRENCY_DEFAULTS.TRANSFER_FEE_RUBY_PERCENT);
+    // 3. 수수료 계산 (skipFee가 true면 수수료 0)
+    let fee = BigInt(0);
+    if (!skipFee) {
+      const feePercent = currencyType === 'topy'
+        ? (settings?.transferFeeTopyPercent ?? CURRENCY_DEFAULTS.TRANSFER_FEE_TOPY_PERCENT)
+        : (settings?.transferFeeRubyPercent ?? CURRENCY_DEFAULTS.TRANSFER_FEE_RUBY_PERCENT);
 
-    // 수수료 = 금액 * 퍼센트 / 100
-    const fee = feePercent > 0 ? (amount * BigInt(Math.round(feePercent * 10))) / BigInt(1000) : BigInt(0);
+      fee = feePercent > 0 ? (amount * BigInt(Math.round(feePercent * 10))) / BigInt(1000) : BigInt(0);
+    }
     const totalRequired = amount + fee;
 
     if (currencyType === 'topy') {

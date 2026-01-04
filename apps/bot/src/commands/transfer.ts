@@ -1,6 +1,10 @@
 import {
   SlashCommandBuilder,
   EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
 } from 'discord.js';
 import type { Command } from './types';
 
@@ -102,13 +106,88 @@ export const transferCommand: Command = {
       const rubyName = settingsResult.success && settingsResult.data?.rubyName || '루비';
       const currencyName = currencyType === 'topy' ? topyName : rubyName;
 
+      // 수수료 미리 계산
+      const feeResult = await container.currencyService.calculateTransferFee(guildId, BigInt(amount), currencyType);
+      const expectedFee = feeResult.success ? feeResult.data.fee : BigInt(0);
+
+      // 이체수수료감면권 확인 (토피만 수수료 있음)
+      let skipFee = false;
+      let usedReductionItem = false;
+
+      if (expectedFee > BigInt(0)) {
+        const reductionResult = await container.shopV2Service.checkTransferFeeReduction(guildId, senderId);
+
+        if (reductionResult.success && reductionResult.data.hasReduction) {
+          // 버튼 UI 표시
+          const row = new ActionRowBuilder<ButtonBuilder>()
+            .addComponents(
+              new ButtonBuilder()
+                .setCustomId('use_reduction')
+                .setLabel('감면권 사용 (수수료 면제)')
+                .setStyle(ButtonStyle.Primary),
+              new ButtonBuilder()
+                .setCustomId('skip_reduction')
+                .setLabel(`그냥 이체 (수수료 ${expectedFee.toLocaleString()} ${currencyName})`)
+                .setStyle(ButtonStyle.Secondary),
+            );
+
+          const confirmEmbed = new EmbedBuilder()
+            .setColor(0xFFAA00)
+            .setTitle('💳 이체수수료감면권 보유')
+            .setDescription(
+              `이체 금액: **${amount.toLocaleString()} ${currencyName}**\n` +
+              `수수료: **${expectedFee.toLocaleString()} ${currencyName}**\n\n` +
+              `이체수수료감면권을 사용하시겠습니까?`
+            )
+            .setFooter({ text: '30초 내에 선택해주세요' })
+            .setTimestamp();
+
+          const response = await interaction.editReply({
+            embeds: [confirmEmbed],
+            components: [row],
+          });
+
+          try {
+            const buttonInteraction = await response.awaitMessageComponent({
+              componentType: ComponentType.Button,
+              filter: (i) => i.user.id === senderId,
+              time: 30_000,
+            });
+
+            if (buttonInteraction.customId === 'use_reduction') {
+              // 감면권 사용
+              const userItemId = reductionResult.data.userItemId!;
+              await container.shopV2Service.useTransferFeeReduction(guildId, senderId, userItemId);
+              skipFee = true;
+              usedReductionItem = true;
+            }
+
+            await buttonInteraction.deferUpdate();
+          } catch {
+            // 시간 초과 - 일반 이체로 진행
+            const timeoutEmbed = new EmbedBuilder()
+              .setColor(0xFF0000)
+              .setTitle('⏰ 시간 초과')
+              .setDescription('선택 시간이 초과되어 이체가 취소되었습니다.')
+              .setTimestamp();
+
+            await interaction.editReply({
+              embeds: [timeoutEmbed],
+              components: [],
+            });
+            return;
+          }
+        }
+      }
+
       const result = await container.currencyService.transfer(
         guildId,
         senderId,
         receiver.id,
         BigInt(amount),
         currencyType,
-        reason ?? undefined
+        reason ?? undefined,
+        skipFee
       );
 
       if (!result.success) {
@@ -142,11 +221,17 @@ export const transferCommand: Command = {
       const totalDeducted = transferAmount + fee;
       const hasFee = fee > BigInt(0);
       const reasonText = reason ? `\n사유: ${reason}` : '';
+      const reductionText = usedReductionItem ? '\n🎫 이체수수료감면권 사용 (수수료 면제)' : '';
 
       // 채널 응답
-      const replyDescription = hasFee
-        ? `**${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.\n총 **${totalDeducted.toLocaleString()} ${currencyName}** 차감 (송금 ${transferAmount.toLocaleString()} + 수수료 ${fee.toLocaleString()})${reasonText}`
-        : `**${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${reasonText}`;
+      let replyDescription: string;
+      if (usedReductionItem) {
+        replyDescription = `**${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${reductionText}${reasonText}`;
+      } else if (hasFee) {
+        replyDescription = `**${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.\n총 **${totalDeducted.toLocaleString()} ${currencyName}** 차감 (송금 ${transferAmount.toLocaleString()} + 수수료 ${fee.toLocaleString()})${reasonText}`;
+      } else {
+        replyDescription = `**${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${reasonText}`;
+      }
 
       const embed = new EmbedBuilder()
         .setColor(0x00FF00)
@@ -157,15 +242,20 @@ export const transferCommand: Command = {
         )
         .setTimestamp();
 
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.editReply({ embeds: [embed], components: [] });
 
       // DM 알림 발송 (실패해도 무시)
       const guildName = interaction.guild?.name ?? '서버';
 
       // 보내는 사람에게 DM
-      const senderDmDescription = hasFee
-        ? `**${guildName}**에서 **${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.\n총 **${totalDeducted.toLocaleString()} ${currencyName}** 차감 (송금 ${transferAmount.toLocaleString()} + 수수료 ${fee.toLocaleString()})${reasonText}`
-        : `**${guildName}**에서 **${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${reasonText}`;
+      let senderDmDescription: string;
+      if (usedReductionItem) {
+        senderDmDescription = `**${guildName}**에서 **${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${reductionText}${reasonText}`;
+      } else if (hasFee) {
+        senderDmDescription = `**${guildName}**에서 **${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.\n총 **${totalDeducted.toLocaleString()} ${currencyName}** 차감 (송금 ${transferAmount.toLocaleString()} + 수수료 ${fee.toLocaleString()})${reasonText}`;
+      } else {
+        senderDmDescription = `**${guildName}**에서 **${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다.${reasonText}`;
+      }
 
       const senderDmEmbed = new EmbedBuilder()
         .setColor(0xFFA500)

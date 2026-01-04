@@ -43,6 +43,7 @@ import { commands, type Command } from './commands';
 import { startExpiredItemsScheduler } from './schedulers/expired-items.scheduler';
 import { startMonthlyTaxScheduler } from './schedulers/monthly-tax.scheduler';
 import { startDataRetentionScheduler } from './schedulers/data-retention.scheduler';
+import { startVaultInterestScheduler } from './schedulers/vault-interest.scheduler';
 
 const client = new Client({
   intents: [
@@ -131,6 +132,9 @@ async function main() {
 
     // 데이터 보존 기간 만료 스케줄러 시작
     startDataRetentionScheduler(container);
+
+    // 금고 이자 스케줄러 시작
+    startVaultInterestScheduler(client, container);
 
     // Register all guilds the bot is currently in
     const pool = getPool();

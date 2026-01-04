@@ -25,11 +25,27 @@ export const roleTicketResponseSchema = z.object({
 
 export type RoleTicketResponse = z.infer<typeof roleTicketResponseSchema>;
 
+// Item type enum
+export const itemTypeEnum = z.enum([
+  "custom",
+  "warning_reduction",
+  "tax_exemption",
+  "transfer_fee_reduction",
+  "activity_boost",
+  "premium_afk",
+  "vip_lounge",
+  "dito_silver",
+  "dito_gold",
+]);
+
+export type ItemType = z.infer<typeof itemTypeEnum>;
+
 export const shopItemV2Schema = z.object({
   id: z.number(),
   guildId: z.string(),
   name: z.string().min(1).max(100),
   description: z.string().max(500).nullable(),
+  itemType: itemTypeEnum.default("custom"),
   topyPrice: z.number().min(0).nullable(),
   rubyPrice: z.number().min(0).nullable(),
   currencyType: z.enum(["topy", "ruby", "both"]),
@@ -67,6 +83,7 @@ export type InlineRoleTicket = z.infer<typeof inlineRoleTicketSchema>;
 export const createShopItemV2Schema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional(),
+  itemType: itemTypeEnum.optional(),
   topyPrice: z.number().min(0).nullable().optional(),
   rubyPrice: z.number().min(0).nullable().optional(),
   currencyType: z.enum(["topy", "ruby", "both"]),
@@ -83,6 +100,7 @@ export type CreateShopItemV2 = z.infer<typeof createShopItemV2Schema>;
 export const updateShopItemV2Schema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).nullable().optional(),
+  itemType: itemTypeEnum.optional(),
   topyPrice: z.number().min(0).nullable().optional(),
   rubyPrice: z.number().min(0).nullable().optional(),
   currencyType: z.enum(["topy", "ruby", "both"]).optional(),
