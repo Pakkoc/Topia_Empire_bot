@@ -5,6 +5,8 @@ import { grantCommand } from './grant';
 import { deductCommand } from './deduct';
 import { inventoryCommand } from './inventory';
 import { vaultCommand } from './vault';
+import { itemGiveCommand } from './item-give';
+import { itemTakeCommand } from './item-take';
 import type { Command } from './types';
 
 export const commands: Command[] = [
@@ -15,6 +17,8 @@ export const commands: Command[] = [
   deductCommand,
   inventoryCommand,
   vaultCommand,
+  itemGiveCommand,
+  itemTakeCommand,
 ];
 
 export type { Command } from './types';

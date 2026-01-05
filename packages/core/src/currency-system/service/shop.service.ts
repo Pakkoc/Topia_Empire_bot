@@ -321,6 +321,127 @@ export class ShopService {
     return result;
   }
 
+  // ========== 관리자 아이템 지급/회수 ==========
+
+  /**
+   * 관리자 아이템 지급
+   */
+  async giveItem(
+    guildId: string,
+    userId: string,
+    shopItemId: number,
+    quantity: number = 1
+  ): Promise<Result<{ userItem: UserItemV2; item: ShopItem }, CurrencyError>> {
+    if (quantity < 1 || quantity > 999 || !Number.isInteger(quantity)) {
+      return { success: false, error: { type: 'INVALID_QUANTITY' as const } };
+    }
+
+    // 아이템 존재 확인
+    const itemResult = await this.shopRepo.findById(shopItemId);
+    if (!itemResult.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: itemResult.error } };
+    }
+    const item = itemResult.data;
+    if (!item) {
+      return { success: false, error: { type: 'ITEM_NOT_FOUND' } };
+    }
+
+    // 기간제 아이템: 만료일 계산
+    let expiresAt: Date | null = null;
+    if (isPeriodItem(item)) {
+      const now = this.clock.now();
+      const existingItemResult = await this.shopRepo.findUserItem(guildId, userId, shopItemId);
+      const existingItem = existingItemResult.success ? existingItemResult.data : null;
+
+      const baseDate = existingItem?.expiresAt && existingItem.expiresAt > now
+        ? existingItem.expiresAt
+        : now;
+
+      const daysToAdd = item.durationDays * quantity;
+      expiresAt = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+    }
+
+    // 인벤토리에 추가
+    const userItemResult = await this.shopRepo.upsertUserItem(
+      guildId,
+      userId,
+      shopItemId,
+      quantity,
+      expiresAt
+    );
+    if (!userItemResult.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: userItemResult.error } };
+    }
+
+    return {
+      success: true,
+      data: {
+        userItem: userItemResult.data,
+        item,
+      },
+    };
+  }
+
+  /**
+   * 관리자 아이템 회수
+   */
+  async takeItem(
+    guildId: string,
+    userId: string,
+    shopItemId: number,
+    quantity: number = 1
+  ): Promise<Result<{ remainingQuantity: number; item: ShopItem }, CurrencyError>> {
+    if (quantity < 1 || quantity > 999 || !Number.isInteger(quantity)) {
+      return { success: false, error: { type: 'INVALID_QUANTITY' as const } };
+    }
+
+    // 아이템 존재 확인
+    const itemResult = await this.shopRepo.findById(shopItemId);
+    if (!itemResult.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: itemResult.error } };
+    }
+    const item = itemResult.data;
+    if (!item) {
+      return { success: false, error: { type: 'ITEM_NOT_FOUND' } };
+    }
+
+    // 유저 아이템 확인
+    const userItemResult = await this.shopRepo.findUserItem(guildId, userId, shopItemId);
+    if (!userItemResult.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: userItemResult.error } };
+    }
+    const userItem = userItemResult.data;
+    if (!userItem || userItem.quantity < 1) {
+      return { success: false, error: { type: 'ITEM_NOT_OWNED' } };
+    }
+
+    // 수량 확인
+    if (userItem.quantity < quantity) {
+      return {
+        success: false,
+        error: {
+          type: 'INSUFFICIENT_QUANTITY',
+          required: quantity,
+          available: userItem.quantity,
+        },
+      };
+    }
+
+    // 수량 차감
+    const decreaseResult = await this.shopRepo.decreaseUserItemQuantity(userItem.id, quantity);
+    if (!decreaseResult.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: decreaseResult.error } };
+    }
+
+    return {
+      success: true,
+      data: {
+        remainingQuantity: userItem.quantity - quantity,
+        item,
+      },
+    };
+  }
+
   // ========== 감면권 관련 ==========
 
   /**
