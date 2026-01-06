@@ -9,13 +9,22 @@ import {
   StringSelectMenuBuilder,
   UserSelectMenuBuilder,
   PermissionFlagsBits,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SectionBuilder,
+  SeparatorSpacingSize,
   type ButtonInteraction,
   type ModalSubmitInteraction,
   type TextChannel,
   type UserSelectMenuInteraction,
   type StringSelectMenuInteraction,
+  type APIContainerComponent,
 } from 'discord.js';
 import type { GameService, CurrencyService, Game, GameParticipant, GameCategory, RankRewards } from '@topia/core';
+
+// Components v2 플래그 (1 << 15)
+const IS_COMPONENTS_V2 = 32768;
 
 interface Container {
   gameService: GameService;
@@ -40,7 +49,133 @@ function scheduleEphemeralDelete(interaction: ButtonInteraction | ModalSubmitInt
 // ============================================================
 
 /**
- * 내전 메시지 Embed 생성
+ * 내전 메시지 Container 생성 (Components v2)
+ */
+function createGameContainer(
+  game: Game,
+  topyName: string,
+  participants: GameParticipant[] = [],
+  rankRewards?: Record<number, number>
+): APIContainerComponent {
+  const container = new ContainerBuilder();
+
+  // 상태별 이모지
+  const statusText = {
+    'open': '🟢 모집중',
+    'team_assign': '🟡 팀 배정중',
+    'in_progress': '🔵 경기중',
+    'finished': '✅ 완료',
+    'cancelled': '❌ 취소됨',
+  };
+
+  // 헤더
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`# 🎮 ${game.title}`)
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`**상태: ${statusText[game.status]}**`)
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  // 참가 정보
+  const participantText = game.maxPlayersPerTeam !== null
+    ? `${participants.length}/${game.maxPlayersPerTeam * game.teamCount}명`
+    : `${participants.length}명`;
+
+  let infoText = `💰 **참가비**: ${game.entryFee.toLocaleString()} ${topyName}\n`;
+  infoText += `👥 **참가자**: ${participantText}\n`;
+  infoText += `🏆 **상금 풀**: ${game.totalPool.toLocaleString()} ${topyName}`;
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(infoText)
+  );
+
+  // 보상 비율 표시 (동적 순위 지원)
+  if (game.status === 'open') {
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+    );
+
+    if (game.customWinnerTakesAll) {
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent('🎁 **순위별 보상**: 🏆 승자 독식 (1등 100%)')
+      );
+    } else if (game.customRankRewards) {
+      const total = Object.values(game.customRankRewards).reduce((a, b) => a + b, 0);
+      const rewardEntries = Object.entries(game.customRankRewards)
+        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+        .map(([rank, ratio]) => {
+          const percent = total > 0 ? Math.round((ratio / total) * 100) : 0;
+          return `${rank}등: ${percent}%`;
+        })
+        .join(' | ');
+
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`🎁 **순위별 보상 (커스텀)**: ${rewardEntries}`)
+      );
+    } else if (rankRewards) {
+      const total = Object.values(rankRewards).reduce((a, b) => a + b, 0);
+      const rewardEntries = Object.entries(rankRewards)
+        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+        .filter(([, ratio]) => ratio > 0)
+        .map(([rank, ratio]) => {
+          const percent = total > 0 ? Math.round((ratio / total) * 100) : 0;
+          return `${rank}등: ${percent}%`;
+        })
+        .join(' | ');
+
+      if (rewardEntries) {
+        container.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(`🎁 **순위별 보상**: ${rewardEntries}`)
+        );
+      }
+    }
+  }
+
+  // 참가자 목록
+  if (participants.length > 0) {
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+    );
+
+    if (game.status === 'open' || game.status === 'team_assign') {
+      const participantMentions = participants.map(p => `<@${p.userId}>`).join(', ');
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `**📋 참가자 목록**\n${participantMentions.length > 900 ? participantMentions.substring(0, 897) + '...' : participantMentions}`
+        )
+      );
+    } else if (game.status === 'in_progress' || game.status === 'finished') {
+      let teamsText = '';
+      for (let teamNum = 1; teamNum <= game.teamCount; teamNum++) {
+        const teamMembers = participants.filter(p => p.teamNumber === teamNum);
+        if (teamMembers.length > 0) {
+          const teamColor = getTeamEmoji(teamNum);
+          const memberMentions = teamMembers.map(p => `<@${p.userId}>`).join(', ');
+          teamsText += `${teamColor} **${teamNum}팀**: ${memberMentions}\n`;
+        }
+      }
+      if (teamsText) {
+        container.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(teamsText.trim())
+        );
+      }
+    }
+  }
+
+  return container.toJSON();
+}
+
+/**
+ * 내전 메시지 Embed 생성 (fallback)
  */
 function createGameEmbed(
   game: Game,

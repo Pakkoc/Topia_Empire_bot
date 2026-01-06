@@ -1,8 +1,31 @@
 import {
   SlashCommandBuilder,
   EmbedBuilder,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
+  type APIContainerComponent,
 } from 'discord.js';
 import type { Command } from './types';
+
+// Components v2 플래그 (1 << 15)
+const IS_COMPONENTS_V2 = 32768;
+
+/** 간단한 메시지 Container 생성 */
+function createMessageContainer(title: string, description: string): APIContainerComponent {
+  const container = new ContainerBuilder();
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`# ${title}`)
+  );
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(description)
+  );
+  return container.toJSON();
+}
 
 export const vaultCommand: Command = {
   data: new SlashCommandBuilder()
@@ -71,36 +94,54 @@ export const vaultCommand: Command = {
         const { vault, storageLimit, interestRate, tierName } = result.data;
 
         if (!vault && storageLimit === BigInt(0)) {
-          const embed = new EmbedBuilder()
-            .setColor(0xFFA500)
-            .setTitle('🔒 금고 이용 불가')
-            .setDescription(
-              '금고는 **디토 실버** 또는 **디토 골드** 구독자만 이용할 수 있습니다.\n\n' +
-              '상점에서 디토뱅크 구독권을 구매해보세요!'
-            )
-            .setTimestamp();
-
-          await interaction.editReply({ embeds: [embed] });
+          await interaction.editReply({
+            components: [createMessageContainer(
+              '🔒 금고 이용 불가',
+              '금고는 **디토 실버** 또는 **디토 골드** 구독자만 이용할 수 있습니다.\n\n상점에서 디토뱅크 구독권을 구매해보세요!'
+            )],
+            flags: IS_COMPONENTS_V2,
+          });
           return;
         }
 
         const depositedAmount = vault?.depositedAmount ?? BigInt(0);
         const remainingLimit = storageLimit - depositedAmount;
 
-        const embed = new EmbedBuilder()
-          .setColor(0x00BFFF)
-          .setTitle('🏦 내 금고')
-          .setDescription(`**${tierName}** 구독 혜택`)
-          .addFields(
-            { name: '💰 예치금', value: `${depositedAmount.toLocaleString()} ${topyName}`, inline: true },
-            { name: '📊 한도', value: `${storageLimit.toLocaleString()} ${topyName}`, inline: true },
-            { name: '📈 월 이자율', value: `${interestRate}%`, inline: true },
-            { name: '🔓 남은 한도', value: `${remainingLimit.toLocaleString()} ${topyName}`, inline: false },
-          )
-          .setFooter({ text: '매월 1일에 이자가 지급됩니다' })
-          .setTimestamp();
+        // 금고 현황 Container 생성
+        const vaultContainer = new ContainerBuilder();
 
-        await interaction.editReply({ embeds: [embed] });
+        vaultContainer.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('# 🏦 내 금고')
+        );
+        vaultContainer.addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        );
+        vaultContainer.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(`**${tierName}** 구독 혜택`)
+        );
+        vaultContainer.addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        );
+
+        let infoText = `💰 **예치금**: ${depositedAmount.toLocaleString()} ${topyName}\n`;
+        infoText += `📊 **한도**: ${storageLimit.toLocaleString()} ${topyName}\n`;
+        infoText += `📈 **월 이자율**: ${interestRate}%\n`;
+        infoText += `🔓 **남은 한도**: ${remainingLimit.toLocaleString()} ${topyName}`;
+
+        vaultContainer.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(infoText)
+        );
+        vaultContainer.addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        );
+        vaultContainer.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('-# 매월 1일에 이자가 지급됩니다')
+        );
+
+        await interaction.editReply({
+          components: [vaultContainer.toJSON()],
+          flags: IS_COMPONENTS_V2,
+        });
 
       } else if (subcommand === '예금') {
         const amount = interaction.options.getInteger('금액', true);
@@ -128,28 +169,22 @@ export const vaultCommand: Command = {
               break;
           }
 
-          const embed = new EmbedBuilder()
-            .setColor(0xFF0000)
-            .setTitle('❌ 예금 실패')
-            .setDescription(errorMessage)
-            .setTimestamp();
-
-          await interaction.editReply({ embeds: [embed] });
+          await interaction.editReply({
+            components: [createMessageContainer('❌ 예금 실패', errorMessage)],
+            flags: IS_COMPONENTS_V2,
+          });
           return;
         }
 
         const { depositedAmount, newTotal } = result.data;
 
-        const embed = new EmbedBuilder()
-          .setColor(0x00FF00)
-          .setTitle('✅ 예금 완료!')
-          .setDescription(`금고에 **${depositedAmount.toLocaleString()} ${topyName}**를 예금했습니다.`)
-          .addFields(
-            { name: '💰 금고 잔액', value: `${newTotal.toLocaleString()} ${topyName}`, inline: true },
-          )
-          .setTimestamp();
-
-        await interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({
+          components: [createMessageContainer(
+            '✅ 예금 완료!',
+            `금고에 **${depositedAmount.toLocaleString()} ${topyName}**를 예금했습니다.\n\n💰 **금고 잔액**: ${newTotal.toLocaleString()} ${topyName}`
+          )],
+          flags: IS_COMPONENTS_V2,
+        });
 
       } else if (subcommand === '출금') {
         const amount = interaction.options.getInteger('금액', true);
@@ -168,28 +203,22 @@ export const vaultCommand: Command = {
               break;
           }
 
-          const embed = new EmbedBuilder()
-            .setColor(0xFF0000)
-            .setTitle('❌ 출금 실패')
-            .setDescription(errorMessage)
-            .setTimestamp();
-
-          await interaction.editReply({ embeds: [embed] });
+          await interaction.editReply({
+            components: [createMessageContainer('❌ 출금 실패', errorMessage)],
+            flags: IS_COMPONENTS_V2,
+          });
           return;
         }
 
         const { withdrawnAmount, newTotal } = result.data;
 
-        const embed = new EmbedBuilder()
-          .setColor(0x00FF00)
-          .setTitle('✅ 출금 완료!')
-          .setDescription(`금고에서 **${withdrawnAmount.toLocaleString()} ${topyName}**를 출금했습니다.`)
-          .addFields(
-            { name: '💰 금고 잔액', value: `${newTotal.toLocaleString()} ${topyName}`, inline: true },
-          )
-          .setTimestamp();
-
-        await interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({
+          components: [createMessageContainer(
+            '✅ 출금 완료!',
+            `금고에서 **${withdrawnAmount.toLocaleString()} ${topyName}**를 출금했습니다.\n\n💰 **금고 잔액**: ${newTotal.toLocaleString()} ${topyName}`
+          )],
+          flags: IS_COMPONENTS_V2,
+        });
       }
     } catch (error) {
       console.error('금고 명령어 오류:', error);

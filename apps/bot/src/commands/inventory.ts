@@ -6,11 +6,90 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SectionBuilder,
+  SeparatorSpacingSize,
+  type APIContainerComponent,
 } from 'discord.js';
 import type { Command } from './types';
 import type { AvailableTicket, TicketRoleOption } from '@topia/core';
 
-/** 인벤토리 Embed 생성 */
+// Components v2 플래그 (1 << 15)
+const IS_COMPONENTS_V2 = 32768;
+
+/** 인벤토리 Container 생성 (Components v2) */
+function createInventoryContainer(
+  tickets: AvailableTicket[],
+  topyName: string,
+  rubyName: string
+): APIContainerComponent {
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# 🎒 인벤토리')
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  if (tickets.length === 0) {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('사용 가능한 선택권이 없습니다.\n상점에서 티켓을 구매해보세요!')
+    );
+    return container.toJSON();
+  }
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('아래 메뉴에서 사용할 선택권을 선택하세요.')
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  tickets.forEach((t, idx) => {
+    const isPeriod = t.ticket.consumeQuantity === 0;
+
+    let info = `**${idx + 1}. ${t.ticket.name}**\n`;
+    info += `📦 보유: **${t.userItem.quantity}개**`;
+
+    if (isPeriod) {
+      info += ' · ♾️ 기간제';
+    } else {
+      info += ` · 🔄 ${t.ticket.consumeQuantity}개 소모`;
+    }
+
+    if (t.userItem.expiresAt) {
+      const expiresAt = new Date(t.userItem.expiresAt);
+      const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      info += ` · ⏰ ${daysLeft}일`;
+    }
+
+    if (t.ticket.removePreviousRole) {
+      info += ' · 🔁 자동제거';
+    }
+
+    const roleCount = t.ticket.roleOptions?.length ?? 0;
+    info += `\n🎭 ${roleCount}개 역할 선택 가능`;
+
+    if (t.ticket.description) {
+      info += `\n> ${t.ticket.description}`;
+    }
+
+    container.addSectionComponents(
+      new SectionBuilder().addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(info)
+      )
+    );
+  });
+
+  return container.toJSON();
+}
+
+/** 인벤토리 Embed 생성 (fallback) */
 function createInventoryEmbed(
   tickets: AvailableTicket[],
   topyName: string,
@@ -95,7 +174,55 @@ function createTicketSelectMenu(
     .addOptions(options);
 }
 
-/** 역할 선택 Embed 생성 */
+/** 역할 선택 Container 생성 (Components v2) */
+function createRoleSelectContainer(
+  ticket: AvailableTicket,
+  roleOptions: TicketRoleOption[]
+): APIContainerComponent {
+  const isPeriod = ticket.ticket.consumeQuantity === 0;
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`# 🎫 ${ticket.ticket.name}`)
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('원하는 역할을 선택하세요.')
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  let infoText = `📦 **보유 수량**: ${ticket.userItem.quantity}개\n`;
+  infoText += isPeriod ? '♾️ **기간제**: 무제한 변경 가능' : `🔄 **소모 개수**: ${ticket.ticket.consumeQuantity}개`;
+
+  if (ticket.ticket.removePreviousRole) {
+    infoText += '\n🔁 **이전 역할**: 자동으로 제거됩니다';
+  }
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(infoText)
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(
+      `**🎭 선택 가능한 역할**\n${roleOptions.map((opt) => `• ${opt.name}`).join('\n')}`
+    )
+  );
+
+  return container.toJSON();
+}
+
+/** 역할 선택 Embed 생성 (fallback) */
 function createRoleSelectEmbed(
   ticket: AvailableTicket,
   roleOptions: TicketRoleOption[]
@@ -162,7 +289,68 @@ function createBackButton(userId: string): ButtonBuilder {
     .setEmoji('◀️');
 }
 
-/** 확인 Embed 생성 */
+/** 확인 화면 Container 생성 (Components v2) */
+function createConfirmContainer(
+  ticket: AvailableTicket,
+  roleOption: TicketRoleOption
+): APIContainerComponent {
+  const isPeriod = ticket.ticket.consumeQuantity === 0;
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# ✅ 역할 교환 확인')
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`**${roleOption.name}** 역할로 교환하시겠습니까?`)
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  let infoText = `**선택권**: ${ticket.ticket.name}\n`;
+  infoText += `**선택한 역할**: ${roleOption.name}`;
+
+  if (!isPeriod) {
+    infoText += `\n\n**소모**: ${ticket.ticket.consumeQuantity}개 → 남은 수량: ${ticket.userItem.quantity - ticket.ticket.consumeQuantity}개`;
+  }
+
+  if (ticket.ticket.removePreviousRole) {
+    infoText += '\n\n⚠️ **주의**: 이 선택권의 다른 역할이 있다면 제거됩니다.';
+  }
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(infoText)
+  );
+
+  return container.toJSON();
+}
+
+/** 간단한 메시지 Container 생성 */
+function createMessageContainer(title: string, description: string): APIContainerComponent {
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`# ${title}`)
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(description)
+  );
+
+  return container.toJSON();
+}
+
+/** 확인 Embed 생성 (fallback) */
 function createConfirmEmbed(
   ticket: AvailableTicket,
   roleOption: TicketRoleOption
@@ -254,8 +442,10 @@ export const inventoryCommand: Command = {
 
       // 인벤토리가 비어있는 경우
       if (tickets.length === 0) {
-        const embed = createInventoryEmbed(tickets, topyName, rubyName);
-        await interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({
+          components: [createInventoryContainer(tickets, topyName, rubyName)],
+          flags: IS_COMPONENTS_V2,
+        });
         return;
       }
 
@@ -268,33 +458,33 @@ export const inventoryCommand: Command = {
 
       let state: State = { type: 'ticket_select' };
 
-      // 초기 화면 렌더링
+      // 초기 화면 렌더링 (Components v2)
       const renderTicketSelect = () => {
-        const embed = createInventoryEmbed(tickets, topyName, rubyName);
+        const inventoryContainer = createInventoryContainer(tickets, topyName, rubyName);
         const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
           createTicketSelectMenu(tickets, `inv_ticket_${userId}`)
         );
-        return { embeds: [embed], components: [selectRow] };
+        return { components: [inventoryContainer, selectRow.toJSON()], flags: IS_COMPONENTS_V2 };
       };
 
       const renderRoleSelect = (ticketId: number, roleOptions: TicketRoleOption[]) => {
         const ticket = tickets.find((t) => t.ticket.id === ticketId)!;
-        const embed = createRoleSelectEmbed(ticket, roleOptions);
+        const roleSelectContainer = createRoleSelectContainer(ticket, roleOptions);
         const roleSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
           createRoleSelectMenu(roleOptions, ticketId, userId)
         );
         const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           createBackButton(userId)
         );
-        return { embeds: [embed], components: [roleSelectRow, backRow] };
+        return { components: [roleSelectContainer, roleSelectRow.toJSON(), backRow.toJSON()], flags: IS_COMPONENTS_V2 };
       };
 
       const renderConfirm = (ticketId: number, roleOptionId: number, roleOptions: TicketRoleOption[]) => {
         const ticket = tickets.find((t) => t.ticket.id === ticketId)!;
         const roleOption = roleOptions.find((opt) => opt.id === roleOptionId)!;
-        const embed = createConfirmEmbed(ticket, roleOption);
+        const confirmContainer = createConfirmContainer(ticket, roleOption);
         const buttonRow = createConfirmButtons(ticketId, roleOptionId, userId);
-        return { embeds: [embed], components: [buttonRow] };
+        return { components: [confirmContainer, buttonRow.toJSON()], flags: IS_COMPONENTS_V2 };
       };
 
       // 초기 렌더링
@@ -402,13 +592,8 @@ export const inventoryCommand: Command = {
               }
 
               await i.editReply({
-                embeds: [
-                  new EmbedBuilder()
-                    .setColor(0xFF0000)
-                    .setTitle('❌ 교환 실패')
-                    .setDescription(errorMessage),
-                ],
-                components: [],
+                components: [createMessageContainer('❌ 교환 실패', errorMessage)],
+                flags: IS_COMPONENTS_V2,
               });
               state = { type: 'done' };
               collector.stop();
@@ -466,64 +651,58 @@ export const inventoryCommand: Command = {
               console.error('역할 부여/제거 오류:', err);
             }
 
-            // 성공 메시지
-            const successEmbed = new EmbedBuilder()
-              .setColor(0x00FF00)
-              .setTitle('✅ 역할 교환 완료!')
-              .setDescription(`**${roleOption.name}** 역할이 부여되었습니다!`)
-              .addFields(
-                { name: '🎭 교환 역할', value: `<@&${result.newRoleId}>`, inline: true }
-              );
+            // 성공 메시지 Container 생성
+            const successContainer = new ContainerBuilder();
+
+            successContainer.addTextDisplayComponents(
+              new TextDisplayBuilder().setContent('# ✅ 역할 교환 완료!')
+            );
+
+            successContainer.addSeparatorComponents(
+              new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+            );
+
+            successContainer.addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(`**${roleOption.name}** 역할이 부여되었습니다!`)
+            );
+
+            successContainer.addSeparatorComponents(
+              new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+            );
+
+            let infoText = `🎭 **교환 역할**: <@&${result.newRoleId}>`;
 
             // 고정 역할 표시
             if (result.fixedRoleId) {
-              successEmbed.addFields({
-                name: '🔒 고정 역할',
-                value: `<@&${result.fixedRoleId}>`,
-                inline: true,
-              });
+              infoText += `\n🔒 **고정 역할**: <@&${result.fixedRoleId}>`;
             }
 
             if (actuallyRemovedRoleIds.length > 0) {
-              successEmbed.addFields({
-                name: '🔁 제거된 역할',
-                value: actuallyRemovedRoleIds.map((id) => `<@&${id}>`).join(', '),
-                inline: true,
-              });
+              infoText += `\n🔁 **제거된 역할**: ${actuallyRemovedRoleIds.map((id) => `<@&${id}>`).join(', ')}`;
             }
 
             if (!result.isPeriod) {
-              successEmbed.addFields({
-                name: '📦 남은 수량',
-                value: `${result.remainingQuantity}개`,
-                inline: true,
-              });
+              infoText += `\n📦 **남은 수량**: ${result.remainingQuantity}개`;
             }
 
             if (result.expiresAt) {
               const daysLeft = Math.ceil((new Date(result.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-              successEmbed.addFields({
-                name: '📦 아이템 유효기간',
-                value: `${daysLeft}일 남음`,
-                inline: true,
-              });
+              infoText += `\n📦 **아이템 유효기간**: ${daysLeft}일 남음`;
             }
 
             // 역할 효과 만료 시각 표시
             if (result.roleExpiresAt) {
               const roleExpireTimestamp = Math.floor(new Date(result.roleExpiresAt).getTime() / 1000);
-              successEmbed.addFields({
-                name: '⏰ 역할 효과 만료',
-                value: `<t:${roleExpireTimestamp}:R> (<t:${roleExpireTimestamp}:F>)`,
-                inline: false,
-              });
+              infoText += `\n⏰ **역할 효과 만료**: <t:${roleExpireTimestamp}:R> (<t:${roleExpireTimestamp}:F>)`;
             }
 
-            successEmbed.setTimestamp();
+            successContainer.addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(infoText)
+            );
 
             await i.editReply({
-              embeds: [successEmbed],
-              components: [],
+              components: [successContainer.toJSON()],
+              flags: IS_COMPONENTS_V2,
             });
 
             state = { type: 'done' };
@@ -538,13 +717,8 @@ export const inventoryCommand: Command = {
         if (reason === 'time' && state.type !== 'done') {
           try {
             await interaction.editReply({
-              embeds: [
-                new EmbedBuilder()
-                  .setColor(0x808080)
-                  .setTitle('⏰ 시간 초과')
-                  .setDescription('인벤토리 사용 시간이 초과되었습니다.'),
-              ],
-              components: [],
+              components: [createMessageContainer('⏰ 시간 초과', '인벤토리 사용 시간이 초과되었습니다.')],
+              flags: IS_COMPONENTS_V2,
             });
           } catch {
             // 무시

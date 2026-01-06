@@ -8,14 +8,159 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ComponentType,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SectionBuilder,
+  SeparatorSpacingSize,
   type ButtonInteraction,
   type ModalSubmitInteraction,
   type StringSelectMenuInteraction,
+  type APIContainerComponent,
 } from 'discord.js';
 import type { MarketListing, MarketCategory, MarketService, CurrencyService } from '@topia/core';
 import { CATEGORY_LABELS, STATUS_LABELS } from '@topia/core';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
+
+// Components v2 플래그 (1 << 15)
+const IS_COMPONENTS_V2 = 32768;
+
+/** 간단한 메시지 Container 생성 */
+function createMessageContainer(title: string, description: string): APIContainerComponent {
+  const container = new ContainerBuilder();
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`# ${title}`)
+  );
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(description)
+  );
+  return container.toJSON();
+}
+
+/** 상품 상세 Container 생성 */
+function createListingDetailContainer(
+  listing: MarketListing,
+  currencyName: string,
+  feePercent: number
+): APIContainerComponent {
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`# 📦 ${listing.title}`)
+  );
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(listing.description || '설명 없음')
+  );
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  const infoText = `👤 **판매자**: <@${listing.sellerId}>\n📂 **카테고리**: ${CATEGORY_LABELS[listing.category]}\n💰 **가격**: **${listing.price.toLocaleString()}** ${currencyName}\n⏰ **만료**: ${formatDistanceToNow(listing.expiresAt, { locale: ko, addSuffix: true })}`;
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(infoText)
+  );
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`-# 수수료 ${feePercent}%는 판매자가 부담합니다.`)
+  );
+
+  return container.toJSON();
+}
+
+/** 내 상품 목록 Container 생성 */
+function createMyListingsContainer(
+  listings: MarketListing[],
+  topyName: string,
+  rubyName: string
+): APIContainerComponent {
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# 📦 내 등록 상품')
+  );
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  if (listings.length === 0) {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('등록한 상품이 없습니다.\n\n패널의 **등록하기** 버튼으로 상품을 등록해보세요!')
+    );
+  } else {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(`총 ${listings.length}개의 상품`)
+    );
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+    );
+
+    listings.forEach((listing, idx) => {
+      const currencyName = listing.currencyType === 'topy' ? topyName : rubyName;
+      const statusLabel = STATUS_LABELS[listing.status];
+      const expiresIn =
+        listing.status === 'active'
+          ? `만료 ${formatDistanceToNow(listing.expiresAt, { locale: ko, addSuffix: true })}`
+          : '';
+
+      let info = `${currencyName} **${listing.price.toLocaleString()}** · ${statusLabel}`;
+      if (expiresIn) info += ` · ${expiresIn}`;
+      if (listing.buyerId) info += `\n구매자: <@${listing.buyerId}>`;
+
+      const listingText = `**${idx + 1}. ${listing.title}**\n${info}`;
+
+      container.addSectionComponents(
+        new SectionBuilder().addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(listingText)
+        )
+      );
+    });
+  }
+
+  return container.toJSON();
+}
+
+/** 등록 미리보기 Container 생성 */
+function createRegisterPreviewContainer(
+  title: string,
+  description: string | undefined,
+  price: bigint,
+  categoryLabel: string,
+  currencyName: string,
+  isConfirmable: boolean
+): APIContainerComponent {
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# 📝 상품 등록 미리보기')
+  );
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  const previewText = `📦 **제목**: ${title}\n📄 **설명**: ${description || '(없음)'}\n💰 **가격**: ${price.toLocaleString()} ${currencyName}\n📂 **카테고리**: ${categoryLabel}\n💵 **화폐**: ${currencyName}`;
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(previewText)
+  );
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('-# 카테고리와 화폐를 선택한 후 등록하기를 눌러주세요.')
+  );
+
+  return container.toJSON();
+}
 
 const ITEMS_PER_PAGE = 5;
 
@@ -47,7 +192,69 @@ interface Container {
 // 헬퍼 함수들
 // ============================================================
 
-/** 장터 목록 Embed 생성 */
+/** 장터 목록 Container 생성 (Components v2) */
+function createMarketContainer(
+  listings: MarketListing[],
+  topyName: string,
+  rubyName: string,
+  page: number,
+  totalCount: number
+): APIContainerComponent {
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const startIdx = page * ITEMS_PER_PAGE;
+
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# 🛒 장터 목록')
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  if (listings.length === 0) {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('현재 판매 중인 상품이 없습니다.\n\n상품을 등록하려면 패널의 **등록하기** 버튼을 클릭하세요.')
+    );
+  } else {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(`📦 판매 중인 상품 (${totalCount}개)\n아래 메뉴에서 구매할 상품을 선택하세요.`)
+    );
+
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+    );
+
+    listings.forEach((listing, idx) => {
+      const currencyName = listing.currencyType === 'topy' ? topyName : rubyName;
+      const currencyEmoji = listing.currencyType === 'topy' ? '💰' : '💎';
+      const categoryLabel = CATEGORY_LABELS[listing.category];
+      const expiresIn = formatDistanceToNow(listing.expiresAt, { locale: ko, addSuffix: true });
+
+      const listingText = `**${startIdx + idx + 1}. ${listing.title}**\n${categoryLabel} | ${currencyEmoji} **${listing.price.toLocaleString()}** ${currencyName}\n판매자: <@${listing.sellerId}> · 만료 ${expiresIn}`;
+
+      container.addSectionComponents(
+        new SectionBuilder().addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(listingText)
+        )
+      );
+    });
+  }
+
+  if (totalPages > 1) {
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+    );
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(`-# 페이지 ${page + 1}/${totalPages}`)
+    );
+  }
+
+  return container.toJSON();
+}
+
+/** 장터 목록 Embed 생성 (fallback) */
 function createMarketEmbed(
   listings: MarketListing[],
   topyName: string,
@@ -206,9 +413,9 @@ export async function handleMarketPanelList(
   const { listings, totalCount } = await fetchListings();
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-  const embed = createMarketEmbed(listings, topyName, rubyName, currentPage, totalCount);
+  const marketContainer = createMarketContainer(listings, topyName, rubyName, currentPage, totalCount);
 
-  // 컴포넌트 생성
+  // 컴포넌트 생성 (필터, 선택 메뉴, 페이지네이션)
   const components: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = [];
 
   // 필터 드롭다운
@@ -258,7 +465,10 @@ export async function handleMarketPanelList(
     )
   );
 
-  const response = await interaction.editReply({ embeds: [embed], components });
+  const response = await interaction.editReply({
+    components: [marketContainer, ...components],
+    flags: IS_COMPONENTS_V2,
+  });
 
   // Collector로 상호작용 처리
   const collector = response.createMessageComponentCollector({
@@ -304,7 +514,7 @@ export async function handleMarketPanelList(
     const { listings: newListings, totalCount: newTotalCount } = await fetchListings();
     const newTotalPages = Math.ceil(newTotalCount / ITEMS_PER_PAGE);
 
-    const newEmbed = createMarketEmbed(newListings, topyName, rubyName, currentPage, newTotalCount);
+    const newMarketContainer = createMarketContainer(newListings, topyName, rubyName, currentPage, newTotalCount);
 
     const newComponents: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = [];
 
@@ -352,7 +562,10 @@ export async function handleMarketPanelList(
       )
     );
 
-    await componentInteraction.editReply({ embeds: [newEmbed], components: newComponents });
+    await componentInteraction.editReply({
+      components: [newMarketContainer, ...newComponents],
+      flags: IS_COMPONENTS_V2,
+    });
   });
 
   collector.on('end', async () => {
@@ -387,18 +600,7 @@ async function handlePurchase(
   const currencyName = listing.currencyType === 'topy' ? topyName : rubyName;
   const feePercent = listing.currencyType === 'topy' ? 5 : 3;
 
-  const detailEmbed = new EmbedBuilder()
-    .setColor(0x5865F2)
-    .setTitle(`📦 ${listing.title}`)
-    .setDescription(listing.description || '설명 없음')
-    .addFields(
-      { name: '판매자', value: `<@${listing.sellerId}>`, inline: true },
-      { name: '카테고리', value: CATEGORY_LABELS[listing.category], inline: true },
-      { name: '가격', value: `**${listing.price.toLocaleString()}** ${currencyName}`, inline: true },
-      { name: '만료일', value: formatDistanceToNow(listing.expiresAt, { locale: ko, addSuffix: true }), inline: true }
-    )
-    .setFooter({ text: `수수료 ${feePercent}%는 판매자가 부담합니다.` })
-    .setTimestamp();
+  const detailContainer = createListingDetailContainer(listing, currencyName, feePercent);
 
   const confirmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -413,7 +615,11 @@ async function handlePurchase(
       .setEmoji('❌')
   );
 
-  await interaction.reply({ embeds: [detailEmbed], components: [confirmRow], ephemeral: true });
+  await interaction.reply({
+    components: [detailContainer, confirmRow],
+    flags: IS_COMPONENTS_V2,
+    ephemeral: true,
+  });
 
   try {
     const buttonInteraction = await interaction.channel?.awaitMessageComponent({
@@ -429,8 +635,8 @@ async function handlePurchase(
 
     if (buttonInteraction.customId === `market_panel_buy_cancel_${userId}`) {
       await buttonInteraction.update({
-        embeds: [new EmbedBuilder().setColor(0x808080).setTitle('❌ 구매 취소').setDescription('구매가 취소되었습니다.')],
-        components: [],
+        components: [createMessageContainer('❌ 구매 취소', '구매가 취소되었습니다.')],
+        flags: IS_COMPONENTS_V2,
       });
       return;
     }
@@ -461,29 +667,20 @@ async function handlePurchase(
       }
 
       await buttonInteraction.editReply({
-        embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ 구매 실패').setDescription(errorMessage)],
-        components: [],
+        components: [createMessageContainer('❌ 구매 실패', errorMessage)],
+        flags: IS_COMPONENTS_V2,
       });
       return;
     }
 
     const { price, fee: actualFee, sellerReceived, buyerNewBalance } = purchaseResult.data;
 
-    const successEmbed = new EmbedBuilder()
-      .setColor(0x00FF00)
-      .setTitle('✅ 구매 완료!')
-      .setDescription(`**${listing.title}**을(를) 구매했습니다.`)
-      .addFields(
-        { name: '💰 지불 금액', value: `${price.toLocaleString()} ${currencyName}`, inline: true },
-        { name: '💵 남은 잔액', value: `${buyerNewBalance.toLocaleString()} ${currencyName}`, inline: true }
-      )
-      .addFields({
-        name: '📝 안내',
-        value: `판매자 <@${listing.sellerId}>님에게 DM으로 연락하여 서비스를 받으세요.\n분쟁 발생 시 관리자에게 문의하세요.`,
-      })
-      .setTimestamp();
+    const successText = `**${listing.title}**을(를) 구매했습니다.\n\n💰 **지불 금액**: ${price.toLocaleString()} ${currencyName}\n💵 **남은 잔액**: ${buyerNewBalance.toLocaleString()} ${currencyName}\n\n📝 **안내**\n판매자 <@${listing.sellerId}>님에게 DM으로 연락하여 서비스를 받으세요.\n분쟁 발생 시 관리자에게 문의하세요.`;
 
-    await buttonInteraction.editReply({ embeds: [successEmbed], components: [] });
+    await buttonInteraction.editReply({
+      components: [createMessageContainer('✅ 구매 완료!', successText)],
+      flags: IS_COMPONENTS_V2,
+    });
 
     // 판매자에게 DM 알림
     try {
@@ -507,8 +704,8 @@ async function handlePurchase(
     }
   } catch {
     await interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(0x808080).setTitle('⏰ 시간 초과').setDescription('구매 확인 시간이 초과되었습니다.')],
-      components: [],
+      components: [createMessageContainer('⏰ 시간 초과', '구매 확인 시간이 초과되었습니다.')],
+      flags: IS_COMPONENTS_V2,
     });
   }
 }
@@ -571,21 +768,11 @@ export async function handleMarketPanelRegisterModal(
       { label: rubyName, value: 'ruby', emoji: '💎', description: '최소 1' },
     ]);
 
-  const previewEmbed = new EmbedBuilder()
-    .setColor(0xFFA500)
-    .setTitle('📝 상품 등록 미리보기')
-    .addFields(
-      { name: '제목', value: title, inline: false },
-      { name: '설명', value: description || '(없음)', inline: false },
-      { name: '가격', value: price.toLocaleString(), inline: true },
-      { name: '카테고리', value: '선택해주세요', inline: true },
-      { name: '화폐', value: '선택해주세요', inline: true }
-    )
-    .setFooter({ text: '카테고리와 화폐를 선택한 후 등록하기를 눌러주세요.' });
+  const previewContainer = createRegisterPreviewContainer(title, description, price, '선택해주세요', '선택해주세요', false);
 
   const response = await interaction.editReply({
-    embeds: [previewEmbed],
     components: [
+      previewContainer,
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(categorySelect),
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(currencySelect),
       new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -600,6 +787,7 @@ export async function handleMarketPanelRegisterModal(
           .setStyle(ButtonStyle.Secondary)
       ),
     ],
+    flags: IS_COMPONENTS_V2,
   });
 
   let selectedCategory: MarketCategory | undefined;
@@ -613,8 +801,8 @@ export async function handleMarketPanelRegisterModal(
   collector.on('collect', async (componentInteraction) => {
     if (componentInteraction.customId === `market_panel_reg_cancel_${userId}`) {
       await componentInteraction.update({
-        embeds: [new EmbedBuilder().setColor(0x808080).setTitle('❌ 등록 취소').setDescription('상품 등록이 취소되었습니다.')],
-        components: [],
+        components: [createMessageContainer('❌ 등록 취소', '상품 등록이 취소되었습니다.')],
+        flags: IS_COMPONENTS_V2,
       });
       collector.stop();
       return;
@@ -639,13 +827,8 @@ export async function handleMarketPanelRegisterModal(
       const minPrice = selectedCurrency === 'topy' ? BigInt(100) : BigInt(1);
       if (price < minPrice) {
         await componentInteraction.editReply({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0xFF0000)
-              .setTitle('❌ 등록 실패')
-              .setDescription(`최소 가격은 ${minPrice.toLocaleString()} ${selectedCurrency === 'topy' ? topyName : rubyName}입니다.`),
-          ],
-          components: [],
+          components: [createMessageContainer('❌ 등록 실패', `최소 가격은 ${minPrice.toLocaleString()} ${selectedCurrency === 'topy' ? topyName : rubyName}입니다.`)],
+          flags: IS_COMPONENTS_V2,
         });
         collector.stop();
         return;
@@ -671,8 +854,8 @@ export async function handleMarketPanelRegisterModal(
         }
 
         await componentInteraction.editReply({
-          embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ 등록 실패').setDescription(errorMessage)],
-          components: [],
+          components: [createMessageContainer('❌ 등록 실패', errorMessage)],
+          flags: IS_COMPONENTS_V2,
         });
         collector.stop();
         return;
@@ -682,20 +865,12 @@ export async function handleMarketPanelRegisterModal(
       const currencyName = listing.currencyType === 'topy' ? topyName : rubyName;
       const feePercent = listing.currencyType === 'topy' ? 5 : 3;
 
-      const successEmbed = new EmbedBuilder()
-        .setColor(0x00FF00)
-        .setTitle('✅ 장터 등록 완료!')
-        .addFields(
-          { name: '📦 상품명', value: listing.title, inline: false },
-          { name: '카테고리', value: CATEGORY_LABELS[listing.category], inline: true },
-          { name: '가격', value: `${listing.price.toLocaleString()} ${currencyName}`, inline: true },
-          { name: '수수료', value: `${feePercent}% (판매 시 차감)`, inline: true },
-          { name: '만료일', value: formatDistanceToNow(listing.expiresAt, { locale: ko, addSuffix: true }), inline: true }
-        )
-        .setFooter({ text: `상품 ID: #${listing.id}` })
-        .setTimestamp();
+      const successText = `📦 **상품명**: ${listing.title}\n📂 **카테고리**: ${CATEGORY_LABELS[listing.category]}\n💰 **가격**: ${listing.price.toLocaleString()} ${currencyName}\n📋 **수수료**: ${feePercent}% (판매 시 차감)\n⏰ **만료**: ${formatDistanceToNow(listing.expiresAt, { locale: ko, addSuffix: true })}\n\n-# 상품 ID: #${listing.id}`;
 
-      await componentInteraction.editReply({ embeds: [successEmbed], components: [] });
+      await componentInteraction.editReply({
+        components: [createMessageContainer('✅ 장터 등록 완료!', successText)],
+        flags: IS_COMPONENTS_V2,
+      });
       collector.stop();
       return;
     }
@@ -704,23 +879,12 @@ export async function handleMarketPanelRegisterModal(
     const currencyName = selectedCurrency ? (selectedCurrency === 'topy' ? topyName : rubyName) : '선택해주세요';
     const categoryLabel = selectedCategory ? CATEGORY_LABELS[selectedCategory] : '선택해주세요';
 
-    const updatedEmbed = new EmbedBuilder()
-      .setColor(0xFFA500)
-      .setTitle('📝 상품 등록 미리보기')
-      .addFields(
-        { name: '제목', value: title, inline: false },
-        { name: '설명', value: description || '(없음)', inline: false },
-        { name: '가격', value: `${price.toLocaleString()} ${selectedCurrency ? currencyName : ''}`, inline: true },
-        { name: '카테고리', value: categoryLabel, inline: true },
-        { name: '화폐', value: currencyName, inline: true }
-      )
-      .setFooter({ text: '카테고리와 화폐를 선택한 후 등록하기를 눌러주세요.' });
-
-    const canConfirm = selectedCategory && selectedCurrency;
+    const canConfirm = !!(selectedCategory && selectedCurrency);
+    const updatedContainer = createRegisterPreviewContainer(title, description, price, categoryLabel, currencyName, canConfirm);
 
     await componentInteraction.update({
-      embeds: [updatedEmbed],
       components: [
+        updatedContainer,
         new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
           new StringSelectMenuBuilder()
             .setCustomId(`market_panel_reg_category_${userId}`)
@@ -748,6 +912,7 @@ export async function handleMarketPanelRegisterModal(
             .setStyle(ButtonStyle.Secondary)
         ),
       ],
+      flags: IS_COMPONENTS_V2,
     });
   });
 
@@ -755,8 +920,8 @@ export async function handleMarketPanelRegisterModal(
     if (reason === 'time') {
       try {
         await interaction.editReply({
-          embeds: [new EmbedBuilder().setColor(0x808080).setTitle('⏰ 시간 초과').setDescription('등록 시간이 초과되었습니다.')],
-          components: [],
+          components: [createMessageContainer('⏰ 시간 초과', '등록 시간이 초과되었습니다.')],
+          flags: IS_COMPONENTS_V2,
         });
       } catch {
         // 메시지 삭제됨
@@ -794,39 +959,15 @@ export async function handleMarketPanelMy(
 
   const listings = listingsResult.data;
 
-  if (listings.length === 0) {
-    const embed = new EmbedBuilder()
-      .setColor(0x5865F2)
-      .setTitle('📦 내 등록 상품')
-      .setDescription('등록한 상품이 없습니다.\n\n패널의 **등록하기** 버튼으로 상품을 등록해보세요!')
-      .setTimestamp();
+  const myListingsContainer = createMyListingsContainer(listings, topyName, rubyName);
 
-    await interaction.editReply({ embeds: [embed] });
+  if (listings.length === 0) {
+    await interaction.editReply({
+      components: [myListingsContainer],
+      flags: IS_COMPONENTS_V2,
+    });
     return;
   }
-
-  const embed = new EmbedBuilder()
-    .setColor(0x5865F2)
-    .setTitle('📦 내 등록 상품')
-    .setDescription(`총 ${listings.length}개의 상품`)
-    .setTimestamp();
-
-  const fields = listings.map((listing, idx) => {
-    const currencyName = listing.currencyType === 'topy' ? topyName : rubyName;
-    const statusLabel = STATUS_LABELS[listing.status];
-    const expiresIn =
-      listing.status === 'active'
-        ? `만료 ${formatDistanceToNow(listing.expiresAt, { locale: ko, addSuffix: true })}`
-        : '';
-
-    let info = `${currencyName} **${listing.price.toLocaleString()}** · ${statusLabel}`;
-    if (expiresIn) info += ` · ${expiresIn}`;
-    if (listing.buyerId) info += `\n구매자: <@${listing.buyerId}>`;
-
-    return { name: `${idx + 1}. ${listing.title}`, value: info, inline: false };
-  });
-
-  embed.addFields(fields);
 
   const activeListings = listings.filter((l) => l.status === 'active');
 
@@ -844,7 +985,10 @@ export async function handleMarketPanelMy(
       );
 
     const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
-    const response = await interaction.editReply({ embeds: [embed], components: [row] });
+    const response = await interaction.editReply({
+      components: [myListingsContainer, row],
+      flags: IS_COMPONENTS_V2,
+    });
 
     const collector = response.createMessageComponentCollector({
       componentType: ComponentType.StringSelect,
@@ -874,6 +1018,9 @@ export async function handleMarketPanelMy(
       }
     });
   } else {
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({
+      components: [myListingsContainer],
+      flags: IS_COMPONENTS_V2,
+    });
   }
 }

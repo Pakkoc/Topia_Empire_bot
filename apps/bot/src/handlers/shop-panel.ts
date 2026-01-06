@@ -7,20 +7,127 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SectionBuilder,
+  SeparatorSpacingSize,
   type ButtonInteraction,
   type StringSelectMenuInteraction,
+  type APIContainerComponent,
 } from 'discord.js';
 import type { ShopItemV2, ShopService, CurrencyService, CurrencyType } from '@topia/core';
 import { getItemPrice } from '@topia/core';
 
 const ITEMS_PER_PAGE = 5;
 
+// Components v2 플래그 (1 << 15)
+const IS_COMPONENTS_V2 = 32768;
+
 interface Container {
   shopV2Service: ShopService;
   currencyService: CurrencyService;
 }
 
-/** 상점 아이템을 Embed 형식으로 변환 */
+/** 상점 아이템을 Components v2 Container로 변환 */
+function createShopContainer(
+  items: ShopItemV2[],
+  currentMode: CurrencyType,
+  currencyName: string,
+  topyBalance: bigint,
+  rubyBalance: bigint,
+  topyName: string,
+  rubyName: string,
+  page: number = 0,
+  itemsPerPage: number = ITEMS_PER_PAGE
+): APIContainerComponent {
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  const startIdx = page * itemsPerPage;
+  const pageItems = items.slice(startIdx, startIdx + itemsPerPage);
+
+  const emoji = currentMode === 'topy' ? '💰' : '💎';
+
+  const container = new ContainerBuilder();
+
+  // 헤더
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`# ${emoji} ${currencyName} 상점`)
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  // 설명
+  if (items.length > 0) {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(`${currencyName}로 구매할 수 있는 아이템입니다.\n아래 메뉴에서 구매할 아이템을 선택하세요.`)
+    );
+  } else {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('현재 판매 중인 아이템이 없습니다.')
+    );
+  }
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  // 아이템 목록
+  if (pageItems.length > 0) {
+    pageItems.forEach((item, idx) => {
+      const price = getItemPrice(item, currentMode) ?? BigInt(0);
+
+      let info = `**${startIdx + idx + 1}. ${item.name}**\n`;
+      info += `💰 **${price.toLocaleString()}** ${currencyName}`;
+
+      if (item.durationDays > 0) {
+        info += ` · ⏰ ${item.durationDays}일`;
+      } else {
+        info += ' · ♾️ 영구';
+      }
+
+      if (item.stock !== null) {
+        info += ` · 📦 ${item.stock}개`;
+      }
+      if (item.maxPerUser !== null) {
+        info += ` · 👤 ${item.maxPerUser}회`;
+      }
+
+      if (item.description) {
+        info += `\n> ${item.description}`;
+      }
+
+      container.addSectionComponents(
+        new SectionBuilder().addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(info)
+        )
+      );
+    });
+  }
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  // 잔액 정보
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(
+      `**💳 보유 잔액**\n💰 ${topyBalance.toLocaleString()} ${topyName}  |  💎 ${rubyBalance.toLocaleString()} ${rubyName}`
+    )
+  );
+
+  // 페이지 정보
+  if (totalPages > 1) {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(`-# 페이지 ${page + 1}/${totalPages}`)
+    );
+  }
+
+  return container.toJSON();
+}
+
+/** 상점 아이템을 Embed 형식으로 변환 (fallback) */
 function createShopEmbed(
   items: ShopItemV2[],
   currentMode: CurrencyType,
@@ -233,8 +340,8 @@ export async function handleShopPanelButton(
       return components;
     };
 
-    // 상점 Embed 생성
-    const embed = createShopEmbed(
+    // 상점 Container 생성 (Components v2)
+    const shopContainer = createShopContainer(
       items,
       currentMode,
       getCurrencyName(),
@@ -246,8 +353,8 @@ export async function handleShopPanelButton(
     );
 
     const response = await interaction.editReply({
-      embeds: [embed],
-      components: getComponents(),
+      components: [shopContainer, ...getComponents()],
+      flags: IS_COMPONENTS_V2,
     });
 
     // Collector로 상호작용 처리
@@ -269,8 +376,8 @@ export async function handleShopPanelButton(
         await refreshBalances();
 
         await componentInteraction.update({
-          embeds: [createShopEmbed(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage)],
-          components: getComponents(),
+          components: [createShopContainer(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage), ...getComponents()],
+          flags: IS_COMPONENTS_V2,
         });
         return;
       }
@@ -287,8 +394,8 @@ export async function handleShopPanelButton(
         await refreshBalances();
 
         await componentInteraction.update({
-          embeds: [createShopEmbed(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage)],
-          components: getComponents(),
+          components: [createShopContainer(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage), ...getComponents()],
+          flags: IS_COMPONENTS_V2,
         });
         return;
       }
@@ -297,8 +404,8 @@ export async function handleShopPanelButton(
       if (componentInteraction.customId === `shop_panel_prev_${userId}`) {
         currentPage = Math.max(0, currentPage - 1);
         await componentInteraction.update({
-          embeds: [createShopEmbed(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage)],
-          components: getComponents(),
+          components: [createShopContainer(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage), ...getComponents()],
+          flags: IS_COMPONENTS_V2,
         });
         return;
       }
@@ -308,8 +415,8 @@ export async function handleShopPanelButton(
         const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
         currentPage = Math.min(totalPages - 1, currentPage + 1);
         await componentInteraction.update({
-          embeds: [createShopEmbed(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage)],
-          components: getComponents(),
+          components: [createShopContainer(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage), ...getComponents()],
+          flags: IS_COMPONENTS_V2,
         });
         return;
       }
@@ -319,8 +426,8 @@ export async function handleShopPanelButton(
         items = await fetchItems(currentMode);
         await refreshBalances();
         await componentInteraction.update({
-          embeds: [createShopEmbed(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage)],
-          components: getComponents(),
+          components: [createShopContainer(items, currentMode, getCurrencyName(), topyBalance, rubyBalance, topyName, rubyName, currentPage), ...getComponents()],
+          flags: IS_COMPONENTS_V2,
         });
         return;
       }
@@ -353,6 +460,25 @@ export async function handleShopPanelButton(
 
 const AUTO_DELETE_DELAY = 3000; // 3초 후 자동 삭제
 
+/** 간단한 메시지 Container 생성 (Components v2) */
+function createMessageContainer(title: string, description: string): APIContainerComponent {
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`# ${title}`)
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(description)
+  );
+
+  return container.toJSON();
+}
+
 /** 일정 시간 후 메시지 삭제 */
 function scheduleMessageDelete(interaction: StringSelectMenuInteraction, delay: number = AUTO_DELETE_DELAY) {
   setTimeout(async () => {
@@ -364,7 +490,53 @@ function scheduleMessageDelete(interaction: StringSelectMenuInteraction, delay: 
   }, delay);
 }
 
-/** 수량 선택 UI 생성 */
+/** 수량 선택 UI 생성 (Components v2) */
+function createQuantitySelectContainer(
+  item: ShopItemV2,
+  currencyName: string,
+  currencyType: CurrencyType,
+  currentQuantity: number
+): APIContainerComponent {
+  const price = getItemPrice(item, currencyType) ?? BigInt(0);
+  const totalPrice = price * BigInt(currentQuantity);
+
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# 🔢 수량 선택')
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`**${item.name}**을(를) 몇 개 구매하시겠습니까?`)
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  let infoText = `💰 **개당 가격**: ${price.toLocaleString()} ${currencyName}\n`;
+  infoText += `📦 **선택 수량**: ${currentQuantity}개\n`;
+  infoText += `💵 **총 가격**: ${totalPrice.toLocaleString()} ${currencyName}`;
+
+  if (item.stock !== null) {
+    infoText += `\n📦 **남은 재고**: ${item.stock}개`;
+  }
+  if (item.maxPerUser !== null) {
+    infoText += `\n👤 **인당 제한**: ${item.maxPerUser}개`;
+  }
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(infoText)
+  );
+
+  return container.toJSON();
+}
+
+/** 수량 선택 UI 생성 (Embed fallback) */
 function createQuantitySelectEmbed(
   item: ShopItemV2,
   currencyName: string,
@@ -480,13 +652,8 @@ async function handleItemSelection(
 
   if (!selectedItem) {
     await interaction.update({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(0xFF0000)
-          .setTitle('❌ 오류')
-          .setDescription('아이템을 찾을 수 없습니다.'),
-      ],
-      components: [],
+      components: [createMessageContainer('❌ 오류', '아이템을 찾을 수 없습니다.')],
+      flags: IS_COMPONENTS_V2,
     });
     scheduleMessageDelete(interaction);
     return;
@@ -499,13 +666,8 @@ async function handleItemSelection(
 
   if (maxQuantity <= 0) {
     await interaction.update({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(0xFF0000)
-          .setTitle('❌ 구매 불가')
-          .setDescription(selectedItem.stock === 0 ? '재고가 소진되었습니다.' : '구매 한도에 도달했습니다.'),
-      ],
-      components: [],
+      components: [createMessageContainer('❌ 구매 불가', selectedItem.stock === 0 ? '재고가 소진되었습니다.' : '구매 한도에 도달했습니다.')],
+      flags: IS_COMPONENTS_V2,
     });
     scheduleMessageDelete(interaction, 3000);
     return;
@@ -513,10 +675,10 @@ async function handleItemSelection(
 
   let currentQuantity = 1;
 
-  // 수량 선택 화면 표시
+  // 수량 선택 화면 표시 (Components v2)
   await interaction.update({
-    embeds: [createQuantitySelectEmbed(selectedItem, currencyName, currencyType, currentQuantity)],
-    components: createQuantityButtons(itemId, userId, currentQuantity, maxQuantity),
+    components: [createQuantitySelectContainer(selectedItem, currencyName, currencyType, currentQuantity), ...createQuantityButtons(itemId, userId, currentQuantity, maxQuantity)],
+    flags: IS_COMPONENTS_V2,
   });
 
   // 수량 선택 및 구매 확인 처리
@@ -533,13 +695,8 @@ async function handleItemSelection(
       if (customId === `shop_qty_cancel_${userId}`) {
         collector.stop('cancelled');
         await componentInteraction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0x808080)
-              .setTitle('❌ 구매 취소')
-              .setDescription('구매가 취소되었습니다.'),
-          ],
-          components: [],
+          components: [createMessageContainer('❌ 구매 취소', '구매가 취소되었습니다.')],
+          flags: IS_COMPONENTS_V2,
         });
         scheduleMessageDelete(interaction);
         return;
@@ -550,8 +707,8 @@ async function handleItemSelection(
         const qty = parseInt(customId.split('_')[2]!, 10);
         currentQuantity = Math.min(qty, maxQuantity);
         await componentInteraction.update({
-          embeds: [createQuantitySelectEmbed(selectedItem, currencyName, currencyType, currentQuantity)],
-          components: createQuantityButtons(itemId, userId, currentQuantity, maxQuantity),
+          components: [createQuantitySelectContainer(selectedItem, currencyName, currencyType, currentQuantity), ...createQuantityButtons(itemId, userId, currentQuantity, maxQuantity)],
+          flags: IS_COMPONENTS_V2,
         });
         return;
       }
@@ -591,8 +748,8 @@ async function handleItemSelection(
           currentQuantity = Math.min(inputQty, maxQuantity);
           await modalInteraction.deferUpdate();
           await interaction.editReply({
-            embeds: [createQuantitySelectEmbed(selectedItem, currencyName, currencyType, currentQuantity)],
-            components: createQuantityButtons(itemId, userId, currentQuantity, maxQuantity),
+            components: [createQuantitySelectContainer(selectedItem, currencyName, currencyType, currentQuantity), ...createQuantityButtons(itemId, userId, currentQuantity, maxQuantity)],
+            flags: IS_COMPONENTS_V2,
           });
         } catch {
           // 모달 시간 초과
@@ -652,13 +809,8 @@ async function handleItemSelection(
           }
 
           await componentInteraction.editReply({
-            embeds: [
-              new EmbedBuilder()
-                .setColor(0xFF0000)
-                .setTitle('❌ 구매 실패')
-                .setDescription(errorMessage),
-            ],
-            components: [],
+            components: [createMessageContainer('❌ 구매 실패', errorMessage)],
+            flags: IS_COMPONENTS_V2,
           });
           scheduleMessageDelete(interaction, 5000);
           return;
@@ -666,36 +818,49 @@ async function handleItemSelection(
 
         const { item, userItem, totalCost: paidAmount } = purchaseResult.data;
 
-        const successEmbed = new EmbedBuilder()
-          .setColor(0x00FF00)
-          .setTitle('✅ 구매 완료!')
-          .setDescription(`**${item.name}** x${confirmQty}개를 구매했습니다!`)
-          .addFields(
-            { name: '💰 지불 금액', value: `${paidAmount.toLocaleString()} ${currencyName}`, inline: true },
-            { name: '📦 보유 수량', value: `${userItem.quantity}개`, inline: true }
-          );
+        // 성공 메시지 Container 생성
+        const successContainer = new ContainerBuilder();
+
+        successContainer.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('# ✅ 구매 완료!')
+        );
+
+        successContainer.addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        );
+
+        successContainer.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(`**${item.name}** x${confirmQty}개를 구매했습니다!`)
+        );
+
+        successContainer.addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        );
+
+        let infoText = `💰 **지불 금액**: ${paidAmount.toLocaleString()} ${currencyName}\n`;
+        infoText += `📦 **보유 수량**: ${userItem.quantity}개`;
 
         if (userItem.expiresAt) {
           const expiresAt = new Date(userItem.expiresAt);
           const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-          successEmbed.addFields({
-            name: '⏰ 유효기간',
-            value: `${daysLeft}일 남음`,
-            inline: true,
-          });
+          infoText += `\n⏰ **유효기간**: ${daysLeft}일 남음`;
         }
 
-        successEmbed.addFields({
-          name: '💡 사용 방법',
-          value: '`/인벤토리` 명령어에서 역할로 교환할 수 있습니다.',
-          inline: false,
-        });
+        successContainer.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(infoText)
+        );
 
-        successEmbed.setTimestamp();
+        successContainer.addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        );
+
+        successContainer.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('💡 **사용 방법**: `/인벤토리` 명령어에서 역할로 교환할 수 있습니다.')
+        );
 
         await componentInteraction.editReply({
-          embeds: [successEmbed],
-          components: [],
+          components: [successContainer.toJSON()],
+          flags: IS_COMPONENTS_V2,
         });
         scheduleMessageDelete(interaction, 5000);
       }
@@ -705,13 +870,8 @@ async function handleItemSelection(
       if (reason === 'time') {
         try {
           await interaction.editReply({
-            embeds: [
-              new EmbedBuilder()
-                .setColor(0x808080)
-                .setTitle('⏰ 시간 초과')
-                .setDescription('구매 시간이 초과되었습니다.'),
-            ],
-            components: [],
+            components: [createMessageContainer('⏰ 시간 초과', '구매 시간이 초과되었습니다.')],
+            flags: IS_COMPONENTS_V2,
           });
           scheduleMessageDelete(interaction, 3000);
         } catch {
@@ -722,13 +882,8 @@ async function handleItemSelection(
   } catch {
     // 초기 collector 오류
     await interaction.editReply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(0x808080)
-          .setTitle('⏰ 시간 초과')
-          .setDescription('구매 시간이 초과되었습니다.'),
-      ],
-      components: [],
+      components: [createMessageContainer('⏰ 시간 초과', '구매 시간이 초과되었습니다.')],
+      flags: IS_COMPONENTS_V2,
     });
     scheduleMessageDelete(interaction, 3000);
   }
