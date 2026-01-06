@@ -48,7 +48,8 @@ export async function POST(
     const insertedItems: string[] = [];
 
     for (const item of itemsToSeed) {
-      await pool.execute<ResultSetHeader>(
+      // shop_items_v2에 아이템 등록
+      const [result] = await pool.execute<ResultSetHeader>(
         `INSERT INTO shop_items_v2
          (guild_id, name, description, item_type, topy_price, ruby_price, currency_type, duration_days, stock, max_per_user, enabled)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -66,6 +67,30 @@ export async function POST(
           0, // enabled = false (비활성화)
         ]
       );
+
+      // 역할지급형 아이템이면 role_tickets에도 등록
+      if (item.isRoleItem) {
+        const shopItemId = result.insertId;
+        // 효과 지속 시간: durationDays를 초로 변환
+        const effectDurationSeconds = item.durationDays > 0 ? item.durationDays * 24 * 60 * 60 : null;
+
+        await pool.execute<ResultSetHeader>(
+          `INSERT INTO role_tickets
+           (guild_id, name, description, shop_item_id, consume_quantity, remove_previous_role, fixed_role_id, effect_duration_seconds, enabled)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            guildId,
+            item.name,
+            item.description,
+            shopItemId,
+            1, // consume_quantity = 1
+            1, // remove_previous_role = true
+            null, // fixed_role_id = null (관리자가 설정)
+            effectDurationSeconds,
+            1, // enabled = true
+          ]
+        );
+      }
 
       insertedItems.push(item.name);
     }

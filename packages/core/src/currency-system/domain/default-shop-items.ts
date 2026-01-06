@@ -11,6 +11,7 @@ export interface DefaultShopItemDefinition {
   itemType: ShopItemType;
   currencyType: ShopItemCurrencyType;
   durationDays: number;  // 0=영구, 양수=기간제
+  isRoleItem: boolean;   // true=역할지급형, false=인벤토리형
 }
 
 /**
@@ -24,6 +25,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     itemType: 'warning_reduction',
     currencyType: 'topy',
     durationDays: 0,  // 영구
+    isRoleItem: false,
   },
   {
     name: '세금면제권',
@@ -31,6 +33,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     itemType: 'tax_exemption',
     currencyType: 'topy',
     durationDays: 0,
+    isRoleItem: false,
   },
   {
     name: '이체수수료감면권',
@@ -38,6 +41,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     itemType: 'transfer_fee_reduction',
     currencyType: 'topy',
     durationDays: 0,
+    isRoleItem: false,
   },
 
   // === 역할지급형 (기간제) ===
@@ -47,6 +51,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     itemType: 'activity_boost',
     currencyType: 'topy',
     durationDays: 30,
+    isRoleItem: true,
   },
   {
     name: '프리미엄잠수방',
@@ -54,6 +59,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     itemType: 'premium_afk',
     currencyType: 'topy',
     durationDays: 30,
+    isRoleItem: true,
   },
   {
     name: 'VIP라운지입장권',
@@ -61,6 +67,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     itemType: 'vip_lounge',
     currencyType: 'ruby',
     durationDays: 30,
+    isRoleItem: true,
   },
   {
     name: '디토실버',
@@ -68,6 +75,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     itemType: 'dito_silver',
     currencyType: 'ruby',
     durationDays: 30,
+    isRoleItem: true,
   },
   {
     name: '디토골드',
@@ -75,6 +83,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     itemType: 'dito_gold',
     currencyType: 'ruby',
     durationDays: 30,
+    isRoleItem: true,
   },
 ];
 
