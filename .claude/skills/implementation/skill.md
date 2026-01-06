@@ -712,15 +712,43 @@ const shopPanel = {
 - 오디오 파일 미지원
 - URL 자동 임베드 미지원
 
-### 기존 Embed와의 선택 기준
+### 필수 사용 규칙
 
-| 상황 | 권장 방식 |
+**봇의 모든 메시지 응답에 Components v2를 사용합니다.** Embed는 사용하지 않습니다.
+
+| 상황 | 사용 방식 |
 |------|----------|
-| 단순 알림/공지 | Embed |
-| 복잡한 레이아웃 (프로필, 상점) | Components v2 |
-| 이미지 갤러리 | Components v2 |
-| 텍스트 + 버튼 조합 | Components v2 |
-| 빠른 응답이 필요한 경우 | Embed |
+| 채널 응답 (명령어, 패널) | ✅ Components v2 |
+| DM 응답 | ✅ Components v2 |
+| 관리자 명령어 (grant, deduct 등) | ✅ Components v2 |
+| 이미지 첨부 | ✅ Components v2 (`MediaGallery` + `files`) |
+| ephemeral 응답 | ✅ Components v2 |
+
+**이유:**
+- 더 현대적이고 깔끔한 UI
+- 구분선(`Separator`)으로 섹션 분리 가능
+- 큰 제목(`# Title`)으로 시각적 계층 구조
+- 일관된 사용자 경험
+
+### 이미지 첨부 방법
+
+캔버스/이미지 파일을 Components v2로 첨부:
+
+```typescript
+const attachment = new AttachmentBuilder(buffer, { name: 'profile.png' });
+const container = new ContainerBuilder()
+  .addMediaGalleryComponents(
+    new MediaGalleryBuilder().addItems(
+      new MediaGalleryItemBuilder().setURL('attachment://profile.png')
+    )
+  );
+
+await interaction.reply({
+  components: [container.toJSON()],
+  files: [attachment],
+  flags: MessageFlags.IsComponentsV2,
+});
+```
 
 ### 마이그레이션 가이드
 
