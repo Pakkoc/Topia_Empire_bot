@@ -12,7 +12,6 @@ import {
   ContainerBuilder,
   TextDisplayBuilder,
   SeparatorBuilder,
-  SectionBuilder,
   SeparatorSpacingSize,
   type ButtonInteraction,
   type ModalSubmitInteraction,

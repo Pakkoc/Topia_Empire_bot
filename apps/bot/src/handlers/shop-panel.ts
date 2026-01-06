@@ -10,7 +10,6 @@ import {
   ContainerBuilder,
   TextDisplayBuilder,
   SeparatorBuilder,
-  SectionBuilder,
   SeparatorSpacingSize,
   type ButtonInteraction,
   type StringSelectMenuInteraction,
@@ -98,10 +97,8 @@ function createShopContainer(
         info += `\n> ${item.description}`;
       }
 
-      container.addSectionComponents(
-        new SectionBuilder().addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(info)
-        )
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(info)
       );
     });
   }

@@ -11,7 +11,6 @@ import {
   ContainerBuilder,
   TextDisplayBuilder,
   SeparatorBuilder,
-  SectionBuilder,
   SeparatorSpacingSize,
   type ButtonInteraction,
   type ModalSubmitInteraction,
@@ -118,10 +117,8 @@ function createMyListingsContainer(
 
       const listingText = `**${idx + 1}. ${listing.title}**\n${info}`;
 
-      container.addSectionComponents(
-        new SectionBuilder().addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(listingText)
-        )
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(listingText)
       );
     });
   }
@@ -234,10 +231,8 @@ function createMarketContainer(
 
       const listingText = `**${startIdx + idx + 1}. ${listing.title}**\n${categoryLabel} | ${currencyEmoji} **${listing.price.toLocaleString()}** ${currencyName}\n판매자: <@${listing.sellerId}> · 만료 ${expiresIn}`;
 
-      container.addSectionComponents(
-        new SectionBuilder().addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(listingText)
-        )
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(listingText)
       );
     });
   }

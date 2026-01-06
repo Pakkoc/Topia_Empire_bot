@@ -9,7 +9,6 @@ import {
   ContainerBuilder,
   TextDisplayBuilder,
   SeparatorBuilder,
-  SectionBuilder,
   SeparatorSpacingSize,
   type APIContainerComponent,
 } from 'discord.js';
@@ -79,10 +78,8 @@ function createInventoryContainer(
       info += `\n> ${t.ticket.description}`;
     }
 
-    container.addSectionComponents(
-      new SectionBuilder().addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(info)
-      )
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(info)
     );
   });
 
