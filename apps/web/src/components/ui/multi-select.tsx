@@ -35,19 +35,29 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [openUpward, setOpenUpward] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   // 외부 클릭 시 닫기
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setOpen(false);
+        setSearchQuery("");
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // 드롭다운 열릴 때 검색 input에 포커스
+  React.useEffect(() => {
+    if (open && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [open]);
 
   // 드롭다운 방향 결정
   const calculateDropdownDirection = React.useCallback(() => {
@@ -77,24 +87,31 @@ export function MultiSelect({
 
   const selectedOptions = options.filter((opt) => selected.includes(opt.value));
 
+  // 검색어로 필터링된 옵션
+  const filteredOptions = React.useMemo(() => {
+    if (!searchQuery.trim()) return options;
+    const query = searchQuery.toLowerCase();
+    return options.filter((opt) => opt.label.toLowerCase().includes(query));
+  }, [options, searchQuery]);
+
   // 그룹별로 옵션 분류
   const groupedOptions = React.useMemo(() => {
     const groups: Record<string, MultiSelectOption[]> = {};
     const ungrouped: MultiSelectOption[] = [];
 
-    options.forEach((opt) => {
+    filteredOptions.forEach((opt) => {
       if (opt.group) {
         if (!groups[opt.group]) {
           groups[opt.group] = [];
         }
-        groups[opt.group].push(opt);
+        groups[opt.group]!.push(opt);
       } else {
         ungrouped.push(opt);
       }
     });
 
     return { groups, ungrouped };
-  }, [options]);
+  }, [filteredOptions]);
 
   const hasGroups = Object.keys(groupedOptions.groups).length > 0;
 
@@ -150,10 +167,27 @@ export function MultiSelect({
           "absolute z-[9999] w-full rounded-md border border-slate-700 bg-slate-900 shadow-lg",
           openUpward ? "bottom-full mb-1" : "top-full mt-1"
         )}>
+          {/* 검색 input */}
+          <div className="p-2 border-b border-slate-700">
+            <div className="relative">
+              <Icon
+                icon="solar:magnifer-linear"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"
+              />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="검색..."
+                className="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded-md text-white placeholder:text-slate-400 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
           <div className="max-h-[200px] overflow-auto p-1">
-            {options.length === 0 ? (
+            {filteredOptions.length === 0 ? (
               <div className="py-4 text-center text-sm text-slate-400">
-                항목이 없습니다
+                {searchQuery ? "검색 결과가 없습니다" : "항목이 없습니다"}
               </div>
             ) : hasGroups ? (
               // 그룹화된 렌더링
@@ -239,7 +273,7 @@ export function MultiSelect({
               </>
             ) : (
               // 기존 플랫 렌더링
-              options.map((option) => {
+              filteredOptions.map((option) => {
                 const isSelected = selected.includes(option.value);
                 return (
                   <div
