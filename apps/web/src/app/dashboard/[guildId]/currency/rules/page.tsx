@@ -698,7 +698,7 @@ export default function CurrencyRulesPage() {
 
         {/* 배율 탭 */}
         <TabsContent value="multipliers" className="space-y-6 animate-fade-up">
-          <div className="flex items-start gap-4 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4">
+          <div className="flex items-center gap-4 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4">
             <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
               <Icon icon="solar:info-circle-linear" className="w-4 h-4 text-amber-400" />
             </div>
