@@ -27,6 +27,8 @@ const ITEM_TYPE_LABELS: Record<ShopItemType, string> = {
   vip_lounge: '👑 VIP라운지',
   dito_silver: '🥈 디토실버',
   dito_gold: '🥇 디토골드',
+  color_basic: '🎨 색상선택(기본)',
+  color_premium: '🌈 색상선택(프리미엄)',
 };
 
 /** 인벤토리 Container 생성 (Components v2) - 모든 보유 아이템 */
