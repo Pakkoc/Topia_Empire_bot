@@ -85,6 +85,22 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     durationDays: 30,
     isRoleItem: true,
   },
+  {
+    name: '색상선택권(기본)',
+    description: '닉네임 색상을 1회 변경할 수 있습니다. 변경된 색상은 영구 유지됩니다.',
+    itemType: 'color_basic',
+    currencyType: 'topy',
+    durationDays: 0,  // 영구 (인벤토리형)
+    isRoleItem: false,
+  },
+  {
+    name: '색상선택권(프리미엄)',
+    description: '기간 내 닉네임 색상을 자유롭게 변경할 수 있습니다.',
+    itemType: 'color_premium',
+    currencyType: 'ruby',
+    durationDays: 30,
+    isRoleItem: true,
+  },
 ];
 
 /**
@@ -107,4 +123,6 @@ export const ITEM_TYPE_LABELS: Record<ShopItemType, string> = {
   vip_lounge: 'VIP라운지입장권',
   dito_silver: '디토실버',
   dito_gold: '디토골드',
+  color_basic: '색상선택권(기본)',
+  color_premium: '색상선택권(프리미엄)',
 };

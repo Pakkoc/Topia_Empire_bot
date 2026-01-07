@@ -8,11 +8,11 @@
 
 ## 티어별 혜택
 
-| 티어 | 금고 한도 | 월 이자율 |
-|------|-----------|-----------|
-| 없음 | 0 (사용 불가) | 0% |
-| 실버 (dito_silver) | 100,000 | 1% |
-| 골드 (dito_gold) | 200,000 | 2% |
+| 티어               | 금고 한도     | 월 이자율 |
+| ------------------ | ------------- | --------- |
+| 없음               | 0 (사용 불가) | 0%        |
+| 실버 (dito_silver) | 100,000       | 1%        |
+| 골드 (dito_gold)   | 200,000       | 2%        |
 
 ---
 
@@ -56,7 +56,7 @@
 
 ```typescript
 // vault-interest.scheduler.ts
-schedule.scheduleJob('0 0 1 * *', async () => {
+schedule.scheduleJob("0 0 1 * *", async () => {
   // 모든 길드에 대해 이자 지급 처리
 });
 ```
@@ -102,25 +102,25 @@ CREATE TABLE IF NOT EXISTS user_vaults (
 );
 ```
 
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | BIGINT | PK |
-| guild_id | VARCHAR(20) | 길드 ID |
-| user_id | VARCHAR(20) | 유저 ID |
-| deposited_amount | BIGINT | 예금 금액 |
-| last_interest_at | DATETIME | 마지막 이자 지급 시각 |
-| created_at | DATETIME | 생성 시각 |
-| updated_at | DATETIME | 수정 시각 |
+| 컬럼             | 타입        | 설명                  |
+| ---------------- | ----------- | --------------------- |
+| id               | BIGINT      | PK                    |
+| guild_id         | VARCHAR(20) | 길드 ID               |
+| user_id          | VARCHAR(20) | 유저 ID               |
+| deposited_amount | BIGINT      | 예금 금액             |
+| last_interest_at | DATETIME    | 마지막 이자 지급 시각 |
+| created_at       | DATETIME    | 생성 시각             |
+| updated_at       | DATETIME    | 수정 시각             |
 
 ---
 
 ## 거래 유형
 
-| 유형 | 설명 | 금액 부호 |
-|------|------|-----------|
-| `vault_deposit` | 금고 예금 | 음수 (지갑에서 차감) |
-| `vault_withdraw` | 금고 출금 | 양수 (지갑에 추가) |
-| `vault_interest` | 이자 지급 | 양수 |
+| 유형             | 설명      | 금액 부호            |
+| ---------------- | --------- | -------------------- |
+| `vault_deposit`  | 금고 예금 | 음수 (지갑에서 차감) |
+| `vault_withdraw` | 금고 출금 | 양수 (지갑에 추가)   |
+| `vault_interest` | 이자 지급 | 양수                 |
 
 ---
 
@@ -131,16 +131,29 @@ CREATE TABLE IF NOT EXISTS user_vaults (
 ```typescript
 class VaultService {
   // 금고 정보 조회 (구독 혜택 포함)
-  getVaultSummary(guildId: string, userId: string): Promise<Result<VaultSummary, CurrencyError>>
+  getVaultSummary(
+    guildId: string,
+    userId: string
+  ): Promise<Result<VaultSummary, CurrencyError>>;
 
   // 예금
-  deposit(guildId: string, userId: string, amount: bigint): Promise<Result<VaultDepositResult, CurrencyError>>
+  deposit(
+    guildId: string,
+    userId: string,
+    amount: bigint
+  ): Promise<Result<VaultDepositResult, CurrencyError>>;
 
   // 출금
-  withdraw(guildId: string, userId: string, amount: bigint): Promise<Result<VaultWithdrawResult, CurrencyError>>
+  withdraw(
+    guildId: string,
+    userId: string,
+    amount: bigint
+  ): Promise<Result<VaultWithdrawResult, CurrencyError>>;
 
   // 월간 이자 지급 처리
-  processMonthlyInterest(guildId: string): Promise<Result<MonthlyInterestSummary, CurrencyError>>
+  processMonthlyInterest(
+    guildId: string
+  ): Promise<Result<MonthlyInterestSummary, CurrencyError>>;
 }
 ```
 
@@ -159,27 +172,27 @@ interface VaultSummary {
 
 ## 에러 타입
 
-| 타입 | 설명 |
-|------|------|
-| `NO_SUBSCRIPTION` | 디토뱅크 구독이 없음 |
-| `VAULT_LIMIT_EXCEEDED` | 금고 한도 초과 |
-| `INSUFFICIENT_VAULT_BALANCE` | 금고 잔액 부족 |
-| `INSUFFICIENT_BALANCE` | 지갑 잔액 부족 |
-| `INVALID_AMOUNT` | 잘못된 금액 (0 이하) |
+| 타입                         | 설명                 |
+| ---------------------------- | -------------------- |
+| `NO_SUBSCRIPTION`            | 디토뱅크 구독이 없음 |
+| `VAULT_LIMIT_EXCEEDED`       | 금고 한도 초과       |
+| `INSUFFICIENT_VAULT_BALANCE` | 금고 잔액 부족       |
+| `INSUFFICIENT_BALANCE`       | 지갑 잔액 부족       |
+| `INVALID_AMOUNT`             | 잘못된 금액 (0 이하) |
 
 ---
 
 ## 관련 파일
 
-| 파일 | 설명 |
-|------|------|
-| `packages/core/src/currency-system/domain/user-vault.ts` | 금고 도메인 |
-| `packages/core/src/currency-system/domain/bank-subscription.ts` | 티어별 혜택 (BankBenefits) |
-| `packages/core/src/currency-system/port/vault-repository.port.ts` | 리포지토리 인터페이스 |
-| `packages/core/src/currency-system/service/vault.service.ts` | 금고 서비스 |
-| `packages/infra/src/database/repositories/vault.repository.ts` | 리포지토리 구현 |
-| `apps/bot/src/commands/vault.ts` | 금고 명령어 |
-| `apps/bot/src/schedulers/vault-interest.scheduler.ts` | 이자 스케줄러 |
+| 파일                                                              | 설명                       |
+| ----------------------------------------------------------------- | -------------------------- |
+| `packages/core/src/currency-system/domain/user-vault.ts`          | 금고 도메인                |
+| `packages/core/src/currency-system/domain/bank-subscription.ts`   | 티어별 혜택 (BankBenefits) |
+| `packages/core/src/currency-system/port/vault-repository.port.ts` | 리포지토리 인터페이스      |
+| `packages/core/src/currency-system/service/vault.service.ts`      | 금고 서비스                |
+| `packages/infra/src/database/repositories/vault.repository.ts`    | 리포지토리 구현            |
+| `apps/bot/src/commands/vault.ts`                                  | 금고 명령어                |
+| `apps/bot/src/schedulers/vault-interest.scheduler.ts`             | 이자 스케줄러              |
 
 ---
 

@@ -17,6 +17,8 @@ export type ShopItemCurrencyType = 'topy' | 'ruby' | 'both';
  * - vip_lounge: VIP라운지입장권
  * - dito_silver: 디토실버
  * - dito_gold: 디토골드
+ * - color_basic: 색상선택권(기본)
+ * - color_premium: 색상선택권(프리미엄)
  */
 export type ShopItemType =
   | 'custom'
@@ -27,7 +29,9 @@ export type ShopItemType =
   | 'premium_afk'
   | 'vip_lounge'
   | 'dito_silver'
-  | 'dito_gold';
+  | 'dito_gold'
+  | 'color_basic'
+  | 'color_premium';
 
 /**
  * 상점 아이템 - 티켓 판매

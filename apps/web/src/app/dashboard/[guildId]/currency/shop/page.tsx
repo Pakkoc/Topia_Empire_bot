@@ -29,7 +29,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -61,6 +71,8 @@ const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   vip_lounge: "VIP라운지",
   dito_silver: "디토실버",
   dito_gold: "디토골드",
+  color_basic: "색상선택권(기본)",
+  color_premium: "색상선택권(프리미엄)",
 };
 
 // 시스템 아이템 타입인지 확인
@@ -108,6 +120,9 @@ export default function ShopV2Page() {
   // 기본 아이템 추가 모달 상태
   const [isSeedModalOpen, setIsSeedModalOpen] = useState(false);
   const [selectedDefaultItems, setSelectedDefaultItems] = useState<string[]>([]);
+
+  // 역할 미설정 경고 모달 상태
+  const [roleWarningOpen, setRoleWarningOpen] = useState(false);
 
   // Pending role options for new item creation
   const [pendingRoleOptions, setPendingRoleOptions] = useState<PendingRoleOption[]>([]);
@@ -358,11 +373,7 @@ export default function ShopV2Page() {
     if (!item.enabled && item.roleTicket) {
       const hasRoles = (item.roleTicket.roleOptions?.length ?? 0) > 0 || item.roleTicket.fixedRoleId;
       if (!hasRoles) {
-        toast({
-          title: "역할을 먼저 설정해주세요",
-          description: "역할지급형 아이템은 역할을 설정한 후 활성화할 수 있습니다. 아이템을 수정하여 고정 역할 또는 선택 역할을 추가해주세요.",
-          variant: "destructive",
-        });
+        setRoleWarningOpen(true);
         return;
       }
     }
@@ -1144,6 +1155,28 @@ export default function ShopV2Page() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Role Warning Modal */}
+      <AlertDialog open={roleWarningOpen} onOpenChange={setRoleWarningOpen}>
+        <AlertDialogContent className="bg-zinc-900 border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <Icon icon="solar:danger-triangle-bold" className="h-5 w-5 text-amber-500" />
+              역할을 먼저 설정해주세요
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-white/70">
+              역할지급형 아이템은 역할을 설정한 후 활성화할 수 있습니다.
+              <br />
+              아이템을 수정하여 <strong className="text-white">고정 역할</strong> 또는 <strong className="text-white">선택 역할</strong>을 추가해주세요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction className="bg-amber-600 hover:bg-amber-700">
+              확인
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Panel Setup - Unified Shop */}
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">

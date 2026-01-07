@@ -36,6 +36,8 @@ export const itemTypeEnum = z.enum([
   "vip_lounge",
   "dito_silver",
   "dito_gold",
+  "color_basic",
+  "color_premium",
 ]);
 
 export type ItemType = z.infer<typeof itemTypeEnum>;
