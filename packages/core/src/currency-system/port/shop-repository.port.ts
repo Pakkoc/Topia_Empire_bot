@@ -7,7 +7,6 @@ import type {
   UpdateShopItemInput,
 } from '../domain/shop-item';
 import type { UserItemV2 } from '../domain/user-item-v2';
-import type { ColorOption } from '../domain/color-option';
 
 export interface ShopRepositoryPort {
   // 상점 아이템 CRUD
@@ -72,10 +71,6 @@ export interface ShopRepositoryPort {
     userId: string,
     shopItemId: number
   ): Promise<Result<number, RepositoryError>>;
-
-  // 색상 옵션 조회
-  findColorOptions(itemId: number): Promise<Result<ColorOption[], RepositoryError>>;
-  findColorOptionById(id: number): Promise<Result<ColorOption | null, RepositoryError>>;
 }
 
 // Backward compatibility alias

@@ -11,7 +11,7 @@ import {
   type APIContainerComponent,
 } from 'discord.js';
 import type { Command } from './types';
-import type { AvailableTicket, TicketRoleOption, OwnedItem, ShopItemType, AvailableColorItem, ColorOption } from '@topia/core';
+import type { AvailableTicket, TicketRoleOption, OwnedItem, ShopItemType } from '@topia/core';
 
 // Components v2 플래그 (1 << 15)
 const IS_COMPONENTS_V2 = 32768;
@@ -265,163 +265,6 @@ function createRoleSelectMenu(
     );
 }
 
-// ========== 색상선택권 관련 함수 ==========
-
-/** 색상선택권 선택 메뉴 생성 */
-function createColorItemSelectMenu(
-  colorItems: AvailableColorItem[],
-  customId: string
-): StringSelectMenuBuilder {
-  const options = colorItems.slice(0, 25).map((item) => {
-    const isPremium = item.shopItem.itemType === 'color_premium';
-    const expiresInfo = item.userItem.expiresAt
-      ? ` (${Math.ceil((new Date(item.userItem.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}일)`
-      : '';
-
-    return {
-      label: item.shopItem.name,
-      description: isPremium
-        ? `프리미엄${expiresInfo}`
-        : `보유: ${item.userItem.quantity}개`,
-      value: item.shopItem.id.toString(),
-      emoji: isPremium ? '🌈' : '🎨',
-    };
-  });
-
-  return new StringSelectMenuBuilder()
-    .setCustomId(customId)
-    .setPlaceholder('사용할 색상선택권을 선택하세요')
-    .addOptions(options);
-}
-
-/** 색상 옵션 선택 Container 생성 */
-function createColorSelectContainer(
-  colorItem: AvailableColorItem,
-  colorOptions: ColorOption[]
-): APIContainerComponent {
-  const isPremium = colorItem.shopItem.itemType === 'color_premium';
-  const container = new ContainerBuilder();
-
-  container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(`# ${isPremium ? '🌈' : '🎨'} ${colorItem.shopItem.name}`)
-  );
-
-  container.addSeparatorComponents(
-    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-  );
-
-  container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent('원하는 색상을 선택하세요.')
-  );
-
-  container.addSeparatorComponents(
-    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-  );
-
-  let infoText = `📦 **보유 수량**: ${colorItem.userItem.quantity}개\n`;
-  infoText += isPremium ? '♾️ **프리미엄**: 기간 내 무제한 변경' : '🔄 **사용 시**: 1개 소모';
-
-  if (colorItem.userItem.expiresAt) {
-    const daysLeft = Math.ceil((new Date(colorItem.userItem.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    infoText += `\n⏰ **남은 기간**: ${daysLeft}일`;
-  }
-
-  container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(infoText)
-  );
-
-  container.addSeparatorComponents(
-    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-  );
-
-  // 색상 목록 표시 (색상 코드와 함께)
-  const colorList = colorOptions.map((opt) => `• ${opt.name} \`${opt.color}\``).join('\n');
-  container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(`**🎨 선택 가능한 색상**\n${colorList}`)
-  );
-
-  return container.toJSON();
-}
-
-/** 색상 옵션 선택 메뉴 생성 */
-function createColorOptionSelectMenu(
-  colorOptions: ColorOption[],
-  shopItemId: number,
-  userId: string
-): StringSelectMenuBuilder {
-  return new StringSelectMenuBuilder()
-    .setCustomId(`inv_color_opt_${shopItemId}_${userId}`)
-    .setPlaceholder('원하는 색상을 선택하세요')
-    .addOptions(
-      colorOptions.map((opt) => ({
-        label: opt.name,
-        description: `색상 코드: ${opt.color}`,
-        value: opt.id.toString(),
-        emoji: '🎨',
-      }))
-    );
-}
-
-/** 색상 교환 확인 Container 생성 */
-function createColorConfirmContainer(
-  colorItem: AvailableColorItem,
-  colorOption: ColorOption
-): APIContainerComponent {
-  const isPremium = colorItem.shopItem.itemType === 'color_premium';
-  const container = new ContainerBuilder();
-
-  container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent('# ✅ 색상 교환 확인')
-  );
-
-  container.addSeparatorComponents(
-    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-  );
-
-  container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(`**${colorOption.name}** 색상으로 교환하시겠습니까?`)
-  );
-
-  container.addSeparatorComponents(
-    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-  );
-
-  let infoText = `**선택권**: ${colorItem.shopItem.name}\n`;
-  infoText += `**선택한 색상**: ${colorOption.name} \`${colorOption.color}\``;
-
-  if (!isPremium) {
-    infoText += `\n\n**소모**: 1개 → 남은 수량: ${colorItem.userItem.quantity - 1}개`;
-  }
-
-  infoText += '\n\n⚠️ **주의**: 이 선택권의 다른 색상 역할이 있다면 제거됩니다.';
-
-  container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(infoText)
-  );
-
-  return container.toJSON();
-}
-
-/** 색상 확인/취소 버튼 생성 */
-function createColorConfirmButtons(
-  shopItemId: number,
-  colorOptionId: number,
-  userId: string
-): ActionRowBuilder<ButtonBuilder> {
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`inv_color_confirm_${shopItemId}_${colorOptionId}_${userId}`)
-      .setLabel('교환하기')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('✅'),
-    new ButtonBuilder()
-      .setCustomId(`inv_back_${userId}`)
-      .setLabel('뒤로가기')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('◀️')
-  );
-}
-
 /** 뒤로가기 버튼 생성 */
 function createBackButton(userId: string): ButtonBuilder {
   return new ButtonBuilder()
@@ -552,10 +395,6 @@ export const inventoryCommand: Command = {
       const ticketsResult = await container.inventoryService.getAvailableTickets(guildId, userId);
       const tickets = ticketsResult.success ? ticketsResult.data : [];
 
-      // 사용 가능한 색상선택권 조회
-      const colorItemsResult = await container.inventoryService.getAvailableColorItems(guildId, userId);
-      const colorItems = colorItemsResult.success ? colorItemsResult.data : [];
-
       // 인벤토리가 비어있는 경우
       if (ownedItems.length === 0) {
         await interaction.editReply({
@@ -570,35 +409,23 @@ export const inventoryCommand: Command = {
         | { type: 'ticket_select' }
         | { type: 'role_select'; ticketId: number; roleOptions: TicketRoleOption[] }
         | { type: 'confirm'; ticketId: number; roleOptionId: number; roleOptions: TicketRoleOption[] }
-        | { type: 'color_select'; shopItemId: number; colorOptions: ColorOption[] }
-        | { type: 'color_confirm'; shopItemId: number; colorOptionId: number; colorOptions: ColorOption[] }
         | { type: 'done' };
 
       let state: State = { type: 'ticket_select' };
 
-      // 초기 화면 렌더링 (Components v2) - 모든 아이템 + 선택권/색상선택권 메뉴
+      // 초기 화면 렌더링 (Components v2) - 모든 아이템 + 선택권 선택 메뉴
       const renderTicketSelect = () => {
         const inventoryContainer = createInventoryContainer(ownedItems, topyName, rubyName);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const components: any[] = [inventoryContainer];
 
         // 선택권이 있으면 선택 메뉴 표시
         if (tickets.length > 0) {
           const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
             createTicketSelectMenu(tickets, `inv_ticket_${userId}`)
           );
-          components.push(selectRow.toJSON());
+          return { components: [inventoryContainer, selectRow.toJSON()], flags: IS_COMPONENTS_V2 };
         }
 
-        // 색상선택권이 있으면 선택 메뉴 표시
-        if (colorItems.length > 0) {
-          const colorSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-            createColorItemSelectMenu(colorItems, `inv_color_${userId}`)
-          );
-          components.push(colorSelectRow.toJSON());
-        }
-
-        return { components, flags: IS_COMPONENTS_V2 };
+        return { components: [inventoryContainer], flags: IS_COMPONENTS_V2 };
       };
 
       const renderRoleSelect = (ticketId: number, roleOptions: TicketRoleOption[]) => {
@@ -618,28 +445,6 @@ export const inventoryCommand: Command = {
         const roleOption = roleOptions.find((opt) => opt.id === roleOptionId)!;
         const confirmContainer = createConfirmContainer(ticket, roleOption);
         const buttonRow = createConfirmButtons(ticketId, roleOptionId, userId);
-        return { components: [confirmContainer, buttonRow.toJSON()], flags: IS_COMPONENTS_V2 };
-      };
-
-      // 색상 옵션 선택 화면 렌더링
-      const renderColorSelect = (shopItemId: number, colorOptions: ColorOption[]) => {
-        const colorItem = colorItems.find((c) => c.shopItem.id === shopItemId)!;
-        const colorSelectContainer = createColorSelectContainer(colorItem, colorOptions);
-        const colorOptionRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          createColorOptionSelectMenu(colorOptions, shopItemId, userId)
-        );
-        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          createBackButton(userId)
-        );
-        return { components: [colorSelectContainer, colorOptionRow.toJSON(), backRow.toJSON()], flags: IS_COMPONENTS_V2 };
-      };
-
-      // 색상 교환 확인 화면 렌더링
-      const renderColorConfirm = (shopItemId: number, colorOptionId: number, colorOptions: ColorOption[]) => {
-        const colorItem = colorItems.find((c) => c.shopItem.id === shopItemId)!;
-        const colorOption = colorOptions.find((opt) => opt.id === colorOptionId)!;
-        const confirmContainer = createColorConfirmContainer(colorItem, colorOption);
-        const buttonRow = createColorConfirmButtons(shopItemId, colorOptionId, userId);
         return { components: [confirmContainer, buttonRow.toJSON()], flags: IS_COMPONENTS_V2 };
       };
 
@@ -697,43 +502,6 @@ export const inventoryCommand: Command = {
             await i.update(renderConfirm(state.ticketId, roleOptionId, state.roleOptions));
           }
 
-          // 색상선택권 선택
-          else if (i.isStringSelectMenu() && i.customId === `inv_color_${userId}`) {
-            const shopItemId = parseInt(i.values[0] ?? '', 10);
-            const colorItem = colorItems.find((c) => c.shopItem.id === shopItemId);
-
-            if (!colorItem) {
-              await i.reply({ content: '색상선택권을 찾을 수 없습니다.', ephemeral: true });
-              return;
-            }
-
-            // 색상 옵션은 이미 colorItem에 포함되어 있음
-            const colorOptions = colorItem.colorOptions;
-            if (colorOptions.length === 0) {
-              await i.reply({ content: '이 색상선택권에 등록된 색상이 없습니다.', ephemeral: true });
-              return;
-            }
-
-            state = { type: 'color_select', shopItemId, colorOptions };
-            await i.update(renderColorSelect(shopItemId, colorOptions));
-          }
-
-          // 색상 옵션 선택
-          else if (i.isStringSelectMenu() && i.customId.startsWith(`inv_color_opt_`)) {
-            if (state.type !== 'color_select') return;
-
-            const colorOptionId = parseInt(i.values[0] ?? '', 10);
-            const colorOption = state.colorOptions.find((opt) => opt.id === colorOptionId);
-
-            if (!colorOption) {
-              await i.reply({ content: '색상을 찾을 수 없습니다.', ephemeral: true });
-              return;
-            }
-
-            state = { type: 'color_confirm', shopItemId: state.shopItemId, colorOptionId, colorOptions: state.colorOptions };
-            await i.update(renderColorConfirm(state.shopItemId, colorOptionId, state.colorOptions));
-          }
-
           // 뒤로가기 버튼
           else if (i.isButton() && i.customId === `inv_back_${userId}`) {
             if (state.type === 'role_select') {
@@ -742,12 +510,6 @@ export const inventoryCommand: Command = {
             } else if (state.type === 'confirm') {
               state = { type: 'role_select', ticketId: state.ticketId, roleOptions: state.roleOptions };
               await i.update(renderRoleSelect(state.ticketId, state.roleOptions));
-            } else if (state.type === 'color_select') {
-              state = { type: 'ticket_select' };
-              await i.update(renderTicketSelect());
-            } else if (state.type === 'color_confirm') {
-              state = { type: 'color_select', shopItemId: state.shopItemId, colorOptions: state.colorOptions };
-              await i.update(renderColorSelect(state.shopItemId, state.colorOptions));
             }
           }
 
@@ -890,147 +652,6 @@ export const inventoryCommand: Command = {
             }
 
             // 역할 효과 만료 시각 표시
-            if (result.roleExpiresAt) {
-              const roleExpireTimestamp = Math.floor(new Date(result.roleExpiresAt).getTime() / 1000);
-              infoText += `\n⏰ **역할 효과 만료**: <t:${roleExpireTimestamp}:R> (<t:${roleExpireTimestamp}:F>)`;
-            }
-
-            successContainer.addTextDisplayComponents(
-              new TextDisplayBuilder().setContent(infoText)
-            );
-
-            await i.editReply({
-              components: [successContainer.toJSON()],
-              flags: IS_COMPONENTS_V2,
-            });
-
-            state = { type: 'done' };
-            collector.stop();
-          }
-
-          // 색상 교환 확인 버튼
-          else if (i.isButton() && i.customId.startsWith(`inv_color_confirm_`)) {
-            if (state.type !== 'color_confirm') return;
-
-            await i.deferUpdate();
-
-            const { shopItemId, colorOptionId, colorOptions } = state;
-            const colorItem = colorItems.find((c) => c.shopItem.id === shopItemId)!;
-            const colorOption = colorOptions.find((opt) => opt.id === colorOptionId)!;
-
-            // 색상 교환 처리
-            const exchangeResult = await container.inventoryService.exchangeColor(
-              guildId,
-              userId,
-              shopItemId,
-              colorOptionId
-            );
-
-            if (!exchangeResult.success) {
-              let errorMessage = '색상 교환 중 오류가 발생했습니다.';
-
-              switch (exchangeResult.error.type) {
-                case 'ITEM_NOT_FOUND':
-                  errorMessage = '색상선택권을 찾을 수 없습니다.';
-                  break;
-                case 'COLOR_OPTION_NOT_FOUND':
-                  errorMessage = '색상 옵션을 찾을 수 없습니다.';
-                  break;
-                case 'ITEM_NOT_OWNED':
-                  errorMessage = '이 색상선택권을 보유하고 있지 않습니다.';
-                  break;
-                case 'ITEM_EXPIRED':
-                  errorMessage = '색상선택권의 유효기간이 만료되었습니다.';
-                  break;
-                case 'INSUFFICIENT_QUANTITY':
-                  errorMessage = `수량이 부족합니다. (필요: ${exchangeResult.error.required}개, 보유: ${exchangeResult.error.available}개)`;
-                  break;
-              }
-
-              await i.editReply({
-                components: [createMessageContainer('❌ 교환 실패', errorMessage)],
-                flags: IS_COMPONENTS_V2,
-              });
-              state = { type: 'done' };
-              collector.stop();
-              return;
-            }
-
-            const result = exchangeResult.data;
-
-            // 디버그 로그
-            console.log('[INVENTORY] Color exchange result:', {
-              newRoleId: result.newRoleId,
-              removedRoleIds: result.removedRoleIds,
-              colorName: result.colorName,
-              colorCode: result.colorCode,
-            });
-
-            // Discord 역할 부여/제거
-            const actuallyRemovedRoleIds: string[] = [];
-            try {
-              const member = await interaction.guild?.members.fetch(userId);
-              if (member) {
-                // 이전 색상 역할 제거 (실제로 가지고 있는 역할만)
-                for (const roleId of result.removedRoleIds) {
-                  try {
-                    if (member.roles.cache.has(roleId)) {
-                      const role = await interaction.guild?.roles.fetch(roleId);
-                      if (role) {
-                        await member.roles.remove(role);
-                        actuallyRemovedRoleIds.push(roleId);
-                      }
-                    }
-                  } catch (err) {
-                    console.error(`역할 제거 실패 (${roleId}):`, err);
-                  }
-                }
-
-                // 새 색상 역할 부여
-                const newRole = await interaction.guild?.roles.fetch(result.newRoleId);
-                if (newRole) {
-                  await member.roles.add(newRole);
-                }
-              }
-            } catch (err) {
-              console.error('역할 부여/제거 오류:', err);
-            }
-
-            // 성공 메시지 Container 생성
-            const successContainer = new ContainerBuilder();
-
-            successContainer.addTextDisplayComponents(
-              new TextDisplayBuilder().setContent('# ✅ 색상 교환 완료!')
-            );
-
-            successContainer.addSeparatorComponents(
-              new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-            );
-
-            successContainer.addTextDisplayComponents(
-              new TextDisplayBuilder().setContent(`**${result.colorName}** 색상 역할이 부여되었습니다!`)
-            );
-
-            successContainer.addSeparatorComponents(
-              new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-            );
-
-            let infoText = `🎨 **색상 역할**: <@&${result.newRoleId}> \`${result.colorCode}\``;
-
-            if (actuallyRemovedRoleIds.length > 0) {
-              infoText += `\n🔁 **제거된 역할**: ${actuallyRemovedRoleIds.map((id) => `<@&${id}>`).join(', ')}`;
-            }
-
-            if (!result.isPeriod) {
-              infoText += `\n📦 **남은 수량**: ${result.remainingQuantity}개`;
-            }
-
-            if (result.expiresAt) {
-              const daysLeft = Math.ceil((new Date(result.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-              infoText += `\n📦 **아이템 유효기간**: ${daysLeft}일 남음`;
-            }
-
-            // 역할 효과 만료 시각 표시 (프리미엄 색상선택권)
             if (result.roleExpiresAt) {
               const roleExpireTimestamp = Math.floor(new Date(result.roleExpiresAt).getTime() / 1000);
               infoText += `\n⏰ **역할 효과 만료**: <t:${roleExpireTimestamp}:R> (<t:${roleExpireTimestamp}:F>)`;

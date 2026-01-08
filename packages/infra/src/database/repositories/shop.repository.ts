@@ -6,7 +6,6 @@ import type {
   CreateShopItemInput,
   UpdateShopItemInput,
   UserItemV2,
-  ColorOption,
   RepositoryError,
 } from '@topia/core';
 import { Result } from '@topia/core';
@@ -44,16 +43,6 @@ interface UserItemV2Row extends RowDataPacket {
   updated_at: Date;
 }
 
-interface ColorOptionRow extends RowDataPacket {
-  id: number;
-  item_id: number;
-  color: string;
-  name: string;
-  role_id: string;
-  price: string; // BIGINT as string
-  created_at: Date;
-}
-
 // ========== Mappers ==========
 
 function toShopItem(row: ShopItemRow): ShopItem {
@@ -88,18 +77,6 @@ function toUserItemV2(row: UserItemV2Row): UserItemV2 {
     roleExpiresAt: row.role_expires_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  };
-}
-
-function toColorOption(row: ColorOptionRow): ColorOption {
-  return {
-    id: row.id,
-    itemId: row.item_id,
-    color: row.color,
-    name: row.name,
-    roleId: row.role_id,
-    price: BigInt(row.price),
-    createdAt: row.created_at,
   };
 }
 
@@ -571,44 +548,6 @@ export class ShopRepository implements ShopRepositoryPort {
 
       const quantity = rows[0]?.quantity ?? 0;
       return Result.ok(quantity);
-    } catch (error) {
-      return Result.err({
-        type: 'QUERY_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  }
-
-  // ========== Color Options ==========
-
-  async findColorOptions(itemId: number): Promise<Result<ColorOption[], RepositoryError>> {
-    try {
-      const [rows] = await this.pool.execute<ColorOptionRow[]>(
-        'SELECT * FROM shop_color_options WHERE item_id = ? ORDER BY id ASC',
-        [itemId]
-      );
-      return Result.ok(rows.map(toColorOption));
-    } catch (error) {
-      return Result.err({
-        type: 'QUERY_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  }
-
-  async findColorOptionById(id: number): Promise<Result<ColorOption | null, RepositoryError>> {
-    try {
-      const [rows] = await this.pool.execute<ColorOptionRow[]>(
-        'SELECT * FROM shop_color_options WHERE id = ?',
-        [id]
-      );
-
-      const firstRow = rows[0];
-      if (!firstRow) {
-        return Result.ok(null);
-      }
-
-      return Result.ok(toColorOption(firstRow));
     } catch (error) {
       return Result.err({
         type: 'QUERY_ERROR',
