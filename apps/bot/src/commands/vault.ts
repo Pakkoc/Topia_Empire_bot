@@ -177,11 +177,20 @@ export const vaultCommand: Command = {
 
         const { depositedAmount, newTotal } = result.data;
 
+        // 구독 정보 조회해서 등급, 한도 정보 표시
+        const summaryResult = await container.vaultService.getVaultSummary(guildId, userId);
+        const tierName = summaryResult.success ? summaryResult.data.tierName : '알 수 없음';
+        const storageLimit = summaryResult.success ? summaryResult.data.storageLimit : BigInt(0);
+        const remainingLimit = storageLimit - newTotal;
+
+        let successMessage = `금고에 **${depositedAmount.toLocaleString()} ${topyName}**를 예금했습니다.\n\n`;
+        successMessage += `🏷️ **등급**: ${tierName}\n`;
+        successMessage += `💰 **금고 잔액**: ${newTotal.toLocaleString()} ${topyName}\n`;
+        successMessage += `📊 **한도**: ${storageLimit.toLocaleString()} ${topyName}\n`;
+        successMessage += `🔓 **남은 한도**: ${remainingLimit.toLocaleString()} ${topyName}`;
+
         await interaction.editReply({
-          components: [createMessageContainer(
-            '✅ 예금 완료!',
-            `금고에 **${depositedAmount.toLocaleString()} ${topyName}**를 예금했습니다.\n\n💰 **금고 잔액**: ${newTotal.toLocaleString()} ${topyName}`
-          )],
+          components: [createMessageContainer('✅ 예금 완료!', successMessage)],
           flags: IS_COMPONENTS_V2,
         });
 
