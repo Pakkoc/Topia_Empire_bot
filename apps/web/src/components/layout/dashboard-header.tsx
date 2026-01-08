@@ -20,7 +20,7 @@ export function DashboardHeader() {
   return (
     <header className="flex h-16 items-center justify-between border-b border-white/5 bg-black/40 backdrop-blur-xl px-6">
       <Link href="/dashboard" className="flex items-center">
-        <Image src="/logo.png" alt="Nexus" width={120} height={40} className="h-10 w-auto" />
+        <Image src="/logo/main.png" alt="Nexus" width={120} height={40} className="h-10 w-auto" />
       </Link>
 
       <div className="flex items-center gap-4">
