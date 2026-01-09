@@ -542,7 +542,15 @@ async function main() {
 
         // 게임 생성 모달
         if (customId.startsWith('game_create_modal_')) {
-          await handleGameCreateModal(interaction, container);
+          // 카테고리 ID 파싱: game_create_modal_cat_${categoryId}_${uniqueId}
+          let categoryId: number | undefined;
+          if (customId.includes('_cat_')) {
+            const match = customId.match(/game_create_modal_cat_(\d+)_/);
+            if (match) {
+              categoryId = parseInt(match[1]!, 10);
+            }
+          }
+          await handleGameCreateModal(interaction, container, categoryId);
           return;
         }
       } catch (error) {
