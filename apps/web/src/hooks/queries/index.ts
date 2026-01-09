@@ -23,3 +23,4 @@ export * from "./use-game-settings";
 export * from "./use-shop-panel-settings";
 export * from "./use-data-retention";
 export * from "./use-inventory";
+export * from "./use-activity-heatmap";

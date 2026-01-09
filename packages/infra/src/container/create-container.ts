@@ -37,6 +37,7 @@ import {
   LeftMemberRepository,
   UserDataCleanupRepository,
   VaultRepository,
+  ActivityLogRepository,
 } from '../database/repositories';
 import { SystemClock } from '../clock';
 import type { Container } from './types';
@@ -85,6 +86,9 @@ export function createContainer(): Container {
 
   // 금고
   const vaultRepo = new VaultRepository(pool);
+
+  // 활동 로그
+  const activityLogRepo = new ActivityLogRepository(pool);
 
   // Services (repositories needed for tax service)
   const xpService = new XpService(xpRepo, xpSettingsRepo, clock);
@@ -192,5 +196,8 @@ export function createContainer(): Container {
 
     // 금고
     vaultService,
+
+    // 활동 로그
+    activityLogRepo,
   };
 }

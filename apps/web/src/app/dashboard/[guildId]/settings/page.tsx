@@ -1,70 +1,46 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useXpSettings, useUpdateXpSettings, useDataRetentionSettings, useUpdateDataRetentionSettings } from "@/hooks/queries";
+import { useDataRetentionSettings, useUpdateDataRetentionSettings, useActivityHeatmap } from "@/hooks/queries";
+import { ActivityHeatmap } from "@/components/charts/activity-heatmap";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useUnsavedChanges } from "@/contexts/unsaved-changes-context";
 import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ko } from "date-fns/locale";
 
-const settingsFormSchema = z.object({
-  enabled: z.boolean(),
-});
-
-type SettingsFormValues = z.infer<typeof settingsFormSchema>;
+// 데이터 보존 기간 옵션 (일 단위)
+const RETENTION_OPTIONS = [
+  { value: "0", label: "즉시 삭제" },
+  { value: "1", label: "1일" },
+  { value: "3", label: "3일" },
+  { value: "7", label: "7일" },
+  { value: "14", label: "14일" },
+  { value: "30", label: "30일" },
+];
 
 export default function GuildSettingsPage() {
   const params = useParams();
   const guildId = params['guildId'] as string;
   const { toast } = useToast();
-  const { setHasUnsavedChanges } = useUnsavedChanges();
-
-  const { data: xpSettings, isLoading } = useXpSettings(guildId);
-  const updateSettings = useUpdateXpSettings(guildId);
 
   // 데이터 보존 설정
-  const { data: dataRetentionSettings, isLoading: isDataRetentionLoading } = useDataRetentionSettings(guildId);
+  const { data: dataRetentionSettings, isLoading } = useDataRetentionSettings(guildId);
   const updateDataRetention = useUpdateDataRetentionSettings(guildId);
   const [retentionDays, setRetentionDays] = useState<number>(3);
 
-  const form = useForm<SettingsFormValues>({
-    resolver: zodResolver(settingsFormSchema),
-    defaultValues: {
-      enabled: true,
-    },
-  });
-
-  const isDirty = form.formState.isDirty;
-
-  useEffect(() => {
-    setHasUnsavedChanges(isDirty);
-  }, [isDirty, setHasUnsavedChanges]);
-
-  useEffect(() => {
-    if (xpSettings) {
-      form.reset({
-        enabled: Boolean(xpSettings.enabled),
-      });
-    }
-  }, [xpSettings, form]);
+  // 활동 히트맵
+  const { data: heatmapData, isLoading: isHeatmapLoading } = useActivityHeatmap(guildId);
 
   useEffect(() => {
     if (dataRetentionSettings) {
@@ -72,29 +48,14 @@ export default function GuildSettingsPage() {
     }
   }, [dataRetentionSettings]);
 
-  const onSubmit = async (data: SettingsFormValues) => {
+  const handleRetentionDaysChange = async (value: string) => {
+    const days = parseInt(value);
+    setRetentionDays(days);
     try {
-      await updateSettings.mutateAsync(data);
-      form.reset(data);
+      await updateDataRetention.mutateAsync({ retentionDays: days });
       toast({
         title: "설정 저장 완료",
-        description: "설정이 저장되었습니다.",
-      });
-    } catch {
-      toast({
-        title: "저장 실패",
-        description: "설정을 저장하는 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleRetentionDaysChange = async () => {
-    try {
-      await updateDataRetention.mutateAsync({ retentionDays });
-      toast({
-        title: "설정 저장 완료",
-        description: `탈퇴 유저 데이터가 ${retentionDays === 0 ? '즉시 삭제' : `${retentionDays}일 후 삭제`}됩니다.`,
+        description: `탈퇴 유저 데이터가 ${days === 0 ? '즉시 삭제' : `${days}일 후 삭제`}됩니다.`,
       });
     } catch {
       toast({
@@ -132,53 +93,6 @@ export default function GuildSettingsPage() {
         <p className="text-slate-400">봇 기본 설정을 관리합니다.</p>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* XP System Toggle */}
-          <Card className="border-slate-700 bg-slate-800/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <Icon icon="solar:bolt-linear" className="h-5 w-5 text-yellow-500" />
-                XP 시스템
-              </CardTitle>
-              <CardDescription>XP 시스템 전체를 켜거나 끕니다.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FormField
-                control={form.control}
-                name="enabled"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border border-slate-700 p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base text-white">XP 시스템 활성화</FormLabel>
-                      <FormDescription>
-                        비활성화하면 모든 XP 획득이 중단됩니다.
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={updateSettings.isPending}
-              className="bg-indigo-600 hover:bg-indigo-700"
-            >
-              {updateSettings.isPending ? "저장 중..." : "설정 저장"}
-            </Button>
-          </div>
-        </form>
-      </Form>
-
       {/* Bot Info */}
       <Card className="border-slate-700 bg-slate-800/50">
         <CardHeader>
@@ -201,6 +115,14 @@ export default function GuildSettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Activity Heatmap */}
+      <ActivityHeatmap
+        cells={heatmapData?.cells ?? []}
+        maxCount={heatmapData?.maxCount ?? 0}
+        totalActivities={heatmapData?.totalActivities ?? 0}
+        isLoading={isHeatmapLoading}
+      />
+
       {/* Data Retention Settings */}
       <Card className="border-slate-700 bg-slate-800/50">
         <CardHeader>
@@ -214,37 +136,37 @@ export default function GuildSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between rounded-lg border border-slate-700 p-4">
-            <div className="space-y-0.5">
+            <div className="space-y-1.5">
               <p className="text-base font-medium text-white">탈퇴 유저 데이터 보존 기간</p>
               <p className="text-sm text-slate-400">
                 {retentionDays === 0
                   ? "탈퇴 즉시 데이터가 삭제됩니다."
                   : `탈퇴 후 ${retentionDays}일간 데이터가 보존됩니다. 기간 내 재입장 시 데이터가 복구됩니다.`}
               </p>
+              <p className="text-xs text-indigo-400">
+                프리미엄 구독 시 최대 100일까지 보존 가능
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={0}
-                max={365}
-                value={retentionDays}
-                onChange={(e) => setRetentionDays(parseInt(e.target.value) || 0)}
-                className="w-20 bg-slate-700 text-white border-slate-600"
-              />
-              <span className="text-slate-400">일</span>
-              <Button
-                onClick={handleRetentionDaysChange}
-                disabled={updateDataRetention.isPending || retentionDays === dataRetentionSettings?.retentionDays}
-                className="bg-indigo-600 hover:bg-indigo-700"
-                size="sm"
-              >
-                {updateDataRetention.isPending ? "저장 중..." : "저장"}
-              </Button>
-            </div>
+            <Select
+              value={retentionDays.toString()}
+              onValueChange={handleRetentionDaysChange}
+              disabled={updateDataRetention.isPending}
+            >
+              <SelectTrigger className="w-32 bg-slate-700 text-white border-slate-600">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RETENTION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* 탈퇴 대기 중인 유저 목록 */}
-          {!isDataRetentionLoading && dataRetentionSettings?.leftMembers && dataRetentionSettings.leftMembers.length > 0 && (
+          {dataRetentionSettings?.leftMembers && dataRetentionSettings.leftMembers.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm font-medium text-slate-300">
                 삭제 대기 중인 유저 데이터 ({dataRetentionSettings.leftMembers.length}명)

@@ -23,7 +23,7 @@ interface LeftMemberRow extends RowDataPacket {
 }
 
 const updateDataRetentionSchema = z.object({
-  retentionDays: z.number().min(0).max(365),
+  retentionDays: z.number().min(0).max(30), // 프리미엄 구독 시 최대 100일로 확장 예정
 });
 
 export async function GET(

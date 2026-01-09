@@ -32,3 +32,6 @@ export * from './user-data-cleanup.repository';
 
 // 금고
 export * from './vault.repository';
+
+// 활동 로그
+export * from './activity-log.repository';

@@ -13,6 +13,7 @@ import type {
   DataRetentionService,
   VaultService,
 } from '@topia/core';
+import type { ActivityLogRepositoryPort } from '../database/repositories/activity-log.repository';
 
 export interface Container {
   xpService: XpService;
@@ -41,4 +42,7 @@ export interface Container {
 
   // 금고
   vaultService: VaultService;
+
+  // 활동 로그
+  activityLogRepo: ActivityLogRepositoryPort;
 }
