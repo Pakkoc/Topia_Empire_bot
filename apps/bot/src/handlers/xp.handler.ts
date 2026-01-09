@@ -29,9 +29,6 @@ export function createXpHandler(container: Container, client: Client) {
           `[XP] ${userId} earned ${result.data.xp} XP (total: ${result.data.totalXp}, level: ${result.data.level})`
         );
 
-        // 활동 로그 기록
-        container.activityLogRepo.logActivity(guildId, userId, 'text');
-
         if (result.data.leveledUp) {
           console.log(`[LEVEL UP] ${userId} reached level ${result.data.level}!`);
 
@@ -203,9 +200,6 @@ export function createXpHandler(container: Container, client: Client) {
         console.log(
           `[VOICE XP] ${userId} earned ${result.data.xp} XP (total: ${result.data.totalXp}, level: ${result.data.level})`
         );
-
-        // 활동 로그 기록
-        container.activityLogRepo.logActivity(guildId, userId, 'voice');
 
         if (result.data.leveledUp) {
           console.log(`[LEVEL UP] ${userId} reached level ${result.data.level}!`);

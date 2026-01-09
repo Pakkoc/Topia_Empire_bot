@@ -288,6 +288,9 @@ async function main() {
 
     const roleIds = message.member?.roles.cache.map(r => r.id) ?? [];
 
+    // 활동 로그 기록 (모든 메시지)
+    container.activityLogRepo.logActivity(message.guildId, message.author.id, 'text');
+
     // XP 처리
     await xpHandler.handleTextMessage(
       message.guildId,
@@ -373,6 +376,9 @@ async function main() {
           // User is alone in the channel, don't give XP
           continue;
         }
+
+        // 활동 로그 기록 (음성 채널 - 1분마다)
+        container.activityLogRepo.logActivity(guildId, userId, 'voice');
 
         // Give voice XP
         await xpHandler.handleVoiceXp(
