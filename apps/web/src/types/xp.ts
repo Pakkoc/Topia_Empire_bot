@@ -33,7 +33,7 @@ export const xpHotTimeSchema = z.object({
   type: z.enum(["text", "voice", "all"]),
   startTime: z.string(), // HH:mm format
   endTime: z.string(), // HH:mm format
-  multiplier: z.number().min(1).max(10),
+  multiplier: z.number().gt(1, "배율은 1보다 커야 합니다").max(10, "배율은 10 이하여야 합니다"),
   enabled: z.boolean(),
   channelIds: z.array(z.string()).optional(), // 적용 채널 (비어있으면 모든 채널)
 });

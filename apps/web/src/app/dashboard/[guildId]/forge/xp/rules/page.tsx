@@ -52,7 +52,7 @@ const hotTimeFormSchema = z.object({
   type: z.enum(["text", "voice", "all"]),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
-  multiplier: z.coerce.number().min(0).max(10),
+  multiplier: z.coerce.number().gt(1, "배율은 1보다 커야 합니다").max(10, "배율은 10 이하여야 합니다"),
   enabled: z.boolean(),
 });
 
@@ -97,7 +97,7 @@ export default function XpRulesPage() {
       type: "all",
       startTime: "18:00",
       endTime: "22:00",
-      multiplier: 2,
+      multiplier: 1.5,
       enabled: true,
     },
   });
@@ -645,12 +645,13 @@ export default function XpRulesPage() {
                             <FormLabel className="text-white/70 flex items-center gap-1">
                               <Icon icon="solar:chart-2-linear" className="w-4 h-4" />
                               배율
+                              <span className="text-white/40 text-xs">(1초과~10)</span>
                             </FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
-                                step="1"
-                                min="0"
+                                step="0.1"
+                                min="1.1"
                                 max="10"
                                 {...field}
                                 className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
@@ -678,6 +679,11 @@ export default function XpRulesPage() {
                       />
                       <p className="text-xs text-white/40">
                         선택하지 않으면 모든 채널에 적용됩니다.
+                        {hotTimeType === "text" && (
+                          <span className="block mt-1 text-blue-400/70">
+                            * 음성 채널도 표시됩니다 - 음성 채널 내 텍스트 채팅(스레드)에 적용하려면 선택하세요.
+                          </span>
+                        )}
                       </p>
                     </div>
 
