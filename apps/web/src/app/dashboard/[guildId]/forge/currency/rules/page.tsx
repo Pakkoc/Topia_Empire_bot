@@ -19,6 +19,7 @@ import {
   useDeleteCurrencyMultiplier,
   useChannels,
   useRoles,
+  useCurrencySettings,
 } from "@/hooks/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +96,9 @@ export default function CurrencyRulesPage() {
   const { data: multipliers = [], isLoading: multipliersLoading } = useCurrencyMultipliers(guildId);
   const { data: channels = [], isLoading: channelsLoading } = useChannels(guildId);
   const { data: roles = [], isLoading: rolesLoading } = useRoles(guildId);
+  const { data: settings } = useCurrencySettings(guildId);
+
+  const topyName = settings?.topyName ?? "토피";
 
   // Mutations
   const createHotTime = useCreateCurrencyHotTime(guildId);
@@ -417,7 +421,7 @@ export default function CurrencyRulesPage() {
       {/* Page Header */}
       <div className="animate-fade-up">
         <h1 className="text-2xl md:text-3xl font-bold text-white">화폐 규칙</h1>
-        <p className="text-white/50 mt-1">토피 보너스 및 제한 규칙을 설정합니다.</p>
+        <p className="text-white/50 mt-1">활동형 화폐({topyName}) 보너스 및 제한 규칙을 설정합니다.</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -442,7 +446,7 @@ export default function CurrencyRulesPage() {
               className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
             >
               <Icon icon="solar:shield-linear" className="mr-2 h-4 w-4" />
-              토피 차단
+              {topyName} 차단
             </TabsTrigger>
           </TabsList>
 
@@ -626,7 +630,7 @@ export default function CurrencyRulesPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-white">핫타임 목록</h3>
-                  <p className="text-sm text-white/50">특정 시간대에 토피 배율이 증가합니다.</p>
+                  <p className="text-sm text-white/50">특정 시간대에 {topyName} 배율이 증가합니다.</p>
                 </div>
               </div>
             </div>
@@ -689,7 +693,7 @@ export default function CurrencyRulesPage() {
                     <Icon icon="solar:fire-linear" className="w-8 h-8 text-white/20" />
                   </div>
                   <p className="text-white/50">설정된 핫타임이 없습니다.</p>
-                  <p className="text-sm text-white/30 mt-1">핫타임을 추가하여 특정 시간대에 토피 배율을 높이세요.</p>
+                  <p className="text-sm text-white/30 mt-1">핫타임을 추가하여 특정 시간대에 {topyName} 배율을 높이세요.</p>
                 </div>
               )}
             </div>
@@ -715,7 +719,7 @@ export default function CurrencyRulesPage() {
               <div className="relative space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold text-white">새 배율 추가</h3>
-                  <p className="text-sm text-white/50">특정 채널이나 역할에 토피 배율을 설정합니다.</p>
+                  <p className="text-sm text-white/50">특정 채널이나 역할에 {topyName} 배율을 설정합니다.</p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -816,7 +820,7 @@ export default function CurrencyRulesPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">채널별 배율</h3>
-                    <p className="text-sm text-white/50">특정 채널에서 토피 배율이 적용됩니다.</p>
+                    <p className="text-sm text-white/50">특정 채널에서 {topyName} 배율이 적용됩니다.</p>
                   </div>
                 </div>
               </div>
@@ -902,7 +906,7 @@ export default function CurrencyRulesPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">역할별 배율</h3>
-                    <p className="text-sm text-white/50">특정 역할을 가진 유저에게 토피 배율이 적용됩니다.</p>
+                    <p className="text-sm text-white/50">특정 역할을 가진 유저에게 {topyName} 배율이 적용됩니다.</p>
                   </div>
                 </div>
               </div>
@@ -1064,7 +1068,7 @@ export default function CurrencyRulesPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">차단된 채널</h3>
-                    <p className="text-sm text-white/50">이 채널에서는 토피를 받을 수 없습니다.</p>
+                    <p className="text-sm text-white/50">이 채널에서는 {topyName}를 받을 수 없습니다.</p>
                   </div>
                 </div>
               </div>
@@ -1126,7 +1130,7 @@ export default function CurrencyRulesPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">차단된 역할</h3>
-                    <p className="text-sm text-white/50">이 역할을 가진 유저는 토피를 받을 수 없습니다.</p>
+                    <p className="text-sm text-white/50">이 역할을 가진 유저는 {topyName}를 받을 수 없습니다.</p>
                   </div>
                 </div>
               </div>

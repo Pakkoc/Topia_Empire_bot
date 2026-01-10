@@ -213,10 +213,10 @@ export default function WalletsPage() {
           <Badge className="bg-blue-600">안내</Badge>
           <div>
             <p className="text-blue-100">
-              {topyName}는 채팅 및 음성 활동으로 획득하는 무상 화폐입니다.
+              <strong>활동형 화폐({topyName})</strong>: 채팅 및 음성 활동으로 획득합니다.
             </p>
             <p className="mt-1 text-sm text-blue-200/70">
-              {rubyName}는 유상 화폐로 별도 구매 또는 장터 거래를 통해 획득할 수 있습니다.
+              <strong>수익형 화폐({rubyName})</strong>: 구매 또는 장터 거래를 통해 획득합니다.
             </p>
           </div>
         </div>

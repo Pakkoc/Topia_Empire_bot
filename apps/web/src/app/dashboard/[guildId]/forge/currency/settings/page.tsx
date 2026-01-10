@@ -195,7 +195,7 @@ export default function CurrencySettingsPage() {
       {/* Page Header */}
       <div className="animate-fade-up">
         <h1 className="text-2xl md:text-3xl font-bold text-white">화폐 설정</h1>
-        <p className="text-white/50 mt-1">토피 획득 방식을 설정합니다</p>
+        <p className="text-white/50 mt-1">활동형 화폐({settings?.topyName ?? "토피"}) 획득 방식과 이체 규칙을 설정합니다</p>
       </div>
 
       <Form {...form}>
@@ -214,9 +214,9 @@ export default function CurrencySettingsPage() {
                       />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-white">{settings?.topyName ?? "토피"} 관리자</h3>
+                      <h3 className="font-semibold text-white">활동형 화폐 관리자</h3>
                       <p className="text-white/50 text-sm">
-                        활동형 화폐 지급 권한
+                        {settings?.topyName ?? "토피"} 지급 권한
                       </p>
                     </div>
                   </div>
@@ -366,9 +366,9 @@ export default function CurrencySettingsPage() {
                       />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-white">{settings?.rubyName ?? "루비"} 관리자</h3>
+                      <h3 className="font-semibold text-white">수익형 화폐 관리자</h3>
                       <p className="text-white/50 text-sm">
-                        유료 화폐 지급 권한
+                        {settings?.rubyName ?? "루비"} 지급 권한
                       </p>
                     </div>
                   </div>
@@ -564,7 +564,7 @@ export default function CurrencySettingsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-white/70 text-sm">
-                      무상 화폐 이름
+                      활동형 화폐 이름
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -574,7 +574,7 @@ export default function CurrencySettingsPage() {
                       />
                     </FormControl>
                     <FormDescription className="text-xs text-white/40">
-                      활동으로 획득하는 화폐 (기본: 토피)
+                      채팅/음성 활동으로 획득 (기본: 토피)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -587,7 +587,7 @@ export default function CurrencySettingsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-white/70 text-sm">
-                      유상 화폐 이름
+                      수익형 화폐 이름
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -597,7 +597,7 @@ export default function CurrencySettingsPage() {
                       />
                     </FormControl>
                     <FormDescription className="text-xs text-white/40">
-                      구매/거래로 획득하는 화폐 (기본: 루비)
+                      구매/장터 거래로 획득 (기본: 루비)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -620,7 +620,7 @@ export default function CurrencySettingsPage() {
                   <div>
                     <h3 className="font-semibold text-white">텍스트 보상</h3>
                     <p className="text-white/50 text-sm">
-                      채팅 메시지 기반 토피 지급
+                      채팅 메시지 기반 {settings?.topyName ?? "토피"} 지급
                     </p>
                   </div>
                 </div>
@@ -636,7 +636,7 @@ export default function CurrencySettingsPage() {
                           활성화
                         </FormLabel>
                         <FormDescription className="text-xs text-white/40">
-                          채팅으로 토피 획득
+                          채팅으로 {settings?.topyName ?? "토피"} 획득
                         </FormDescription>
                       </div>
                       <FormControl>
@@ -656,7 +656,7 @@ export default function CurrencySettingsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-white/70 text-sm">
-                          최소 토피
+                          최소 지급량
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -676,7 +676,7 @@ export default function CurrencySettingsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-white/70 text-sm">
-                          최대 토피
+                          최대 지급량
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -772,7 +772,7 @@ export default function CurrencySettingsPage() {
                         />
                       </FormControl>
                       <FormDescription className="text-xs text-white/40">
-                        하루에 텍스트로 획득 가능한 최대 토피
+                        하루에 텍스트로 획득 가능한 최대량
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -794,7 +794,7 @@ export default function CurrencySettingsPage() {
                   <div>
                     <h3 className="font-semibold text-white">음성 보상</h3>
                     <p className="text-white/50 text-sm">
-                      음성 채널 활동 기반 토피 지급
+                      음성 채널 활동 기반 {settings?.topyName ?? "토피"} 지급
                     </p>
                   </div>
                 </div>
@@ -810,7 +810,7 @@ export default function CurrencySettingsPage() {
                           활성화
                         </FormLabel>
                         <FormDescription className="text-xs text-white/40">
-                          음성 참여로 토피 획득
+                          음성 참여로 {settings?.topyName ?? "토피"} 획득
                         </FormDescription>
                       </div>
                       <FormControl>
@@ -830,7 +830,7 @@ export default function CurrencySettingsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-white/70 text-sm">
-                          최소 토피
+                          최소 지급량
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -850,7 +850,7 @@ export default function CurrencySettingsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-white/70 text-sm">
-                          최대 토피
+                          최대 지급량
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -881,7 +881,7 @@ export default function CurrencySettingsPage() {
                         />
                       </FormControl>
                       <FormDescription className="text-xs text-white/40">
-                        토피 지급 간격 (기본 60초)
+                        지급 간격 (기본 60초)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -904,7 +904,7 @@ export default function CurrencySettingsPage() {
                         />
                       </FormControl>
                       <FormDescription className="text-xs text-white/40">
-                        하루에 음성으로 획득 가능한 최대 토피
+                        하루에 음성으로 획득 가능한 최대량
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -933,92 +933,133 @@ export default function CurrencySettingsPage() {
             </div>
           </div>
 
-          {/* 이체 설정 */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
-            <div className="p-6 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
-                  <Icon
-                    icon="solar:transfer-horizontal-linear"
-                    className="h-5 w-5 text-white"
-                  />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white">이체 설정</h3>
-                  <p className="text-white/50 text-sm">
-                    유저 간 화폐 이체 최소 금액
-                  </p>
+          {/* 이체 설정 - 2열 그리드로 분리 */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* 활동형 화폐(토피) 이체 설정 */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-amber-500/30 overflow-hidden">
+              <div className="p-6 border-b border-white/10 bg-gradient-to-r from-amber-500/10 to-orange-500/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                    <Icon
+                      icon="solar:transfer-horizontal-linear"
+                      className="h-5 w-5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">활동형 화폐 이체</h3>
+                    <p className="text-white/50 text-sm">
+                      {settings?.topyName ?? "토피"} 이체 규칙
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="p-6 space-y-5">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="p-6 space-y-5">
                 <FormField
                   control={form.control}
                   name="minTransferTopy"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-white/70 text-sm">
-                        토피 최소 이체 금액
+                        최소 이체 금액
                       </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           {...field}
-                          className="bg-white/5 border-white/10 text-white focus:border-cyan-500/50"
+                          className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"
                         />
                       </FormControl>
                       <FormDescription className="text-xs text-white/40">
-                        토피 이체 시 최소 금액 (기본: 100)
+                        {settings?.topyName ?? "토피"} 이체 시 최소 금액 (기본: 100)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="minTransferRuby"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white/70 text-sm">
-                        루비 최소 이체 금액
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          {...field}
-                          className="bg-white/5 border-white/10 text-white focus:border-cyan-500/50"
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs text-white/40">
-                        루비 이체 시 최소 금액 (기본: 1)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="transferFeeTopyPercent"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-white/70 text-sm">
-                        토피 이체 수수료 (%)
+                        이체 수수료 (%)
                       </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           step="0.1"
+                          min="0"
+                          max="100"
                           {...field}
-                          className="bg-white/5 border-white/10 text-white focus:border-cyan-500/50"
+                          className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"
                         />
                       </FormControl>
                       <FormDescription className="text-xs text-white/40">
-                        토피 이체 시 부과되는 수수료 (기본: 1.2%)
+                        0~100% 범위 (기본: 1.2%)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 토피 이체 안내 */}
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Icon
+                      icon="solar:info-circle-linear"
+                      className="w-5 h-5 text-amber-400 mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm text-amber-300 font-medium">
+                        활동형 화폐 이체 안내
+                      </p>
+                      <p className="text-xs text-amber-300/70 mt-1">
+                        수수료는 이체 금액에서 별도로 차감됩니다.
+                        0%로 설정하면 수수료가 부과되지 않습니다.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 수익형 화폐(루비) 이체 설정 */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-pink-500/30 overflow-hidden">
+              <div className="p-6 border-b border-white/10 bg-gradient-to-r from-pink-500/10 to-rose-500/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center">
+                    <Icon
+                      icon="solar:transfer-horizontal-linear"
+                      className="h-5 w-5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">수익형 화폐 이체</h3>
+                    <p className="text-white/50 text-sm">
+                      {settings?.rubyName ?? "루비"} 이체 규칙
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 space-y-5">
+                <FormField
+                  control={form.control}
+                  name="minTransferRuby"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70 text-sm">
+                        최소 이체 금액
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          {...field}
+                          className="bg-white/5 border-white/10 text-white focus:border-pink-500/50"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-white/40">
+                        {settings?.rubyName ?? "루비"} 이체 시 최소 금액 (기본: 1)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -1031,40 +1072,42 @@ export default function CurrencySettingsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-white/70 text-sm">
-                        루비 이체 수수료 (%)
+                        이체 수수료 (%)
                       </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           step="0.1"
+                          min="0"
+                          max="100"
                           {...field}
-                          className="bg-white/5 border-white/10 text-white focus:border-cyan-500/50"
+                          className="bg-white/5 border-white/10 text-white focus:border-pink-500/50"
                         />
                       </FormControl>
                       <FormDescription className="text-xs text-white/40">
-                        루비 이체 시 부과되는 수수료 (기본: 0%)
+                        0~100% 범위 (기본: 0%)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
 
-              {/* Info about transfer */}
-              <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <Icon
-                    icon="solar:info-circle-linear"
-                    className="w-5 h-5 text-cyan-400 mt-0.5"
-                  />
-                  <div>
-                    <p className="text-sm text-cyan-300 font-medium">
-                      이체 안내
-                    </p>
-                    <p className="text-xs text-cyan-300/70 mt-1">
-                      수수료는 이체 금액에서 별도로 차감됩니다. 0%로 설정하면
-                      수수료가 부과되지 않습니다.
-                    </p>
+                {/* 루비 이체 안내 */}
+                <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Icon
+                      icon="solar:shield-warning-linear"
+                      className="w-5 h-5 text-rose-400 mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm text-rose-300 font-medium">
+                        수익형 화폐 이체 주의
+                      </p>
+                      <p className="text-xs text-rose-300/70 mt-1">
+                        유료로 구매한 화폐입니다.
+                        이체 수수료 설정에 주의하세요.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1084,7 +1127,7 @@ export default function CurrencySettingsPage() {
                 <div>
                   <h3 className="font-semibold text-white">월말 세금</h3>
                   <p className="text-white/50 text-sm">
-                    매월 말일 23시에 토피 잔액에서 자동 차감
+                    매월 말일 23시에 {settings?.topyName ?? "토피"} 잔액에서 자동 차감
                   </p>
                 </div>
               </div>
@@ -1130,7 +1173,7 @@ export default function CurrencySettingsPage() {
                       />
                     </FormControl>
                     <FormDescription className="text-xs text-white/40">
-                      토피 잔액에서 차감되는 세금 비율 (기본: 3.3%)
+                      {settings?.topyName ?? "토피"} 잔액에서 차감되는 세금 비율 (기본: 3.3%)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -1149,7 +1192,7 @@ export default function CurrencySettingsPage() {
                       월말 세금 안내
                     </p>
                     <p className="text-xs text-red-300/70 mt-1">
-                      매월 마지막 날 23시에 모든 유저의 토피 잔액에서 세금이
+                      매월 마지막 날 23시에 모든 유저의 {settings?.topyName ?? "토피"} 잔액에서 세금이
                       자동으로 차감됩니다. 세금 이력은 거래 기록에서 확인할 수
                       있습니다.
                     </p>
