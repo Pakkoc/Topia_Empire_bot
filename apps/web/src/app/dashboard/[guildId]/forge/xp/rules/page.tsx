@@ -1,37 +1,7 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import {
-  useXpHotTimes,
-  useCreateXpHotTime,
-  useUpdateXpHotTime,
-  useDeleteXpHotTime,
-  useXpExclusions,
-  useCreateXpExclusionBulk,
-  useDeleteXpExclusion,
-  useXpMultipliers,
-  useCreateXpMultiplier,
-  useUpdateXpMultiplier,
-  useDeleteXpMultiplier,
-  useChannels,
-  useRoles,
-} from "@/hooks/queries";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -40,19 +10,54 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import {
+  MultiSelect,
+  type MultiSelectOption,
+} from "@/components/ui/multi-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/contexts/unsaved-changes-context";
-import { Icon } from "@iconify/react";
+import {
+  useChannels,
+  useCreateXpExclusionBulk,
+  useCreateXpHotTime,
+  useCreateXpMultiplier,
+  useDeleteXpExclusion,
+  useDeleteXpHotTime,
+  useDeleteXpMultiplier,
+  useRoles,
+  useUpdateXpHotTime,
+  useUpdateXpMultiplier,
+  useXpExclusions,
+  useXpHotTimes,
+  useXpMultipliers,
+} from "@/hooks/queries";
+import { useToast } from "@/hooks/use-toast";
 import { XpHotTime, XpMultiplier } from "@/types/xp";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Icon } from "@iconify/react";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 // Hot Time Schema
 const hotTimeFormSchema = z.object({
   type: z.enum(["text", "voice", "all"]),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
-  multiplier: z.coerce.number().gt(1, "배율은 1보다 커야 합니다").max(10, "배율은 10 이하여야 합니다"),
+  multiplier: z.coerce
+    .number()
+    .gt(1, "배율은 1보다 커야 합니다")
+    .max(10, "배율은 10 이하여야 합니다"),
   enabled: z.boolean(),
 });
 
@@ -85,7 +90,9 @@ export default function XpRulesPage() {
 
   // Hot Time State
   const [isAddingHotTime, setIsAddingHotTime] = useState(false);
-  const [selectedHotTimeChannels, setSelectedHotTimeChannels] = useState<string[]>([]);
+  const [selectedHotTimeChannels, setSelectedHotTimeChannels] = useState<
+    string[]
+  >([]);
   const { data: hotTimes, isLoading: hotTimesLoading } = useXpHotTimes(guildId);
   const createHotTime = useCreateXpHotTime(guildId);
   const updateHotTime = useUpdateXpHotTime(guildId);
@@ -132,7 +139,9 @@ export default function XpRulesPage() {
       });
       toast({
         title: hotTime.enabled ? "핫타임 비활성화" : "핫타임 활성화",
-        description: `핫타임이 ${hotTime.enabled ? "비활성화" : "활성화"}되었습니다.`,
+        description: `핫타임이 ${
+          hotTime.enabled ? "비활성화" : "활성화"
+        }되었습니다.`,
       });
     } catch {
       toast({
@@ -161,12 +170,17 @@ export default function XpRulesPage() {
 
   // Multiplier State
   const [isAddingMultiplier, setIsAddingMultiplier] = useState(false);
-  const [multiplierTargetType, setMultiplierTargetType] = useState<"channel" | "role">("channel");
+  const [multiplierTargetType, setMultiplierTargetType] = useState<
+    "channel" | "role"
+  >("channel");
   const [multiplierTargetIds, setMultiplierTargetIds] = useState<string[]>([]);
   const [multiplierValue, setMultiplierValue] = useState<string>("1.5");
-  const [editedMultipliers, setEditedMultipliers] = useState<Record<number, string>>({});
+  const [editedMultipliers, setEditedMultipliers] = useState<
+    Record<number, string>
+  >({});
 
-  const { data: multipliers, isLoading: multipliersLoading } = useXpMultipliers(guildId);
+  const { data: multipliers, isLoading: multipliersLoading } =
+    useXpMultipliers(guildId);
   const createMultiplier = useCreateXpMultiplier(guildId);
   const updateMultiplier = useUpdateXpMultiplier(guildId);
   const deleteMultiplier = useDeleteXpMultiplier(guildId);
@@ -180,15 +194,37 @@ export default function XpRulesPage() {
 
   // 추가 폼이 열려 있고 값이 입력된 경우 unsaved changes로 표시
   useEffect(() => {
-    const hasHotTimeFormData = isAddingHotTime && (hotTimeFormIsDirty || selectedHotTimeChannels.length > 0);
+    const hasHotTimeFormData =
+      isAddingHotTime &&
+      (hotTimeFormIsDirty || selectedHotTimeChannels.length > 0);
     const hasExclusionFormData = isAddingExclusion && selectedIds.length > 0;
-    const hasMultiplierFormData = isAddingMultiplier && multiplierTargetIds.length > 0;
+    const hasMultiplierFormData =
+      isAddingMultiplier && multiplierTargetIds.length > 0;
     const hasEditedMultipliers = Object.keys(editedMultipliers).length > 0;
-    setHasUnsavedChanges(hasHotTimeFormData || hasExclusionFormData || hasMultiplierFormData || hasEditedMultipliers);
-  }, [isAddingHotTime, hotTimeFormIsDirty, selectedHotTimeChannels, isAddingExclusion, selectedIds, isAddingMultiplier, multiplierTargetIds, editedMultipliers, setHasUnsavedChanges]);
+    setHasUnsavedChanges(
+      hasHotTimeFormData ||
+        hasExclusionFormData ||
+        hasMultiplierFormData ||
+        hasEditedMultipliers
+    );
+  }, [
+    isAddingHotTime,
+    hotTimeFormIsDirty,
+    selectedHotTimeChannels,
+    isAddingExclusion,
+    selectedIds,
+    isAddingMultiplier,
+    multiplierTargetIds,
+    editedMultipliers,
+    setHasUnsavedChanges,
+  ]);
 
-  const { data: exclusions, isLoading: exclusionsLoading } = useXpExclusions(guildId);
-  const { data: channels, isLoading: channelsLoading } = useChannels(guildId, null);
+  const { data: exclusions, isLoading: exclusionsLoading } =
+    useXpExclusions(guildId);
+  const { data: channels, isLoading: channelsLoading } = useChannels(
+    guildId,
+    null
+  );
   const { data: roles, isLoading: rolesLoading } = useRoles(guildId);
 
   const createExclusionBulk = useCreateXpExclusionBulk(guildId);
@@ -204,10 +240,13 @@ export default function XpRulesPage() {
   );
 
   const existingChannelIds = new Set(
-    exclusions?.filter((e) => e.targetType === "channel").map((e) => e.targetId) ?? []
+    exclusions
+      ?.filter((e) => e.targetType === "channel")
+      .map((e) => e.targetId) ?? []
   );
   const existingRoleIds = new Set(
-    exclusions?.filter((e) => e.targetType === "role").map((e) => e.targetId) ?? []
+    exclusions?.filter((e) => e.targetType === "role").map((e) => e.targetId) ??
+      []
   );
 
   const channelOptions: MultiSelectOption[] = (filteredChannels ?? [])
@@ -224,7 +263,10 @@ export default function XpRulesPage() {
       value: ch.id,
       label: ch.name,
       icon: isVoiceChannel(ch.type) ? (
-        <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
+        <Icon
+          icon="solar:volume-loud-linear"
+          className="h-4 w-4 text-green-400"
+        />
       ) : (
         <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-slate-400" />
       ),
@@ -236,7 +278,8 @@ export default function XpRulesPage() {
     .map((r) => ({
       value: r.id,
       label: r.name,
-      color: r.color === 0 ? "#99aab5" : `#${r.color.toString(16).padStart(6, "0")}`,
+      color:
+        r.color === 0 ? "#99aab5" : `#${r.color.toString(16).padStart(6, "0")}`,
     }));
 
   // 핫타임 유형 watch (음성 유형 선택 시 채널 필터링용)
@@ -264,7 +307,10 @@ export default function XpRulesPage() {
       value: ch.id,
       label: ch.name,
       icon: isVoiceChannel(ch.type) ? (
-        <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
+        <Icon
+          icon="solar:volume-loud-linear"
+          className="h-4 w-4 text-green-400"
+        />
       ) : (
         <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-slate-400" />
       ),
@@ -275,7 +321,9 @@ export default function XpRulesPage() {
   useEffect(() => {
     if (hotTimeType === "voice" && filteredChannels) {
       const voiceChannelIds = new Set(
-        filteredChannels.filter((ch) => isVoiceChannel(ch.type)).map((ch) => ch.id)
+        filteredChannels
+          .filter((ch) => isVoiceChannel(ch.type))
+          .map((ch) => ch.id)
       );
       const filteredSelection = selectedHotTimeChannels.filter((id) =>
         voiceChannelIds.has(id)
@@ -303,7 +351,9 @@ export default function XpRulesPage() {
       });
       toast({
         title: "차단 추가 완료",
-        description: `${selectedIds.length}개의 ${targetType === "channel" ? "채널" : "역할"}이 차단되었습니다.`,
+        description: `${selectedIds.length}개의 ${
+          targetType === "channel" ? "채널" : "역할"
+        }이 차단되었습니다.`,
       });
       setIsAddingExclusion(false);
       setSelectedIds([]);
@@ -332,19 +382,26 @@ export default function XpRulesPage() {
     }
   };
 
-  const channelExclusions = exclusions?.filter((e) => e.targetType === "channel") ?? [];
-  const roleExclusions = exclusions?.filter((e) => e.targetType === "role") ?? [];
+  const channelExclusions =
+    exclusions?.filter((e) => e.targetType === "channel") ?? [];
+  const roleExclusions =
+    exclusions?.filter((e) => e.targetType === "role") ?? [];
 
   const getChannel = (id: string) => channels?.find((c) => c.id === id);
   const getChannelName = (id: string) => getChannel(id)?.name ?? id;
-  const getRoleName = (id: string) => roles?.find((r) => r.id === id)?.name ?? id;
+  const getRoleName = (id: string) =>
+    roles?.find((r) => r.id === id)?.name ?? id;
 
   // Multiplier Handlers
   const existingMultiplierChannelIds = new Set(
-    multipliers?.filter((m) => m.targetType === "channel").map((m) => m.targetId) ?? []
+    multipliers
+      ?.filter((m) => m.targetType === "channel")
+      .map((m) => m.targetId) ?? []
   );
   const existingMultiplierRoleIds = new Set(
-    multipliers?.filter((m) => m.targetType === "role").map((m) => m.targetId) ?? []
+    multipliers
+      ?.filter((m) => m.targetType === "role")
+      .map((m) => m.targetId) ?? []
   );
 
   const multiplierChannelOptions: MultiSelectOption[] = (filteredChannels ?? [])
@@ -360,7 +417,10 @@ export default function XpRulesPage() {
       value: ch.id,
       label: ch.name,
       icon: isVoiceChannel(ch.type) ? (
-        <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
+        <Icon
+          icon="solar:volume-loud-linear"
+          className="h-4 w-4 text-green-400"
+        />
       ) : (
         <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-slate-400" />
       ),
@@ -372,7 +432,8 @@ export default function XpRulesPage() {
     .map((r) => ({
       value: r.id,
       label: r.name,
-      color: r.color === 0 ? "#99aab5" : `#${r.color.toString(16).padStart(6, "0")}`,
+      color:
+        r.color === 0 ? "#99aab5" : `#${r.color.toString(16).padStart(6, "0")}`,
     }));
 
   const handleSubmitMultiplier = async () => {
@@ -386,7 +447,12 @@ export default function XpRulesPage() {
     }
 
     const numValue = parseFloat(multiplierValue);
-    if (multiplierValue.trim() === "" || isNaN(numValue) || numValue <= 1 || numValue > 10) {
+    if (
+      multiplierValue.trim() === "" ||
+      isNaN(numValue) ||
+      numValue <= 1 ||
+      numValue > 10
+    ) {
       toast({
         title: "입력 오류",
         description: "배율은 1초과 10이하의 숫자여야 합니다.",
@@ -406,7 +472,9 @@ export default function XpRulesPage() {
       }
       toast({
         title: "배율 추가 완료",
-        description: `${multiplierTargetIds.length}개의 ${multiplierTargetType === "channel" ? "채널" : "역할"} 배율이 추가되었습니다.`,
+        description: `${multiplierTargetIds.length}개의 ${
+          multiplierTargetType === "channel" ? "채널" : "역할"
+        } 배율이 추가되었습니다.`,
       });
       setIsAddingMultiplier(false);
       setMultiplierTargetIds([]);
@@ -420,9 +488,17 @@ export default function XpRulesPage() {
     }
   };
 
-  const handleUpdateMultiplier = async (multiplier: XpMultiplier, newValueStr: string) => {
+  const handleUpdateMultiplier = async (
+    multiplier: XpMultiplier,
+    newValueStr: string
+  ) => {
     const numValue = parseFloat(newValueStr);
-    if (newValueStr.trim() === "" || isNaN(numValue) || numValue <= 1 || numValue > 10) {
+    if (
+      newValueStr.trim() === "" ||
+      isNaN(numValue) ||
+      numValue <= 1 ||
+      numValue > 10
+    ) {
       toast({
         title: "입력 오류",
         description: "배율은 1초과 10이하의 숫자여야 합니다.",
@@ -471,8 +547,10 @@ export default function XpRulesPage() {
     }
   };
 
-  const channelMultipliers = multipliers?.filter((m) => m.targetType === "channel") ?? [];
-  const roleMultipliers = multipliers?.filter((m) => m.targetType === "role") ?? [];
+  const channelMultipliers =
+    multipliers?.filter((m) => m.targetType === "channel") ?? [];
+  const roleMultipliers =
+    multipliers?.filter((m) => m.targetType === "role") ?? [];
 
   const isLoading = hotTimesLoading || exclusionsLoading || multipliersLoading;
 
@@ -505,10 +583,16 @@ export default function XpRulesPage() {
       {/* Page Header */}
       <div className="animate-fade-up">
         <h1 className="text-2xl md:text-3xl font-bold text-white">XP 규칙</h1>
-        <p className="text-white/50 mt-1">XP 보너스 및 제한 규칙을 설정합니다.</p>
+        <p className="text-white/50 mt-1">
+          XP 보너스 및 제한 규칙을 설정합니다.
+        </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <div className="flex items-center justify-between">
           <TabsList className="bg-white/5 border border-white/10 p-1 rounded-xl">
             <TabsTrigger
@@ -574,17 +658,27 @@ export default function XpRulesPage() {
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 rounded-2xl" />
 
               <div className="relative">
-                <h3 className="text-lg font-semibold text-white mb-4">새 핫타임 추가</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">
+                  새 핫타임 추가
+                </h3>
                 <Form {...hotTimeForm}>
-                  <form onSubmit={hotTimeForm.handleSubmit(onSubmitHotTime)} className="space-y-4">
+                  <form
+                    onSubmit={hotTimeForm.handleSubmit(onSubmitHotTime)}
+                    className="space-y-4"
+                  >
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       <FormField
                         control={hotTimeForm.control}
                         name="type"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-white/70">유형</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormLabel className="text-white/70">
+                              유형
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
                                   <SelectValue />
@@ -606,7 +700,9 @@ export default function XpRulesPage() {
                         name="startTime"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-white/70">시작 시간</FormLabel>
+                            <FormLabel className="text-white/70">
+                              시작 시간
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 type="time"
@@ -624,7 +720,9 @@ export default function XpRulesPage() {
                         name="endTime"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-white/70">종료 시간</FormLabel>
+                            <FormLabel className="text-white/70">
+                              종료 시간
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 type="time"
@@ -643,9 +741,14 @@ export default function XpRulesPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-white/70 flex items-center gap-1">
-                              <Icon icon="solar:chart-2-linear" className="w-4 h-4" />
+                              <Icon
+                                icon="solar:chart-2-linear"
+                                className="w-4 h-4"
+                              />
                               배율
-                              <span className="text-white/40 text-xs">(1초과~10)</span>
+                              <span className="text-white/40 text-xs">
+                                (1초과~10)
+                              </span>
                             </FormLabel>
                             <FormControl>
                               <Input
@@ -674,14 +777,19 @@ export default function XpRulesPage() {
                         options={hotTimeChannelOptions}
                         selected={selectedHotTimeChannels}
                         onChange={setSelectedHotTimeChannels}
-                        placeholder={channelsLoading ? "로딩 중..." : "채널을 선택하세요 (미선택 시 전체 적용)"}
+                        placeholder={
+                          channelsLoading
+                            ? "로딩 중..."
+                            : "채널을 선택하세요 (미선택 시 전체 적용)"
+                        }
                         isLoading={channelsLoading}
                       />
                       <p className="text-xs text-white/40">
                         선택하지 않으면 모든 채널에 적용됩니다.
                         {hotTimeType === "text" && (
                           <span className="block mt-1 text-blue-400/70">
-                            * 음성 채널도 표시됩니다 - 음성 채널 내 텍스트 채팅(스레드)에 적용하려면 선택하세요.
+                            * 음성 채널도 표시됩니다 - 음성 채널 내 텍스트
+                            채팅(스레드)에 적용하려면 선택하세요.
                           </span>
                         )}
                       </p>
@@ -719,11 +827,16 @@ export default function XpRulesPage() {
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-                  <Icon icon="solar:stars-bold" className="w-5 h-5 text-white" />
+                  <Icon
+                    icon="solar:stars-bold"
+                    className="w-5 h-5 text-white"
+                  />
                 </div>
                 <div>
                   <h3 className="font-semibold text-white">핫타임 목록</h3>
-                  <p className="text-sm text-white/50">특정 시간대에 XP 배율이 증가합니다.</p>
+                  <p className="text-sm text-white/50">
+                    특정 시간대에 XP 배율이 증가합니다.
+                  </p>
                 </div>
               </div>
             </div>
@@ -737,25 +850,46 @@ export default function XpRulesPage() {
                     >
                       <div className="flex items-center gap-4">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30">
-                          <Icon icon="solar:stars-linear" className="h-5 w-5 text-amber-400" />
+                          <Icon
+                            icon="solar:stars-linear"
+                            className="h-5 w-5 text-amber-400"
+                          />
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-white">
                               {hotTime.startTime} - {hotTime.endTime}
                             </span>
-                            <Badge variant="secondary" className="bg-white/10 text-white/70">{typeLabels[hotTime.type]}</Badge>
-                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">x{hotTime.multiplier}</Badge>
+                            <Badge
+                              variant="secondary"
+                              className="bg-white/10 text-white/70"
+                            >
+                              {typeLabels[hotTime.type]}
+                            </Badge>
+                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
+                              x{hotTime.multiplier}
+                            </Badge>
                           </div>
                           <div className="flex items-center gap-1 text-sm text-white/40 mt-1">
-                            <Icon icon="solar:clock-circle-linear" className="h-3 w-3" />
+                            <Icon
+                              icon="solar:clock-circle-linear"
+                              className="h-3 w-3"
+                            />
                             {hotTime.enabled ? "활성화됨" : "비활성화됨"}
                             <span className="mx-1">•</span>
-                            <Icon icon="solar:hashtag-linear" className="h-3 w-3" />
-                            {hotTime.channelIds && hotTime.channelIds.length > 0 ? (
+                            <Icon
+                              icon="solar:hashtag-linear"
+                              className="h-3 w-3"
+                            />
+                            {hotTime.channelIds &&
+                            hotTime.channelIds.length > 0 ? (
                               <span>
-                                {hotTime.channelIds.slice(0, 2).map(id => getChannelName(id)).join(", ")}
-                                {hotTime.channelIds.length > 2 && ` 외 ${hotTime.channelIds.length - 2}개`}
+                                {hotTime.channelIds
+                                  .slice(0, 2)
+                                  .map((id) => getChannelName(id))
+                                  .join(", ")}
+                                {hotTime.channelIds.length > 2 &&
+                                  ` 외 ${hotTime.channelIds.length - 2}개`}
                               </span>
                             ) : (
                               <span>모든 채널</span>
@@ -774,7 +908,10 @@ export default function XpRulesPage() {
                           onClick={() => handleDeleteHotTime(hotTime.id)}
                           className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                         >
-                          <Icon icon="solar:trash-bin-trash-linear" className="h-4 w-4" />
+                          <Icon
+                            icon="solar:trash-bin-trash-linear"
+                            className="h-4 w-4"
+                          />
                         </Button>
                       </div>
                     </div>
@@ -783,10 +920,15 @@ export default function XpRulesPage() {
               ) : (
                 <div className="py-12 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-                    <Icon icon="solar:stars-linear" className="w-8 h-8 text-white/20" />
+                    <Icon
+                      icon="solar:stars-linear"
+                      className="w-8 h-8 text-white/20"
+                    />
                   </div>
                   <p className="text-white/50">설정된 핫타임이 없습니다.</p>
-                  <p className="text-sm text-white/30 mt-1">핫타임을 추가하여 특정 시간대에 XP 배율을 높이세요.</p>
+                  <p className="text-sm text-white/30 mt-1">
+                    핫타임을 추가하여 특정 시간대에 XP 배율을 높이세요.
+                  </p>
                 </div>
               )}
             </div>
@@ -798,18 +940,27 @@ export default function XpRulesPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-4 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4">
               <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
-                <Icon icon="solar:info-circle-linear" className="w-4 h-4 text-amber-400" />
+                <Icon
+                  icon="solar:info-circle-linear"
+                  className="w-4 h-4 text-amber-400"
+                />
               </div>
               <p className="text-sm text-amber-200/80">
-                <strong className="text-amber-200">배율 적용:</strong> 역할/채널 구분 없이 가장 높은 배율이 적용됩니다. (1초과~10배)
+                <strong className="text-amber-200">배율 적용:</strong> 역할/채널
+                구분 없이 가장 높은 배율이 적용됩니다. (1~10배)
               </p>
             </div>
             <div className="flex items-center gap-4 rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 p-4">
               <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                <Icon icon="solar:lightbulb-linear" className="w-4 h-4 text-blue-400" />
+                <Icon
+                  icon="solar:lightbulb-linear"
+                  className="w-4 h-4 text-blue-400"
+                />
               </div>
               <p className="text-sm text-blue-200/80">
-                <strong className="text-blue-200">활용 팁:</strong> 상점에서 VIP 라운지 이용권과 같은 아이템 구매 시, 해당 역할에 배율을 설정하여 혜택을 제공할 수 있습니다.
+                <strong className="text-blue-200">활용 팁:</strong> 상점에서 VIP
+                라운지 이용권과 같은 아이템 구매 시, 해당 역할에 배율을 설정하여
+                혜택을 제공할 수 있습니다.
               </p>
             </div>
           </div>
@@ -821,13 +972,19 @@ export default function XpRulesPage() {
 
               <div className="relative space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-white">새 배율 추가</h3>
-                  <p className="text-sm text-white/50">특정 채널이나 역할에 XP 배율을 설정합니다.</p>
+                  <h3 className="text-lg font-semibold text-white">
+                    새 배율 추가
+                  </h3>
+                  <p className="text-sm text-white/50">
+                    특정 채널이나 역할에 XP 배율을 설정합니다.
+                  </p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">유형</label>
+                    <label className="text-sm font-medium text-white/70">
+                      유형
+                    </label>
                     <Select
                       value={multiplierTargetType}
                       onValueChange={(value: "channel" | "role") => {
@@ -847,10 +1004,16 @@ export default function XpRulesPage() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-white/70">
-                      {multiplierTargetType === "channel" ? "채널 선택" : "역할 선택"}
+                      {multiplierTargetType === "channel"
+                        ? "채널 선택"
+                        : "역할 선택"}
                     </label>
                     <MultiSelect
-                      options={multiplierTargetType === "channel" ? multiplierChannelOptions : multiplierRoleOptions}
+                      options={
+                        multiplierTargetType === "channel"
+                          ? multiplierChannelOptions
+                          : multiplierRoleOptions
+                      }
                       selected={multiplierTargetIds}
                       onChange={setMultiplierTargetIds}
                       placeholder={
@@ -862,7 +1025,11 @@ export default function XpRulesPage() {
                           ? "로딩 중..."
                           : "역할을 선택하세요"
                       }
-                      isLoading={multiplierTargetType === "channel" ? channelsLoading : rolesLoading}
+                      isLoading={
+                        multiplierTargetType === "channel"
+                          ? channelsLoading
+                          : rolesLoading
+                      }
                     />
                   </div>
 
@@ -899,7 +1066,10 @@ export default function XpRulesPage() {
                   </Button>
                   <Button
                     onClick={handleSubmitMultiplier}
-                    disabled={createMultiplier.isPending || multiplierTargetIds.length === 0}
+                    disabled={
+                      createMultiplier.isPending ||
+                      multiplierTargetIds.length === 0
+                    }
                     className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white"
                   >
                     {createMultiplier.isPending
@@ -920,11 +1090,16 @@ export default function XpRulesPage() {
               <div className="p-6 border-b border-white/10">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                    <Icon icon="solar:hashtag-bold" className="w-5 h-5 text-white" />
+                    <Icon
+                      icon="solar:hashtag-bold"
+                      className="w-5 h-5 text-white"
+                    />
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">채널별 배율</h3>
-                    <p className="text-sm text-white/50">특정 채널에서 XP 배율이 적용됩니다.</p>
+                    <p className="text-sm text-white/50">
+                      특정 채널에서 XP 배율이 적용됩니다.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -933,7 +1108,9 @@ export default function XpRulesPage() {
                   <div className="space-y-2">
                     {channelMultipliers.map((multiplier) => {
                       const channel = getChannel(multiplier.targetId);
-                      const isVoice = channel ? isVoiceChannel(channel.type) : false;
+                      const isVoice = channel
+                        ? isVoiceChannel(channel.type)
+                        : false;
                       return (
                         <div
                           key={multiplier.id}
@@ -941,14 +1118,22 @@ export default function XpRulesPage() {
                         >
                           <div className="flex items-center gap-2">
                             {isVoice ? (
-                              <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
+                              <Icon
+                                icon="solar:volume-loud-linear"
+                                className="h-4 w-4 text-green-400"
+                              />
                             ) : (
-                              <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-white/40" />
+                              <Icon
+                                icon="solar:hashtag-linear"
+                                className="h-4 w-4 text-white/40"
+                              />
                             )}
                             <span className="text-white/80">
                               {getChannelName(multiplier.targetId)}
                             </span>
-                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">x{multiplier.multiplier}</Badge>
+                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
+                              x{multiplier.multiplier}
+                            </Badge>
                           </div>
                           <div className="flex items-center gap-2">
                             <Input
@@ -956,7 +1141,10 @@ export default function XpRulesPage() {
                               step="0.1"
                               min="1.1"
                               max="10"
-                              value={editedMultipliers[multiplier.id] ?? String(multiplier.multiplier)}
+                              value={
+                                editedMultipliers[multiplier.id] ??
+                                String(multiplier.multiplier)
+                              }
                               className="w-20 border-white/10 bg-white/5"
                               onChange={(e) => {
                                 setEditedMultipliers((prev) => ({
@@ -966,24 +1154,38 @@ export default function XpRulesPage() {
                               }}
                             />
                             {editedMultipliers[multiplier.id] !== undefined &&
-                              editedMultipliers[multiplier.id] !== String(multiplier.multiplier) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleUpdateMultiplier(multiplier, editedMultipliers[multiplier.id])}
-                                disabled={updateMultiplier.isPending}
-                                className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
-                              >
-                                <Icon icon="solar:check-circle-linear" className="h-4 w-4" />
-                              </Button>
-                            )}
+                              editedMultipliers[multiplier.id] !==
+                                String(multiplier.multiplier) && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() =>
+                                    handleUpdateMultiplier(
+                                      multiplier,
+                                      editedMultipliers[multiplier.id]
+                                    )
+                                  }
+                                  disabled={updateMultiplier.isPending}
+                                  className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                >
+                                  <Icon
+                                    icon="solar:check-circle-linear"
+                                    className="h-4 w-4"
+                                  />
+                                </Button>
+                              )}
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDeleteMultiplier(multiplier.id)}
+                              onClick={() =>
+                                handleDeleteMultiplier(multiplier.id)
+                              }
                               className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                             >
-                              <Icon icon="solar:trash-bin-trash-linear" className="h-4 w-4" />
+                              <Icon
+                                icon="solar:trash-bin-trash-linear"
+                                className="h-4 w-4"
+                              />
                             </Button>
                           </div>
                         </div>
@@ -993,9 +1195,14 @@ export default function XpRulesPage() {
                 ) : (
                   <div className="py-8 text-center">
                     <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-3">
-                      <Icon icon="solar:hashtag-linear" className="w-6 h-6 text-white/20" />
+                      <Icon
+                        icon="solar:hashtag-linear"
+                        className="w-6 h-6 text-white/20"
+                      />
                     </div>
-                    <p className="text-sm text-white/40">채널 배율이 없습니다.</p>
+                    <p className="text-sm text-white/40">
+                      채널 배율이 없습니다.
+                    </p>
                   </div>
                 )}
               </div>
@@ -1006,11 +1213,16 @@ export default function XpRulesPage() {
               <div className="p-6 border-b border-white/10">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <Icon icon="solar:shield-bold" className="w-5 h-5 text-white" />
+                    <Icon
+                      icon="solar:shield-bold"
+                      className="w-5 h-5 text-white"
+                    />
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">역할별 배율</h3>
-                    <p className="text-sm text-white/50">특정 역할을 가진 유저에게 XP 배율이 적용됩니다.</p>
+                    <p className="text-sm text-white/50">
+                      특정 역할을 가진 유저에게 XP 배율이 적용됩니다.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1023,8 +1235,15 @@ export default function XpRulesPage() {
                         className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 p-3 transition-all"
                       >
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="bg-purple-500/20 text-purple-300 border-purple-500/30">@{getRoleName(multiplier.targetId)}</Badge>
-                          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">x{multiplier.multiplier}</Badge>
+                          <Badge
+                            variant="secondary"
+                            className="bg-purple-500/20 text-purple-300 border-purple-500/30"
+                          >
+                            @{getRoleName(multiplier.targetId)}
+                          </Badge>
+                          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
+                            x{multiplier.multiplier}
+                          </Badge>
                         </div>
                         <div className="flex items-center gap-2">
                           <Input
@@ -1032,7 +1251,10 @@ export default function XpRulesPage() {
                             step="1"
                             min="0"
                             max="10"
-                            value={editedMultipliers[multiplier.id] ?? String(multiplier.multiplier)}
+                            value={
+                              editedMultipliers[multiplier.id] ??
+                              String(multiplier.multiplier)
+                            }
                             className="w-20 border-white/10 bg-white/5"
                             onChange={(e) => {
                               setEditedMultipliers((prev) => ({
@@ -1042,24 +1264,38 @@ export default function XpRulesPage() {
                             }}
                           />
                           {editedMultipliers[multiplier.id] !== undefined &&
-                            editedMultipliers[multiplier.id] !== String(multiplier.multiplier) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleUpdateMultiplier(multiplier, editedMultipliers[multiplier.id])}
-                              disabled={updateMultiplier.isPending}
-                              className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
-                            >
-                              <Icon icon="solar:check-circle-linear" className="h-4 w-4" />
-                            </Button>
-                          )}
+                            editedMultipliers[multiplier.id] !==
+                              String(multiplier.multiplier) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleUpdateMultiplier(
+                                    multiplier,
+                                    editedMultipliers[multiplier.id]
+                                  )
+                                }
+                                disabled={updateMultiplier.isPending}
+                                className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                              >
+                                <Icon
+                                  icon="solar:check-circle-linear"
+                                  className="h-4 w-4"
+                                />
+                              </Button>
+                            )}
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDeleteMultiplier(multiplier.id)}
+                            onClick={() =>
+                              handleDeleteMultiplier(multiplier.id)
+                            }
                             className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                           >
-                            <Icon icon="solar:trash-bin-trash-linear" className="h-4 w-4" />
+                            <Icon
+                              icon="solar:trash-bin-trash-linear"
+                              className="h-4 w-4"
+                            />
                           </Button>
                         </div>
                       </div>
@@ -1068,9 +1304,14 @@ export default function XpRulesPage() {
                 ) : (
                   <div className="py-8 text-center">
                     <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-3">
-                      <Icon icon="solar:shield-linear" className="w-6 h-6 text-white/20" />
+                      <Icon
+                        icon="solar:shield-linear"
+                        className="w-6 h-6 text-white/20"
+                      />
                     </div>
-                    <p className="text-sm text-white/40">역할 배율이 없습니다.</p>
+                    <p className="text-sm text-white/40">
+                      역할 배율이 없습니다.
+                    </p>
                   </div>
                 )}
               </div>
@@ -1083,10 +1324,15 @@ export default function XpRulesPage() {
           {/* Info Notice */}
           <div className="flex items-center gap-4 rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 p-4">
             <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-              <Icon icon="solar:lightbulb-linear" className="w-4 h-4 text-blue-400" />
+              <Icon
+                icon="solar:lightbulb-linear"
+                className="w-4 h-4 text-blue-400"
+              />
             </div>
             <p className="text-sm text-blue-200/80">
-              <strong className="text-blue-200">활용 예시:</strong> &quot;경고자&quot; 역할을 차단하면 경고를 받은 유저가 XP를 획득할 수 없어 패널티로 활용할 수 있습니다.
+              <strong className="text-blue-200">활용 예시:</strong>{" "}
+              &quot;경고자&quot; 역할을 차단하면 경고를 받은 유저가 XP를 획득할
+              수 없어 패널티로 활용할 수 있습니다.
             </p>
           </div>
 
@@ -1097,13 +1343,19 @@ export default function XpRulesPage() {
 
               <div className="relative space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-white">새 차단 항목 추가</h3>
-                  <p className="text-sm text-white/50">차단할 채널 또는 역할을 여러 개 선택할 수 있습니다.</p>
+                  <h3 className="text-lg font-semibold text-white">
+                    새 차단 항목 추가
+                  </h3>
+                  <p className="text-sm text-white/50">
+                    차단할 채널 또는 역할을 여러 개 선택할 수 있습니다.
+                  </p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">유형</label>
+                    <label className="text-sm font-medium text-white/70">
+                      유형
+                    </label>
                     <Select
                       value={targetType}
                       onValueChange={(value: "channel" | "role") => {
@@ -1126,7 +1378,9 @@ export default function XpRulesPage() {
                       {targetType === "channel" ? "채널 선택" : "역할 선택"}
                     </label>
                     <MultiSelect
-                      options={targetType === "channel" ? channelOptions : roleOptions}
+                      options={
+                        targetType === "channel" ? channelOptions : roleOptions
+                      }
                       selected={selectedIds}
                       onChange={setSelectedIds}
                       placeholder={
@@ -1138,7 +1392,11 @@ export default function XpRulesPage() {
                           ? "로딩 중..."
                           : "역할을 선택하세요"
                       }
-                      isLoading={targetType === "channel" ? channelsLoading : rolesLoading}
+                      isLoading={
+                        targetType === "channel"
+                          ? channelsLoading
+                          : rolesLoading
+                      }
                     />
                   </div>
                 </div>
@@ -1157,7 +1415,9 @@ export default function XpRulesPage() {
                   </Button>
                   <Button
                     onClick={handleSubmitExclusion}
-                    disabled={createExclusionBulk.isPending || selectedIds.length === 0}
+                    disabled={
+                      createExclusionBulk.isPending || selectedIds.length === 0
+                    }
                     className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white"
                   >
                     {createExclusionBulk.isPending
@@ -1178,11 +1438,16 @@ export default function XpRulesPage() {
               <div className="p-6 border-b border-white/10">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center">
-                    <Icon icon="solar:forbidden-bold" className="w-5 h-5 text-white" />
+                    <Icon
+                      icon="solar:forbidden-bold"
+                      className="w-5 h-5 text-white"
+                    />
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">차단된 채널</h3>
-                    <p className="text-sm text-white/50">이 채널에서는 XP를 받을 수 없습니다.</p>
+                    <p className="text-sm text-white/50">
+                      이 채널에서는 XP를 받을 수 없습니다.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1191,7 +1456,9 @@ export default function XpRulesPage() {
                   <div className="space-y-2">
                     {channelExclusions.map((exclusion) => {
                       const channel = getChannel(exclusion.targetId);
-                      const isVoice = channel ? isVoiceChannel(channel.type) : false;
+                      const isVoice = channel
+                        ? isVoiceChannel(channel.type)
+                        : false;
                       return (
                         <div
                           key={exclusion.id}
@@ -1199,15 +1466,24 @@ export default function XpRulesPage() {
                         >
                           <div className="flex items-center gap-2">
                             {isVoice ? (
-                              <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
+                              <Icon
+                                icon="solar:volume-loud-linear"
+                                className="h-4 w-4 text-green-400"
+                              />
                             ) : (
-                              <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-white/40" />
+                              <Icon
+                                icon="solar:hashtag-linear"
+                                className="h-4 w-4 text-white/40"
+                              />
                             )}
                             <span className="text-white/80">
                               {getChannelName(exclusion.targetId)}
                             </span>
                             {isVoice && (
-                              <Badge variant="outline" className="text-xs text-green-400 border-green-400/30">
+                              <Badge
+                                variant="outline"
+                                className="text-xs text-green-400 border-green-400/30"
+                              >
                                 음성
                               </Badge>
                             )}
@@ -1218,7 +1494,10 @@ export default function XpRulesPage() {
                             onClick={() => handleDeleteExclusion(exclusion.id)}
                             className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                           >
-                            <Icon icon="solar:trash-bin-trash-linear" className="h-4 w-4" />
+                            <Icon
+                              icon="solar:trash-bin-trash-linear"
+                              className="h-4 w-4"
+                            />
                           </Button>
                         </div>
                       );
@@ -1227,9 +1506,14 @@ export default function XpRulesPage() {
                 ) : (
                   <div className="py-8 text-center">
                     <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-3">
-                      <Icon icon="solar:hashtag-linear" className="w-6 h-6 text-white/20" />
+                      <Icon
+                        icon="solar:hashtag-linear"
+                        className="w-6 h-6 text-white/20"
+                      />
                     </div>
-                    <p className="text-sm text-white/40">차단된 채널이 없습니다.</p>
+                    <p className="text-sm text-white/40">
+                      차단된 채널이 없습니다.
+                    </p>
                   </div>
                 )}
               </div>
@@ -1240,11 +1524,16 @@ export default function XpRulesPage() {
               <div className="p-6 border-b border-white/10">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center">
-                    <Icon icon="solar:shield-cross-bold" className="w-5 h-5 text-white" />
+                    <Icon
+                      icon="solar:shield-cross-bold"
+                      className="w-5 h-5 text-white"
+                    />
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">차단된 역할</h3>
-                    <p className="text-sm text-white/50">이 역할을 가진 유저는 XP를 받을 수 없습니다.</p>
+                    <p className="text-sm text-white/50">
+                      이 역할을 가진 유저는 XP를 받을 수 없습니다.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1257,7 +1546,12 @@ export default function XpRulesPage() {
                         className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 p-3 transition-all"
                       >
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="bg-red-500/20 text-red-300 border-red-500/30">@{getRoleName(exclusion.targetId)}</Badge>
+                          <Badge
+                            variant="secondary"
+                            className="bg-red-500/20 text-red-300 border-red-500/30"
+                          >
+                            @{getRoleName(exclusion.targetId)}
+                          </Badge>
                         </div>
                         <Button
                           variant="ghost"
@@ -1265,7 +1559,10 @@ export default function XpRulesPage() {
                           onClick={() => handleDeleteExclusion(exclusion.id)}
                           className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                         >
-                          <Icon icon="solar:trash-bin-trash-linear" className="h-4 w-4" />
+                          <Icon
+                            icon="solar:trash-bin-trash-linear"
+                            className="h-4 w-4"
+                          />
                         </Button>
                       </div>
                     ))}
@@ -1273,9 +1570,14 @@ export default function XpRulesPage() {
                 ) : (
                   <div className="py-8 text-center">
                     <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-3">
-                      <Icon icon="solar:shield-linear" className="w-6 h-6 text-white/20" />
+                      <Icon
+                        icon="solar:shield-linear"
+                        className="w-6 h-6 text-white/20"
+                      />
                     </div>
-                    <p className="text-sm text-white/40">차단된 역할이 없습니다.</p>
+                    <p className="text-sm text-white/40">
+                      차단된 역할이 없습니다.
+                    </p>
                   </div>
                 )}
               </div>
