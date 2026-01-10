@@ -55,6 +55,7 @@ export function createXpHandler(container: Container, client: Client) {
             result.data.level!,
             result.data.totalXp!,
             'text',
+            result.data.levelUpNotificationEnabled,
             result.data.levelUpChannelId,
             result.data.levelUpMessage
           );
@@ -144,9 +145,16 @@ export function createXpHandler(container: Container, client: Client) {
       level: number,
       xp: number,
       xpType: XpType,
+      levelUpNotificationEnabled?: boolean,
       levelUpChannelId?: string | null,
       customMessage?: string | null
     ): Promise<void> {
+      // 알림이 비활성화된 경우 전송하지 않음
+      if (levelUpNotificationEnabled === false) {
+        console.log('[LEVEL UP] Notification disabled in settings');
+        return;
+      }
+
       if (!levelUpChannelId) {
         console.log('[LEVEL UP] No notification channel configured');
         return;
@@ -232,6 +240,7 @@ export function createXpHandler(container: Container, client: Client) {
             result.data.level!,
             result.data.totalXp!,
             'voice',
+            result.data.levelUpNotificationEnabled,
             result.data.levelUpChannelId,
             result.data.levelUpMessage
           );

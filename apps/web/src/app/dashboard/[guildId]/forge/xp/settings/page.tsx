@@ -36,6 +36,7 @@ const xpSettingsFormSchema = z.object({
   voiceXpMax: z.coerce.number().min(0).max(1000),
   voiceCooldownSeconds: z.coerce.number().min(0).max(3600),
   voiceMaxPerCooldown: z.coerce.number().min(1).max(100),
+  levelUpNotificationEnabled: z.boolean(),
 });
 
 type XpSettingsFormValues = z.infer<typeof xpSettingsFormSchema>;
@@ -78,6 +79,7 @@ export default function XpSettingsPage() {
       voiceXpMax: 20,
       voiceCooldownSeconds: 60,
       voiceMaxPerCooldown: 1,
+      levelUpNotificationEnabled: true,
     },
   });
 
@@ -96,6 +98,7 @@ export default function XpSettingsPage() {
         voiceXpMax: settings.voiceXpMax,
         voiceCooldownSeconds: settings.voiceCooldownSeconds,
         voiceMaxPerCooldown: settings.voiceMaxPerCooldown,
+        levelUpNotificationEnabled: settings.levelUpNotificationEnabled ?? true,
       });
     }
   }, [settings, form]);
@@ -342,6 +345,13 @@ export default function XpSettingsPage() {
             >
               <Icon icon="solar:graph-up-linear" className="mr-2 h-4 w-4" />
               레벨 설정
+            </TabsTrigger>
+            <TabsTrigger
+              value="notification"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white rounded-lg px-4 py-2 text-white/60"
+            >
+              <Icon icon="solar:bell-linear" className="mr-2 h-4 w-4" />
+              알림
             </TabsTrigger>
           </TabsList>
 
@@ -793,6 +803,75 @@ export default function XpSettingsPage() {
               </Button>
             </div>
           )}
+        </TabsContent>
+
+        {/* 알림 설정 탭 */}
+        <TabsContent value="notification" className="space-y-6 animate-fade-up">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmitXpSettings)} className="space-y-6">
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
+                <div className="p-6 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                      <Icon icon="solar:bell-bold" className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white">레벨업 알림</h3>
+                      <p className="text-white/50 text-sm">레벨업 시 디스코드 채널에 알림을 보냅니다</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6 space-y-5">
+                  <FormField
+                    control={form.control}
+                    name="levelUpNotificationEnabled"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-white font-medium">레벨업 알림 활성화</FormLabel>
+                          <FormDescription className="text-xs text-white/40">
+                            레벨업 시 알림 메시지를 전송합니다
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* 프리미엄 기능 예고 */}
+                  <div className="rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                        <Icon icon="solar:crown-linear" className="w-4 h-4 text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-purple-300 font-medium">프리미엄 기능 예정</p>
+                        <p className="text-sm text-purple-300/70 mt-1">
+                          이미지가 포함된 레벨업 알림 메시지는 프리미엄 기능으로 추후 제공될 예정입니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={updateSettings.isPending}
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25"
+                >
+                  <Icon icon="solar:diskette-linear" className="mr-2 h-4 w-4" />
+                  {updateSettings.isPending ? "저장 중..." : "설정 저장"}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </TabsContent>
       </Tabs>
     </div>

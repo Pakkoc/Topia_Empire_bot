@@ -22,6 +22,7 @@ export interface XpSettings {
   voiceMaxPerCooldown: number;
 
   // 레벨업 알림
+  levelUpNotificationEnabled: boolean;
   levelUpChannelId: string | null;
   levelUpMessage: string | null;
 
@@ -47,6 +48,7 @@ export function createDefaultXpSettings(guildId: string): XpSettings {
     voiceCooldownSeconds: XP_DEFAULTS.VOICE_COOLDOWN_SECONDS,
     voiceMaxPerCooldown: XP_DEFAULTS.VOICE_MAX_PER_COOLDOWN,
 
+    levelUpNotificationEnabled: true,
     levelUpChannelId: null,
     levelUpMessage: null,
 

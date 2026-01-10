@@ -17,6 +17,7 @@ export const xpSettingsSchema = z.object({
   voiceXpMax: z.number().min(0).max(1000),
   voiceCooldownSeconds: z.number().min(0).max(3600),
   voiceMaxPerCooldown: z.number().min(1).max(100),
+  levelUpNotificationEnabled: z.boolean(),
   levelUpChannelId: z.string().nullable(),
   levelUpMessage: z.string().nullable(),
 });
@@ -117,6 +118,7 @@ export const DEFAULT_XP_SETTINGS: Omit<XpSettings, "guildId"> = {
   voiceXpMax: 20,
   voiceCooldownSeconds: 60,
   voiceMaxPerCooldown: 1,
+  levelUpNotificationEnabled: true,
   levelUpChannelId: null,
   levelUpMessage: null,
 };

@@ -27,6 +27,7 @@ export interface XpGrantResult {
   xpType?: XpType;
   reason?: 'no_settings' | 'disabled' | 'cooldown' | 'excluded_channel' | 'excluded_role';
   // Level up notification info
+  levelUpNotificationEnabled?: boolean;
   levelUpChannelId?: string | null;
   levelUpMessage?: string | null;
   // Level rewards
@@ -205,6 +206,7 @@ export class XpService {
       leveledUp,
       previousLevel,
       xpType: 'text',
+      levelUpNotificationEnabled: leveledUp ? settings.levelUpNotificationEnabled : undefined,
       levelUpChannelId: leveledUp ? settings.levelUpChannelId : undefined,
       levelUpMessage: leveledUp ? settings.levelUpMessage : undefined,
       rolesToAdd: leveledUp ? rolesToAdd : undefined,
@@ -375,6 +377,7 @@ export class XpService {
       leveledUp,
       previousLevel,
       xpType: 'voice',
+      levelUpNotificationEnabled: leveledUp ? settings.levelUpNotificationEnabled : undefined,
       levelUpChannelId: leveledUp ? settings.levelUpChannelId : undefined,
       levelUpMessage: leveledUp ? settings.levelUpMessage : undefined,
       rolesToAdd: leveledUp ? rolesToAdd : undefined,
