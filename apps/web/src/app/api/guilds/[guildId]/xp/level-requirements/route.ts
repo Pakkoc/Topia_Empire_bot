@@ -6,8 +6,11 @@ import { notifyBotSettingsChanged } from "@/lib/bot-notify";
 import { z } from "zod";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
+type XpType = 'text' | 'voice';
+
 interface LevelRequirementRow extends RowDataPacket {
   guild_id: string;
+  type: XpType;
   level: number;
   required_xp: number;
   created_at: Date;
@@ -17,6 +20,7 @@ interface LevelRequirementRow extends RowDataPacket {
 function rowToRequirement(row: LevelRequirementRow) {
   return {
     guildId: row.guild_id,
+    type: row.type,
     level: row.level,
     requiredXp: row.required_xp,
     createdAt: row.created_at,
@@ -32,7 +36,7 @@ const saveLevelRequirementSchema = z.object({
 const bulkSaveSchema = z.array(saveLevelRequirementSchema);
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ guildId: string }> }
 ) {
   const session = await getServerSession(authOptions);
@@ -41,12 +45,14 @@ export async function GET(
   }
 
   const { guildId } = await params;
+  const { searchParams } = new URL(request.url);
+  const type = (searchParams.get("type") || "text") as XpType;
 
   try {
     const pool = db();
     const [rows] = await pool.query<LevelRequirementRow[]>(
-      `SELECT * FROM xp_level_requirements WHERE guild_id = ? ORDER BY level`,
-      [guildId]
+      `SELECT * FROM xp_level_requirements WHERE guild_id = ? AND type = ? ORDER BY level`,
+      [guildId, type]
     );
 
     return NextResponse.json(rows.map(rowToRequirement));
@@ -69,6 +75,8 @@ export async function POST(
   }
 
   const { guildId } = await params;
+  const { searchParams } = new URL(request.url);
+  const xpType = (searchParams.get("type") || "text") as XpType;
 
   try {
     const body = await request.json();
@@ -77,24 +85,27 @@ export async function POST(
     const pool = db();
 
     await pool.query<ResultSetHeader>(
-      `INSERT INTO xp_level_requirements (guild_id, level, required_xp)
-       VALUES (?, ?, ?)
+      `INSERT INTO xp_level_requirements (guild_id, type, level, required_xp)
+       VALUES (?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE required_xp = VALUES(required_xp), updated_at = NOW()`,
-      [guildId, validatedData.level, validatedData.requiredXp]
+      [guildId, xpType, validatedData.level, validatedData.requiredXp]
     );
 
     const newRequirement = {
       guildId,
+      type: xpType,
       level: validatedData.level,
       requiredXp: validatedData.requiredXp,
     };
+
+    const typeLabel = xpType === 'text' ? '텍스트' : '음성';
 
     // 봇에 설정 변경 알림 (비동기, 대기 안함)
     notifyBotSettingsChanged({
       guildId,
       type: 'xp-level-requirement',
       action: '추가',
-      details: `레벨 ${validatedData.level}: ${validatedData.requiredXp} XP`,
+      details: `${typeLabel} 레벨 ${validatedData.level}: ${validatedData.requiredXp} XP`,
     });
 
     return NextResponse.json(newRequirement, { status: 201 });
@@ -123,6 +134,8 @@ export async function PATCH(
   }
 
   const { guildId } = await params;
+  const { searchParams } = new URL(request.url);
+  const xpType = (searchParams.get("type") || "text") as XpType;
 
   try {
     const body = await request.json();
@@ -130,29 +143,31 @@ export async function PATCH(
 
     const pool = db();
 
-    // 기존 데이터 삭제 후 새로 저장 (전체 교체)
-    await pool.query(`DELETE FROM xp_level_requirements WHERE guild_id = ?`, [guildId]);
+    // 기존 데이터 삭제 후 새로 저장 (해당 타입만 전체 교체)
+    await pool.query(`DELETE FROM xp_level_requirements WHERE guild_id = ? AND type = ?`, [guildId, xpType]);
 
     if (validatedData.length > 0) {
-      const values = validatedData.map((item) => [guildId, item.level, item.requiredXp]);
+      const values = validatedData.map((item) => [guildId, xpType, item.level, item.requiredXp]);
       await pool.query(
-        `INSERT INTO xp_level_requirements (guild_id, level, required_xp) VALUES ?`,
+        `INSERT INTO xp_level_requirements (guild_id, type, level, required_xp) VALUES ?`,
         [values]
       );
     }
 
     // 새로 저장된 데이터 반환
     const [rows] = await pool.query<LevelRequirementRow[]>(
-      `SELECT * FROM xp_level_requirements WHERE guild_id = ? ORDER BY level`,
-      [guildId]
+      `SELECT * FROM xp_level_requirements WHERE guild_id = ? AND type = ? ORDER BY level`,
+      [guildId, xpType]
     );
+
+    const typeLabel = xpType === 'text' ? '텍스트' : '음성';
 
     // 봇에 설정 변경 알림 (비동기, 대기 안함)
     notifyBotSettingsChanged({
       guildId,
       type: 'xp-level-requirement',
       action: '변경',
-      details: `${validatedData.length}개 레벨 설정 저장`,
+      details: `${typeLabel} ${validatedData.length}개 레벨 설정 저장`,
     });
 
     return NextResponse.json(rows.map(rowToRequirement));
@@ -183,6 +198,8 @@ export async function DELETE(
   const { guildId } = await params;
   const { searchParams } = new URL(request.url);
   const level = searchParams.get("level");
+  const xpType = (searchParams.get("type") || "text") as XpType;
+  const typeLabel = xpType === 'text' ? '텍스트' : '음성';
 
   try {
     const pool = db();
@@ -190,8 +207,8 @@ export async function DELETE(
     if (level) {
       // 특정 레벨만 삭제
       const [result] = await pool.query<ResultSetHeader>(
-        `DELETE FROM xp_level_requirements WHERE guild_id = ? AND level = ?`,
-        [guildId, parseInt(level)]
+        `DELETE FROM xp_level_requirements WHERE guild_id = ? AND type = ? AND level = ?`,
+        [guildId, xpType, parseInt(level)]
       );
 
       if (result.affectedRows === 0) {
@@ -203,13 +220,13 @@ export async function DELETE(
         guildId,
         type: 'xp-level-requirement',
         action: '삭제',
-        details: `레벨 ${level}`,
+        details: `${typeLabel} 레벨 ${level}`,
       });
     } else {
-      // 전체 삭제
+      // 해당 타입 전체 삭제
       await pool.query(
-        `DELETE FROM xp_level_requirements WHERE guild_id = ?`,
-        [guildId]
+        `DELETE FROM xp_level_requirements WHERE guild_id = ? AND type = ?`,
+        [guildId, xpType]
       );
 
       // 봇에 설정 변경 알림 (비동기, 대기 안함)
@@ -217,7 +234,7 @@ export async function DELETE(
         guildId,
         type: 'xp-level-requirement',
         action: '삭제',
-        details: '전체 레벨 설정 삭제',
+        details: `${typeLabel} 전체 레벨 설정 삭제`,
       });
     }
 

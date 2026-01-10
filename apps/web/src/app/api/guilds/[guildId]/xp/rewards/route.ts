@@ -6,9 +6,12 @@ import { notifyBotSettingsChanged } from "@/lib/bot-notify";
 import { createLevelRewardSchema } from "@/types/xp";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
+type XpType = 'text' | 'voice';
+
 interface RewardRow extends RowDataPacket {
   id: number;
   guild_id: string;
+  type: XpType;
   level: number;
   role_id: string;
   remove_on_higher_level: boolean;
@@ -19,6 +22,7 @@ function rowToReward(row: RewardRow) {
   return {
     id: row.id,
     guildId: row.guild_id,
+    type: row.type,
     level: row.level,
     roleId: row.role_id,
     removeOnHigherLevel: row.remove_on_higher_level,
@@ -27,7 +31,7 @@ function rowToReward(row: RewardRow) {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ guildId: string }> }
 ) {
   const session = await getServerSession(authOptions);
@@ -36,12 +40,14 @@ export async function GET(
   }
 
   const { guildId } = await params;
+  const { searchParams } = new URL(request.url);
+  const xpType = (searchParams.get("type") || "text") as XpType;
 
   try {
     const pool = db();
     const [rows] = await pool.query<RewardRow[]>(
-      `SELECT * FROM xp_level_rewards WHERE guild_id = ? ORDER BY level`,
-      [guildId]
+      `SELECT * FROM xp_level_rewards WHERE guild_id = ? AND type = ? ORDER BY level`,
+      [guildId, xpType]
     );
 
     return NextResponse.json(rows.map(rowToReward));
@@ -64,6 +70,8 @@ export async function POST(
   }
 
   const { guildId } = await params;
+  const { searchParams } = new URL(request.url);
+  const xpType = (searchParams.get("type") || "text") as XpType;
 
   try {
     const body = await request.json();
@@ -73,8 +81,8 @@ export async function POST(
 
     // Check for duplicate level-role combination
     const [existing] = await pool.query<RewardRow[]>(
-      `SELECT id FROM xp_level_rewards WHERE guild_id = ? AND level = ? AND role_id = ?`,
-      [guildId, validatedData.level, validatedData.roleId]
+      `SELECT id FROM xp_level_rewards WHERE guild_id = ? AND type = ? AND level = ? AND role_id = ?`,
+      [guildId, xpType, validatedData.level, validatedData.roleId]
     );
 
     if (existing.length > 0) {
@@ -85,19 +93,23 @@ export async function POST(
     }
 
     const [result] = await pool.query<ResultSetHeader>(
-      `INSERT INTO xp_level_rewards (guild_id, level, role_id, remove_on_higher_level)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO xp_level_rewards (guild_id, type, level, role_id, remove_on_higher_level)
+       VALUES (?, ?, ?, ?, ?)`,
       [
         guildId,
+        xpType,
         validatedData.level,
         validatedData.roleId,
         validatedData.removeOnHigherLevel ?? false,
       ]
     );
 
+    const typeLabel = xpType === 'text' ? '텍스트' : '음성';
+
     const newReward = {
       id: result.insertId,
       guildId,
+      type: xpType,
       level: validatedData.level,
       roleId: validatedData.roleId,
       removeOnHigherLevel: validatedData.removeOnHigherLevel ?? false,
@@ -108,7 +120,7 @@ export async function POST(
       guildId,
       type: 'xp-reward',
       action: '추가',
-      details: `레벨 ${validatedData.level} 보상 역할: ${validatedData.roleId}`,
+      details: `${typeLabel} 레벨 ${validatedData.level} 보상 역할`,
     });
 
     return NextResponse.json(newReward, { status: 201 });

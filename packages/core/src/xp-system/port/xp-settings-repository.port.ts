@@ -1,6 +1,6 @@
 import type { Result } from '../../shared/types/result';
 import type { XpSettings } from '../domain/xp-settings';
-import type { LevelRequirement } from '../domain/xp-level-requirements';
+import type { LevelRequirement, XpType } from '../domain/xp-level-requirements';
 import type { LevelReward } from '../domain/level-reward';
 import type { RepositoryError } from '../errors';
 import type { HotTimeConfig } from '../functions/check-hot-time';
@@ -10,6 +10,7 @@ export type { LevelReward };
 export interface LevelChannel {
   id: number;
   guildId: string;
+  type: XpType;
   level: number;
   channelId: string;
 }
@@ -34,14 +35,14 @@ export interface XpSettingsRepositoryPort {
   getExcludedChannels(guildId: string): Promise<Result<string[], RepositoryError>>;
   getExcludedRoles(guildId: string): Promise<Result<string[], RepositoryError>>;
   getHotTimes(guildId: string, type: 'text' | 'voice' | 'all'): Promise<Result<HotTimeConfig[], RepositoryError>>;
-  getLevelRewards(guildId: string): Promise<Result<LevelReward[], RepositoryError>>;
-  getLevelChannels(guildId: string): Promise<Result<LevelChannel[], RepositoryError>>;
+  getLevelRewards(guildId: string, xpType: XpType): Promise<Result<LevelReward[], RepositoryError>>;
+  getLevelChannels(guildId: string, xpType: XpType): Promise<Result<LevelChannel[], RepositoryError>>;
 
   // 레벨 요구사항
-  getLevelRequirements(guildId: string): Promise<Result<LevelRequirement[], RepositoryError>>;
-  saveLevelRequirement(guildId: string, level: number, requiredXp: number): Promise<Result<void, RepositoryError>>;
-  deleteLevelRequirement(guildId: string, level: number): Promise<Result<void, RepositoryError>>;
-  deleteAllLevelRequirements(guildId: string): Promise<Result<void, RepositoryError>>;
+  getLevelRequirements(guildId: string, xpType: XpType): Promise<Result<LevelRequirement[], RepositoryError>>;
+  saveLevelRequirement(guildId: string, xpType: XpType, level: number, requiredXp: number): Promise<Result<void, RepositoryError>>;
+  deleteLevelRequirement(guildId: string, xpType: XpType, level: number): Promise<Result<void, RepositoryError>>;
+  deleteAllLevelRequirements(guildId: string, xpType: XpType): Promise<Result<void, RepositoryError>>;
 
   // XP 배율 (채널/역할)
   getMultipliers(guildId: string, targetType?: 'channel' | 'role'): Promise<Result<XpMultiplier[], RepositoryError>>;

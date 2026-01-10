@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/remote/api-client";
-import { CreateLevelReward, LevelReward } from "@/types/xp";
+import { CreateLevelReward, LevelReward, XpType } from "@/types/xp";
 
-export function useLevelRewards(guildId: string) {
+export function useLevelRewards(guildId: string, type: XpType = 'text') {
   return useQuery({
-    queryKey: ["level-rewards", guildId],
+    queryKey: ["level-rewards", guildId, type],
     queryFn: async () => {
       const response = await apiClient.get<LevelReward[]>(
-        `/api/guilds/${guildId}/xp/rewards`
+        `/api/guilds/${guildId}/xp/rewards?type=${type}`
       );
       return response.data;
     },
@@ -15,24 +15,24 @@ export function useLevelRewards(guildId: string) {
   });
 }
 
-export function useCreateLevelReward(guildId: string) {
+export function useCreateLevelReward(guildId: string, type: XpType = 'text') {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: CreateLevelReward) => {
       const response = await apiClient.post<LevelReward>(
-        `/api/guilds/${guildId}/xp/rewards`,
+        `/api/guilds/${guildId}/xp/rewards?type=${type}`,
         data
       );
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["level-rewards", guildId] });
+      queryClient.invalidateQueries({ queryKey: ["level-rewards", guildId, type] });
     },
   });
 }
 
-export function useUpdateLevelReward(guildId: string) {
+export function useUpdateLevelReward(guildId: string, type: XpType = 'text') {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -44,12 +44,12 @@ export function useUpdateLevelReward(guildId: string) {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["level-rewards", guildId] });
+      queryClient.invalidateQueries({ queryKey: ["level-rewards", guildId, type] });
     },
   });
 }
 
-export function useDeleteLevelReward(guildId: string) {
+export function useDeleteLevelReward(guildId: string, type: XpType = 'text') {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -57,7 +57,7 @@ export function useDeleteLevelReward(guildId: string) {
       await apiClient.delete(`/api/guilds/${guildId}/xp/rewards?id=${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["level-rewards", guildId] });
+      queryClient.invalidateQueries({ queryKey: ["level-rewards", guildId, type] });
     },
   });
 }
@@ -69,19 +69,19 @@ export interface CreateLevelRewardBulk {
   removeOnHigherLevel: boolean;
 }
 
-export function useCreateLevelRewardBulk(guildId: string) {
+export function useCreateLevelRewardBulk(guildId: string, type: XpType = 'text') {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: CreateLevelRewardBulk) => {
       const response = await apiClient.post<{ created: number; skipped: number }>(
-        `/api/guilds/${guildId}/xp/rewards/bulk`,
+        `/api/guilds/${guildId}/xp/rewards/bulk?type=${type}`,
         data
       );
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["level-rewards", guildId] });
+      queryClient.invalidateQueries({ queryKey: ["level-rewards", guildId, type] });
     },
   });
 }

@@ -2,6 +2,7 @@ import type { ClockPort } from '../../shared/port/clock.port';
 import type { XpRepositoryPort } from '../port/xp-repository.port';
 import type { XpSettingsRepositoryPort } from '../port/xp-settings-repository.port';
 import type { UserXp } from '../domain/user-xp';
+import type { XpType } from '../domain/xp-level-requirements';
 import type { XpError } from '../errors';
 import { Result } from '../../shared/types/result';
 import { createUserXp } from '../domain/user-xp';
@@ -23,6 +24,7 @@ export interface XpGrantResult {
   level?: number;
   leveledUp?: boolean;
   previousLevel?: number;
+  xpType?: XpType;
   reason?: 'no_settings' | 'disabled' | 'cooldown' | 'excluded_channel' | 'excluded_role';
   // Level up notification info
   levelUpChannelId?: string | null;
@@ -138,24 +140,23 @@ export class XpService {
       earnedXp = applyMultiplier(earnedXp, appliedMultiplier);
     }
 
-    const newTotalXp = userXp.xp + earnedXp;
+    const newTextXp = userXp.textXp + earnedXp;
 
-    // 5.5 커스텀 레벨 요구사항 조회
-    const levelReqResult = await this.settingsRepo.getLevelRequirements(guildId);
+    // 5.5 텍스트 레벨 요구사항 조회
+    const levelReqResult = await this.settingsRepo.getLevelRequirements(guildId, 'text');
     const levelRequirements = levelReqResult.success
       ? toLevelRequirementsMap(levelReqResult.data)
       : new Map<number, number>();
 
-    const newLevel = calculateLevelWithCustom(newTotalXp, levelRequirements);
-    const previousLevel = userXp.level;
+    const newLevel = calculateLevelWithCustom(newTextXp, levelRequirements);
+    const previousLevel = userXp.textLevel;
     const leveledUp = newLevel > previousLevel;
 
     // 6. 저장
     const updatedUserXp: UserXp = {
       ...userXp,
-      xp: newTotalXp,
-      textXp: userXp.textXp + earnedXp,
-      level: newLevel,
+      textXp: newTextXp,
+      textLevel: newLevel,
       lastTextXpAt: now,
       textCountInCooldown: cooldownResult.isNewCooldownPeriod ? 1 : cooldownResult.countInCooldown + 1,
       updatedAt: now,
@@ -166,13 +167,13 @@ export class XpService {
       return Result.err({ type: 'REPOSITORY_ERROR', cause: saveResult.error });
     }
 
-    // 7. 레벨 보상 계산
+    // 7. 레벨 보상 계산 (텍스트 레벨 보상만)
     let rolesToAdd: LevelRewardInfo[] = [];
     let rolesToRemove: string[] = [];
     let channelsToUnlock: string[] = [];
 
     if (leveledUp) {
-      const rewardsResult = await this.settingsRepo.getLevelRewards(guildId);
+      const rewardsResult = await this.settingsRepo.getLevelRewards(guildId, 'text');
       if (rewardsResult.success) {
         const rewards = rewardsResult.data;
 
@@ -187,8 +188,8 @@ export class XpService {
           .map(r => r.roleId);
       }
 
-      // 해금 채널 찾기
-      const channelsResult = await this.settingsRepo.getLevelChannels(guildId);
+      // 해금 채널 찾기 (텍스트 레벨 기반)
+      const channelsResult = await this.settingsRepo.getLevelChannels(guildId, 'text');
       if (channelsResult.success) {
         channelsToUnlock = channelsResult.data
           .filter(c => c.level === newLevel)
@@ -199,10 +200,11 @@ export class XpService {
     return Result.ok({
       granted: true,
       xp: earnedXp,
-      totalXp: newTotalXp,
+      totalXp: newTextXp,
       level: newLevel,
       leveledUp,
       previousLevel,
+      xpType: 'text',
       levelUpChannelId: leveledUp ? settings.levelUpChannelId : undefined,
       levelUpMessage: leveledUp ? settings.levelUpMessage : undefined,
       rolesToAdd: leveledUp ? rolesToAdd : undefined,
@@ -308,24 +310,23 @@ export class XpService {
       earnedXp = applyMultiplier(earnedXp, appliedMultiplier);
     }
 
-    const newTotalXp = userXp.xp + earnedXp;
+    const newVoiceXp = userXp.voiceXp + earnedXp;
 
-    // 5.5 커스텀 레벨 요구사항 조회
-    const voiceLevelReqResult = await this.settingsRepo.getLevelRequirements(guildId);
+    // 5.5 음성 레벨 요구사항 조회
+    const voiceLevelReqResult = await this.settingsRepo.getLevelRequirements(guildId, 'voice');
     const voiceLevelRequirements = voiceLevelReqResult.success
       ? toLevelRequirementsMap(voiceLevelReqResult.data)
       : new Map<number, number>();
 
-    const newLevel = calculateLevelWithCustom(newTotalXp, voiceLevelRequirements);
-    const previousLevel = userXp.level;
+    const newLevel = calculateLevelWithCustom(newVoiceXp, voiceLevelRequirements);
+    const previousLevel = userXp.voiceLevel;
     const leveledUp = newLevel > previousLevel;
 
     // 6. 저장
     const updatedUserXp: UserXp = {
       ...userXp,
-      xp: newTotalXp,
-      voiceXp: userXp.voiceXp + earnedXp,
-      level: newLevel,
+      voiceXp: newVoiceXp,
+      voiceLevel: newLevel,
       lastVoiceXpAt: now,
       voiceCountInCooldown: cooldownResult.isNewCooldownPeriod ? 1 : cooldownResult.countInCooldown + 1,
       updatedAt: now,
@@ -336,13 +337,13 @@ export class XpService {
       return Result.err({ type: 'REPOSITORY_ERROR', cause: saveResult.error });
     }
 
-    // 7. 레벨 보상 계산
+    // 7. 레벨 보상 계산 (음성 레벨 보상만)
     let rolesToAdd: LevelRewardInfo[] = [];
     let rolesToRemove: string[] = [];
     let channelsToUnlock: string[] = [];
 
     if (leveledUp) {
-      const rewardsResult = await this.settingsRepo.getLevelRewards(guildId);
+      const rewardsResult = await this.settingsRepo.getLevelRewards(guildId, 'voice');
       if (rewardsResult.success) {
         const rewards = rewardsResult.data;
 
@@ -357,8 +358,8 @@ export class XpService {
           .map(r => r.roleId);
       }
 
-      // 해금 채널 찾기
-      const channelsResult = await this.settingsRepo.getLevelChannels(guildId);
+      // 해금 채널 찾기 (음성 레벨 기반)
+      const channelsResult = await this.settingsRepo.getLevelChannels(guildId, 'voice');
       if (channelsResult.success) {
         channelsToUnlock = channelsResult.data
           .filter(c => c.level === newLevel)
@@ -369,10 +370,11 @@ export class XpService {
     return Result.ok({
       granted: true,
       xp: earnedXp,
-      totalXp: newTotalXp,
+      totalXp: newVoiceXp,
       level: newLevel,
       leveledUp,
       previousLevel,
+      xpType: 'voice',
       levelUpChannelId: leveledUp ? settings.levelUpChannelId : undefined,
       levelUpMessage: leveledUp ? settings.levelUpMessage : undefined,
       rolesToAdd: leveledUp ? rolesToAdd : undefined,
@@ -384,9 +386,10 @@ export class XpService {
   async getLeaderboard(
     guildId: string,
     limit: number = 10,
-    offset: number = 0
+    offset: number = 0,
+    type?: XpType
   ): Promise<Result<UserXp[], XpError>> {
-    const result = await this.xpRepo.getLeaderboard(guildId, limit, offset);
+    const result = await this.xpRepo.getLeaderboard(guildId, limit, offset, type);
     if (!result.success) {
       return Result.err({ type: 'REPOSITORY_ERROR', cause: result.error });
     }
@@ -402,10 +405,40 @@ export class XpService {
   }
 
   /**
-   * 모든 유저의 레벨을 재계산하고 역할 보상 정보를 반환합니다.
-   * 레벨 요구사항 또는 역할 보상이 변경되었을 때 호출됩니다.
+   * 모든 유저의 텍스트 레벨을 재계산하고 역할 보상 정보를 반환합니다.
+   * 텍스트 레벨 요구사항 또는 역할 보상이 변경되었을 때 호출됩니다.
    */
-  async syncAllUserLevels(guildId: string): Promise<Result<{
+  async syncAllUserTextLevels(guildId: string): Promise<Result<{
+    updatedUsers: Array<{
+      userId: string;
+      oldLevel: number;
+      newLevel: number;
+      rolesToAdd: LevelRewardInfo[];
+      rolesToRemove: string[];
+    }>;
+    totalUsers: number;
+  }, XpError>> {
+    return this.syncAllUserLevelsByType(guildId, 'text');
+  }
+
+  /**
+   * 모든 유저의 음성 레벨을 재계산하고 역할 보상 정보를 반환합니다.
+   * 음성 레벨 요구사항 또는 역할 보상이 변경되었을 때 호출됩니다.
+   */
+  async syncAllUserVoiceLevels(guildId: string): Promise<Result<{
+    updatedUsers: Array<{
+      userId: string;
+      oldLevel: number;
+      newLevel: number;
+      rolesToAdd: LevelRewardInfo[];
+      rolesToRemove: string[];
+    }>;
+    totalUsers: number;
+  }, XpError>> {
+    return this.syncAllUserLevelsByType(guildId, 'voice');
+  }
+
+  private async syncAllUserLevelsByType(guildId: string, xpType: XpType): Promise<Result<{
     updatedUsers: Array<{
       userId: string;
       oldLevel: number;
@@ -426,14 +459,14 @@ export class XpService {
       return Result.ok({ updatedUsers: [], totalUsers: 0 });
     }
 
-    // 2. 레벨 요구사항 조회
-    const levelReqResult = await this.settingsRepo.getLevelRequirements(guildId);
+    // 2. 레벨 요구사항 조회 (타입별)
+    const levelReqResult = await this.settingsRepo.getLevelRequirements(guildId, xpType);
     const levelRequirements = levelReqResult.success
       ? toLevelRequirementsMap(levelReqResult.data)
       : new Map<number, number>();
 
-    // 3. 레벨 보상 조회
-    const rewardsResult = await this.settingsRepo.getLevelRewards(guildId);
+    // 3. 레벨 보상 조회 (타입별)
+    const rewardsResult = await this.settingsRepo.getLevelRewards(guildId, xpType);
     const rewards = rewardsResult.success ? rewardsResult.data : [];
 
     // 4. 각 유저의 레벨 재계산 및 역할 동기화
@@ -449,8 +482,10 @@ export class XpService {
     const usersToSave: UserXp[] = [];
 
     for (const user of users) {
-      const newLevel = calculateLevelWithCustom(user.xp, levelRequirements);
-      const levelChanged = newLevel !== user.level;
+      const userXp = xpType === 'text' ? user.textXp : user.voiceXp;
+      const oldLevel = xpType === 'text' ? user.textLevel : user.voiceLevel;
+      const newLevel = calculateLevelWithCustom(userXp, levelRequirements);
+      const levelChanged = newLevel !== oldLevel;
 
       // 역할 보상 계산 (레벨 변경 여부와 관계없이 항상 계산)
       const rolesToAdd: LevelRewardInfo[] = [];
@@ -480,18 +515,20 @@ export class XpService {
       if (rolesToAdd.length > 0 || rolesToRemove.length > 0 || levelChanged) {
         updatedUsers.push({
           userId: user.userId,
-          oldLevel: user.level,
+          oldLevel,
           newLevel,
           rolesToAdd,
           rolesToRemove,
         });
 
         if (levelChanged) {
-          usersToSave.push({
-            ...user,
-            level: newLevel,
-            updatedAt: now,
-          });
+          const updatedUser = { ...user, updatedAt: now };
+          if (xpType === 'text') {
+            updatedUser.textLevel = newLevel;
+          } else {
+            updatedUser.voiceLevel = newLevel;
+          }
+          usersToSave.push(updatedUser);
         }
       }
     }
@@ -511,10 +548,34 @@ export class XpService {
   }
 
   /**
-   * 모든 유저의 레벨에 따라 해금 채널 권한 정보를 반환합니다.
-   * 해금 채널 설정이 변경되었을 때 호출됩니다.
+   * 모든 유저의 텍스트 레벨에 따라 해금 채널 권한 정보를 반환합니다.
    */
-  async syncAllUserChannels(guildId: string): Promise<Result<{
+  async syncAllUserTextChannels(guildId: string): Promise<Result<{
+    channelsToLock: string[];
+    userChannelPermissions: Array<{
+      channelId: string;
+      userIds: string[];
+    }>;
+    totalUsers: number;
+  }, XpError>> {
+    return this.syncAllUserChannelsByType(guildId, 'text');
+  }
+
+  /**
+   * 모든 유저의 음성 레벨에 따라 해금 채널 권한 정보를 반환합니다.
+   */
+  async syncAllUserVoiceChannels(guildId: string): Promise<Result<{
+    channelsToLock: string[];
+    userChannelPermissions: Array<{
+      channelId: string;
+      userIds: string[];
+    }>;
+    totalUsers: number;
+  }, XpError>> {
+    return this.syncAllUserChannelsByType(guildId, 'voice');
+  }
+
+  private async syncAllUserChannelsByType(guildId: string, xpType: XpType): Promise<Result<{
     channelsToLock: string[];
     userChannelPermissions: Array<{
       channelId: string;
@@ -530,14 +591,14 @@ export class XpService {
 
     const users = usersResult.data;
 
-    // 2. 레벨 요구사항 조회
-    const levelReqResult = await this.settingsRepo.getLevelRequirements(guildId);
+    // 2. 레벨 요구사항 조회 (타입별)
+    const levelReqResult = await this.settingsRepo.getLevelRequirements(guildId, xpType);
     const levelRequirements = levelReqResult.success
       ? toLevelRequirementsMap(levelReqResult.data)
       : new Map<number, number>();
 
-    // 3. 해금 채널 조회
-    const channelsResult = await this.settingsRepo.getLevelChannels(guildId);
+    // 3. 해금 채널 조회 (타입별)
+    const channelsResult = await this.settingsRepo.getLevelChannels(guildId, xpType);
     if (!channelsResult.success) {
       return Result.err({ type: 'REPOSITORY_ERROR', cause: channelsResult.error });
     }
@@ -564,7 +625,8 @@ export class XpService {
       const eligibleUserIds: string[] = [];
 
       for (const user of users) {
-        const userLevel = calculateLevelWithCustom(user.xp, levelRequirements);
+        const userXp = xpType === 'text' ? user.textXp : user.voiceXp;
+        const userLevel = calculateLevelWithCustom(userXp, levelRequirements);
         if (userLevel >= channel.level) {
           eligibleUserIds.push(user.userId);
         }

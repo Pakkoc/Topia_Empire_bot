@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/remote/api-client";
-import { CreateLevelUnlockChannel, LevelUnlockChannel } from "@/types/xp";
+import { CreateLevelUnlockChannel, LevelUnlockChannel, XpType } from "@/types/xp";
 
-export function useLevelChannels(guildId: string) {
+export function useLevelChannels(guildId: string, type: XpType = 'text') {
   return useQuery({
-    queryKey: ["level-channels", guildId],
+    queryKey: ["level-channels", guildId, type],
     queryFn: async () => {
       const response = await apiClient.get<LevelUnlockChannel[]>(
-        `/api/guilds/${guildId}/xp/level-channels`
+        `/api/guilds/${guildId}/xp/level-channels?type=${type}`
       );
       return response.data;
     },
@@ -15,24 +15,24 @@ export function useLevelChannels(guildId: string) {
   });
 }
 
-export function useCreateLevelChannel(guildId: string) {
+export function useCreateLevelChannel(guildId: string, type: XpType = 'text') {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: CreateLevelUnlockChannel) => {
       const response = await apiClient.post<LevelUnlockChannel>(
-        `/api/guilds/${guildId}/xp/level-channels`,
+        `/api/guilds/${guildId}/xp/level-channels?type=${type}`,
         data
       );
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["level-channels", guildId] });
+      queryClient.invalidateQueries({ queryKey: ["level-channels", guildId, type] });
     },
   });
 }
 
-export function useUpdateLevelChannel(guildId: string) {
+export function useUpdateLevelChannel(guildId: string, type: XpType = 'text') {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -44,12 +44,12 @@ export function useUpdateLevelChannel(guildId: string) {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["level-channels", guildId] });
+      queryClient.invalidateQueries({ queryKey: ["level-channels", guildId, type] });
     },
   });
 }
 
-export function useDeleteLevelChannel(guildId: string) {
+export function useDeleteLevelChannel(guildId: string, type: XpType = 'text') {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -57,7 +57,7 @@ export function useDeleteLevelChannel(guildId: string) {
       await apiClient.delete(`/api/guilds/${guildId}/xp/level-channels?id=${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["level-channels", guildId] });
+      queryClient.invalidateQueries({ queryKey: ["level-channels", guildId, type] });
     },
   });
 }

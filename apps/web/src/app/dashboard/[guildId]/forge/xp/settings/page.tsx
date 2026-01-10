@@ -43,9 +43,12 @@ type XpSettingsFormValues = z.infer<typeof xpSettingsFormSchema>;
 // Level Requirements
 interface LevelRequirement {
   guildId: string;
+  type: 'text' | 'voice';
   level: number;
   requiredXp: number;
 }
+
+type XpType = 'text' | 'voice';
 
 function getDefaultXpForLevel(level: number): number {
   return level * level * 100;
@@ -115,19 +118,35 @@ export default function XpSettingsPage() {
   };
 
   // Level Requirements State
-  const [requirements, setRequirements] = useState<{ level: number; requiredXp: number }[]>([]);
-  const [hasChanges, setHasChanges] = useState(false);
+  const [textRequirements, setTextRequirements] = useState<{ level: number; requiredXp: number }[]>([]);
+  const [voiceRequirements, setVoiceRequirements] = useState<{ level: number; requiredXp: number }[]>([]);
+  const [textHasChanges, setTextHasChanges] = useState(false);
+  const [voiceHasChanges, setVoiceHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState("xp");
+  const [levelTypeTab, setLevelTypeTab] = useState<XpType>("text");
 
   // 두 가지 상태(폼과 레벨 설정) 중 하나라도 변경되면 unsaved changes로 표시
   useEffect(() => {
-    setHasUnsavedChanges(formIsDirty || hasChanges);
-  }, [formIsDirty, hasChanges, setHasUnsavedChanges]);
+    setHasUnsavedChanges(formIsDirty || textHasChanges || voiceHasChanges);
+  }, [formIsDirty, textHasChanges, voiceHasChanges, setHasUnsavedChanges]);
 
-  const { data: levelData, isLoading: levelLoading } = useQuery<LevelRequirement[]>({
-    queryKey: ["levelRequirements", guildId],
+  // Text Level Requirements Query
+  const { data: textLevelData, isLoading: textLevelLoading } = useQuery<LevelRequirement[]>({
+    queryKey: ["levelRequirements", guildId, "text"],
     queryFn: async () => {
-      const res = await fetch(`/api/guilds/${guildId}/xp/level-requirements`, {
+      const res = await fetch(`/api/guilds/${guildId}/xp/level-requirements?type=text`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  // Voice Level Requirements Query
+  const { data: voiceLevelData, isLoading: voiceLevelLoading } = useQuery<LevelRequirement[]>({
+    queryKey: ["levelRequirements", guildId, "voice"],
+    queryFn: async () => {
+      const res = await fetch(`/api/guilds/${guildId}/xp/level-requirements?type=voice`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch");
@@ -136,15 +155,23 @@ export default function XpSettingsPage() {
   });
 
   useEffect(() => {
-    if (levelData) {
-      setRequirements(levelData.map(d => ({ level: d.level, requiredXp: d.requiredXp })));
-      setHasChanges(false);
+    if (textLevelData) {
+      setTextRequirements(textLevelData.map(d => ({ level: d.level, requiredXp: d.requiredXp })));
+      setTextHasChanges(false);
     }
-  }, [levelData]);
+  }, [textLevelData]);
 
-  const saveLevelMutation = useMutation({
+  useEffect(() => {
+    if (voiceLevelData) {
+      setVoiceRequirements(voiceLevelData.map(d => ({ level: d.level, requiredXp: d.requiredXp })));
+      setVoiceHasChanges(false);
+    }
+  }, [voiceLevelData]);
+
+  // Text Level Mutation
+  const saveTextLevelMutation = useMutation({
     mutationFn: async (requirements: { level: number; requiredXp: number }[]) => {
-      const res = await fetch(`/api/guilds/${guildId}/xp/level-requirements`, {
+      const res = await fetch(`/api/guilds/${guildId}/xp/level-requirements?type=text`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -154,12 +181,12 @@ export default function XpSettingsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["levelRequirements", guildId] });
+      queryClient.invalidateQueries({ queryKey: ["levelRequirements", guildId, "text"] });
       toast({
         title: "저장 완료",
-        description: "레벨 설정이 저장되었습니다.",
+        description: "텍스트 레벨 설정이 저장되었습니다.",
       });
-      setHasChanges(false);
+      setTextHasChanges(false);
     },
     onError: () => {
       toast({
@@ -170,33 +197,69 @@ export default function XpSettingsPage() {
     },
   });
 
+  // Voice Level Mutation
+  const saveVoiceLevelMutation = useMutation({
+    mutationFn: async (requirements: { level: number; requiredXp: number }[]) => {
+      const res = await fetch(`/api/guilds/${guildId}/xp/level-requirements?type=voice`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requirements),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["levelRequirements", guildId, "voice"] });
+      toast({
+        title: "저장 완료",
+        description: "음성 레벨 설정이 저장되었습니다.",
+      });
+      setVoiceHasChanges(false);
+    },
+    onError: () => {
+      toast({
+        title: "저장 실패",
+        description: "레벨 설정을 저장하는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Current type getters
+  const currentRequirements = levelTypeTab === 'text' ? textRequirements : voiceRequirements;
+  const setCurrentRequirements = levelTypeTab === 'text' ? setTextRequirements : setVoiceRequirements;
+  const currentHasChanges = levelTypeTab === 'text' ? textHasChanges : voiceHasChanges;
+  const setCurrentHasChanges = levelTypeTab === 'text' ? setTextHasChanges : setVoiceHasChanges;
+  const currentSaveMutation = levelTypeTab === 'text' ? saveTextLevelMutation : saveVoiceLevelMutation;
+
   const handleAddLevel = () => {
-    const maxLevel = requirements.length > 0
-      ? Math.max(...requirements.map(r => r.level))
+    const maxLevel = currentRequirements.length > 0
+      ? Math.max(...currentRequirements.map(r => r.level))
       : 0;
     const newLevel = maxLevel + 1;
-    setRequirements([
-      ...requirements,
+    setCurrentRequirements([
+      ...currentRequirements,
       { level: newLevel, requiredXp: getDefaultXpForLevel(newLevel) }
     ].sort((a, b) => a.level - b.level));
-    setHasChanges(true);
+    setCurrentHasChanges(true);
   };
 
   const handleRemoveLevel = (level: number) => {
-    setRequirements(requirements.filter(r => r.level !== level));
-    setHasChanges(true);
+    setCurrentRequirements(currentRequirements.filter(r => r.level !== level));
+    setCurrentHasChanges(true);
   };
 
   const handleXpChange = (level: number, xp: number) => {
-    setRequirements(requirements.map(r =>
+    setCurrentRequirements(currentRequirements.map(r =>
       r.level === level ? { ...r, requiredXp: xp } : r
     ));
-    setHasChanges(true);
+    setCurrentHasChanges(true);
   };
 
   const handleLevelChange = (oldLevel: number, newLevel: number) => {
     if (newLevel < 1 || newLevel > 999) return;
-    if (requirements.some(r => r.level === newLevel && r.level !== oldLevel)) {
+    if (currentRequirements.some(r => r.level === newLevel && r.level !== oldLevel)) {
       toast({
         title: "중복 레벨",
         description: "이미 존재하는 레벨입니다.",
@@ -204,10 +267,10 @@ export default function XpSettingsPage() {
       });
       return;
     }
-    setRequirements(requirements.map(r =>
+    setCurrentRequirements(currentRequirements.map(r =>
       r.level === oldLevel ? { ...r, level: newLevel } : r
     ).sort((a, b) => a.level - b.level));
-    setHasChanges(true);
+    setCurrentHasChanges(true);
   };
 
   const handleResetToDefault = () => {
@@ -218,20 +281,20 @@ export default function XpSettingsPage() {
         requiredXp: getDefaultXpForLevel(i),
       });
     }
-    setRequirements(defaultRequirements);
-    setHasChanges(true);
+    setCurrentRequirements(defaultRequirements);
+    setCurrentHasChanges(true);
   };
 
   const handleClearAll = () => {
-    setRequirements([]);
-    setHasChanges(true);
+    setCurrentRequirements([]);
+    setCurrentHasChanges(true);
   };
 
   const handleSaveLevels = () => {
-    saveLevelMutation.mutate(requirements);
+    currentSaveMutation.mutate(currentRequirements);
   };
 
-  const isLoading = settingsLoading || levelLoading;
+  const isLoading = settingsLoading || textLevelLoading || voiceLevelLoading;
 
   if (isLoading) {
     return (
@@ -551,6 +614,32 @@ export default function XpSettingsPage() {
 
         {/* 레벨 설정 탭 */}
         <TabsContent value="levels" className="space-y-6 animate-fade-up">
+          {/* Level Type Sub-Tabs */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setLevelTypeTab("text")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                levelTypeTab === "text"
+                  ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-transparent"
+                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <Icon icon="solar:chat-line-linear" className="h-4 w-4" />
+              텍스트 레벨
+            </button>
+            <button
+              onClick={() => setLevelTypeTab("voice")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                levelTypeTab === "voice"
+                  ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white border-transparent"
+                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <Icon icon="solar:microphone-linear" className="h-4 w-4" />
+              음성 레벨
+            </button>
+          </div>
+
           {/* Info Card */}
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5">
             <div className="flex items-start gap-3">
@@ -563,6 +652,8 @@ export default function XpSettingsPage() {
                   레벨² × 100 (예: 레벨 5 = 2,500 XP)
                   <br />
                   커스텀 설정이 없으면 기본 공식이 적용됩니다.
+                  <br />
+                  {levelTypeTab === "text" ? "텍스트 XP" : "음성 XP"}를 기준으로 레벨이 계산됩니다.
                 </p>
               </div>
             </div>
@@ -571,15 +662,31 @@ export default function XpSettingsPage() {
           {/* Level Requirements Table */}
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
             <div className="p-6 border-b border-white/10">
-              <h3 className="font-semibold text-white">레벨별 필요 XP</h3>
-              <p className="text-white/50 text-sm mt-1">
-                {requirements.length > 0
-                  ? `${requirements.length}개의 커스텀 레벨이 설정되어 있습니다.`
-                  : "커스텀 설정이 없습니다. 기본 공식이 적용됩니다."}
-              </p>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  levelTypeTab === "text"
+                    ? "bg-gradient-to-br from-blue-500 to-cyan-500"
+                    : "bg-gradient-to-br from-green-500 to-emerald-500"
+                }`}>
+                  <Icon
+                    icon={levelTypeTab === "text" ? "solar:chat-line-bold" : "solar:microphone-bold"}
+                    className="w-5 h-5 text-white"
+                  />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">
+                    {levelTypeTab === "text" ? "텍스트" : "음성"} 레벨별 필요 XP
+                  </h3>
+                  <p className="text-white/50 text-sm">
+                    {currentRequirements.length > 0
+                      ? `${currentRequirements.length}개의 커스텀 레벨이 설정되어 있습니다.`
+                      : "커스텀 설정이 없습니다. 기본 공식이 적용됩니다."}
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="p-6">
-              {requirements.length > 0 ? (
+              {currentRequirements.length > 0 ? (
                 <div className="space-y-3">
                   {/* Header */}
                   <div className="grid grid-cols-12 gap-4 px-4 text-sm font-medium text-white/40">
@@ -590,7 +697,7 @@ export default function XpSettingsPage() {
                   </div>
 
                   {/* Rows */}
-                  {requirements.map((req) => (
+                  {currentRequirements.map((req) => (
                     <div
                       key={req.level}
                       className="grid grid-cols-12 items-center gap-4 rounded-xl bg-white/5 border border-white/10 p-4"
@@ -658,7 +765,7 @@ export default function XpSettingsPage() {
               )}
 
               {/* Clear All Button */}
-              {requirements.length > 0 && (
+              {currentRequirements.length > 0 && (
                 <div className="mt-6 flex justify-between border-t border-white/10 pt-6">
                   <Button
                     variant="ghost"
@@ -673,16 +780,16 @@ export default function XpSettingsPage() {
           </div>
 
           {/* Save Button */}
-          {hasChanges && (
+          {currentHasChanges && (
             <div className="flex justify-end">
               <Button
                 onClick={handleSaveLevels}
-                disabled={saveLevelMutation.isPending}
+                disabled={currentSaveMutation.isPending}
                 className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white shadow-lg shadow-green-500/25"
                 size="lg"
               >
                 <Icon icon="solar:diskette-linear" className="mr-2 h-4 w-4" />
-                {saveLevelMutation.isPending ? "저장 중..." : "변경사항 저장"}
+                {currentSaveMutation.isPending ? "저장 중..." : `${levelTypeTab === "text" ? "텍스트" : "음성"} 레벨 저장`}
               </Button>
             </div>
           )}

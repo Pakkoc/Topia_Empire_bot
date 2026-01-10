@@ -1,8 +1,14 @@
 /**
+ * XP 타입 (텍스트 또는 음성)
+ */
+export type XpType = 'text' | 'voice';
+
+/**
  * 레벨별 필요 XP 설정
  */
 export interface LevelRequirement {
   guildId: string;
+  type: XpType;
   level: number;
   requiredXp: number;
   createdAt: Date;

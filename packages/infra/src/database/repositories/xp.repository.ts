@@ -1,14 +1,14 @@
 import type { Pool, RowDataPacket } from 'mysql2/promise';
-import type { XpRepositoryPort, UserXp, RepositoryError } from '@topia/core';
+import type { XpRepositoryPort, UserXp, RepositoryError, XpType } from '@topia/core';
 import { Result } from '@topia/core';
 
 interface UserXpRow extends RowDataPacket {
   guild_id: string;
   user_id: string;
-  xp: number;
   text_xp: number;
   voice_xp: number;
-  level: number;
+  text_level: number;
+  voice_level: number;
   last_text_xp_at: Date | null;
   text_count_in_cooldown: number;
   last_voice_xp_at: Date | null;
@@ -21,10 +21,10 @@ function toUserXp(row: UserXpRow): UserXp {
   return {
     guildId: row.guild_id,
     userId: row.user_id,
-    xp: row.xp,
     textXp: row.text_xp ?? 0,
     voiceXp: row.voice_xp ?? 0,
-    level: row.level,
+    textLevel: row.text_level ?? 0,
+    voiceLevel: row.voice_level ?? 0,
     lastTextXpAt: row.last_text_xp_at,
     textCountInCooldown: row.text_count_in_cooldown,
     lastVoiceXpAt: row.last_voice_xp_at,
@@ -62,14 +62,14 @@ export class XpRepository implements XpRepositoryPort {
     try {
       await this.pool.execute(
         `INSERT INTO xp_users
-         (guild_id, user_id, xp, text_xp, voice_xp, level, last_text_xp_at, text_count_in_cooldown,
+         (guild_id, user_id, text_xp, voice_xp, text_level, voice_level, last_text_xp_at, text_count_in_cooldown,
           last_voice_xp_at, voice_count_in_cooldown, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
-         xp = VALUES(xp),
          text_xp = VALUES(text_xp),
          voice_xp = VALUES(voice_xp),
-         level = VALUES(level),
+         text_level = VALUES(text_level),
+         voice_level = VALUES(voice_level),
          last_text_xp_at = VALUES(last_text_xp_at),
          text_count_in_cooldown = VALUES(text_count_in_cooldown),
          last_voice_xp_at = VALUES(last_voice_xp_at),
@@ -78,10 +78,10 @@ export class XpRepository implements XpRepositoryPort {
         [
           userXp.guildId,
           userXp.userId,
-          userXp.xp,
           userXp.textXp,
           userXp.voiceXp,
-          userXp.level,
+          userXp.textLevel,
+          userXp.voiceLevel,
           userXp.lastTextXpAt,
           userXp.textCountInCooldown,
           userXp.lastVoiceXpAt,
@@ -100,14 +100,17 @@ export class XpRepository implements XpRepositoryPort {
     }
   }
 
-  async getLeaderboard(guildId: string, limit: number, offset: number = 0): Promise<Result<UserXp[], RepositoryError>> {
+  async getLeaderboard(guildId: string, limit: number, offset: number = 0, type?: XpType): Promise<Result<UserXp[], RepositoryError>> {
     try {
       // MySQL prepared statement에서 LIMIT/OFFSET 바인딩 문제 방지
       const safeLimit = Math.max(1, Math.min(100, Number(limit) || 10));
       const safeOffset = Math.max(0, Number(offset) || 0);
 
+      // 타입에 따라 정렬 기준 결정
+      const orderColumn = type === 'voice' ? 'voice_xp' : 'text_xp';
+
       const [rows] = await this.pool.execute<UserXpRow[]>(
-        `SELECT * FROM xp_users WHERE guild_id = ? ORDER BY xp DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+        `SELECT * FROM xp_users WHERE guild_id = ? ORDER BY ${orderColumn} DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`,
         [guildId]
       );
 
@@ -120,11 +123,14 @@ export class XpRepository implements XpRepositoryPort {
     }
   }
 
-  async getUserRank(guildId: string, userId: string): Promise<Result<number | null, RepositoryError>> {
+  async getUserRank(guildId: string, userId: string, type?: XpType): Promise<Result<number | null, RepositoryError>> {
     try {
+      // 타입에 따라 XP 컬럼 결정
+      const xpColumn = type === 'voice' ? 'voice_xp' : 'text_xp';
+
       const [rows] = await this.pool.execute<RowDataPacket[]>(
-        `SELECT COUNT(*) + 1 as rank FROM xp_users
-         WHERE guild_id = ? AND xp > (SELECT COALESCE(xp, 0) FROM xp_users WHERE guild_id = ? AND user_id = ?)`,
+        `SELECT COUNT(*) + 1 as \`rank\` FROM xp_users
+         WHERE guild_id = ? AND ${xpColumn} > (SELECT COALESCE(${xpColumn}, 0) FROM xp_users WHERE guild_id = ? AND user_id = ?)`,
         [guildId, guildId, userId]
       );
 
@@ -167,10 +173,10 @@ export class XpRepository implements XpRepositoryPort {
       const values = users.map(u => [
         u.guildId,
         u.userId,
-        u.xp,
         u.textXp,
         u.voiceXp,
-        u.level,
+        u.textLevel,
+        u.voiceLevel,
         u.lastTextXpAt,
         u.textCountInCooldown,
         u.lastVoiceXpAt,
@@ -181,14 +187,14 @@ export class XpRepository implements XpRepositoryPort {
 
       await this.pool.query(
         `INSERT INTO xp_users
-         (guild_id, user_id, xp, text_xp, voice_xp, level, last_text_xp_at, text_count_in_cooldown,
+         (guild_id, user_id, text_xp, voice_xp, text_level, voice_level, last_text_xp_at, text_count_in_cooldown,
           last_voice_xp_at, voice_count_in_cooldown, created_at, updated_at)
          VALUES ?
          ON DUPLICATE KEY UPDATE
-         xp = VALUES(xp),
          text_xp = VALUES(text_xp),
          voice_xp = VALUES(voice_xp),
-         level = VALUES(level),
+         text_level = VALUES(text_level),
+         voice_level = VALUES(voice_level),
          updated_at = VALUES(updated_at)`,
         [values]
       );
@@ -207,16 +213,16 @@ export class XpRepository implements XpRepositoryPort {
       // INSERT IGNORE: 이미 존재하면 무시
       await this.pool.execute(
         `INSERT IGNORE INTO xp_users
-         (guild_id, user_id, xp, text_xp, voice_xp, level, last_text_xp_at, text_count_in_cooldown,
+         (guild_id, user_id, text_xp, voice_xp, text_level, voice_level, last_text_xp_at, text_count_in_cooldown,
           last_voice_xp_at, voice_count_in_cooldown, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userXp.guildId,
           userXp.userId,
-          userXp.xp,
           userXp.textXp,
           userXp.voiceXp,
-          userXp.level,
+          userXp.textLevel,
+          userXp.voiceLevel,
           userXp.lastTextXpAt,
           userXp.textCountInCooldown,
           userXp.lastVoiceXpAt,

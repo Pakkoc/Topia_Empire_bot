@@ -1,8 +1,9 @@
 import type { Client, TextChannel } from 'discord.js';
 import type { Container } from '@topia/infra';
-import type { LevelRewardInfo } from '@topia/core';
+import type { LevelRewardInfo, XpType } from '@topia/core';
 
-const DEFAULT_LEVEL_UP_MESSAGE = '🎉 축하합니다 {user}님! **레벨 {level}**에 도달하셨습니다!';
+const DEFAULT_TEXT_LEVEL_UP_MESSAGE = '🎉 축하합니다 {user}님! **텍스트 레벨 {level}**에 도달하셨습니다!';
+const DEFAULT_VOICE_LEVEL_UP_MESSAGE = '🎉 축하합니다 {user}님! **음성 레벨 {level}**에 도달하셨습니다!';
 
 export function createXpHandler(container: Container, client: Client) {
   return {
@@ -26,11 +27,11 @@ export function createXpHandler(container: Container, client: Client) {
 
       if (result.data.granted) {
         console.log(
-          `[XP] ${userId} earned ${result.data.xp} XP (total: ${result.data.totalXp}, level: ${result.data.level})`
+          `[TEXT XP] ${userId} earned ${result.data.xp} XP (total: ${result.data.totalXp}, text level: ${result.data.level})`
         );
 
         if (result.data.leveledUp) {
-          console.log(`[LEVEL UP] ${userId} reached level ${result.data.level}!`);
+          console.log(`[TEXT LEVEL UP] ${userId} reached text level ${result.data.level}!`);
 
           // Apply level rewards (roles)
           await this.applyLevelRewards(
@@ -53,12 +54,13 @@ export function createXpHandler(container: Container, client: Client) {
             userId,
             result.data.level!,
             result.data.totalXp!,
+            'text',
             result.data.levelUpChannelId,
             result.data.levelUpMessage
           );
         }
       } else if (result.data.reason) {
-        console.log(`[XP BLOCKED] ${userId} in channel ${channelId} - reason: ${result.data.reason}`);
+        console.log(`[TEXT XP BLOCKED] ${userId} in channel ${channelId} - reason: ${result.data.reason}`);
       }
     },
 
@@ -141,6 +143,7 @@ export function createXpHandler(container: Container, client: Client) {
       userId: string,
       level: number,
       xp: number,
+      xpType: XpType,
       levelUpChannelId?: string | null,
       customMessage?: string | null
     ): Promise<void> {
@@ -162,17 +165,20 @@ export function createXpHandler(container: Container, client: Client) {
         const member = await guild.members.fetch(userId);
 
         // Format the message with placeholders
-        const messageTemplate = customMessage || DEFAULT_LEVEL_UP_MESSAGE;
+        const defaultMessage = xpType === 'text' ? DEFAULT_TEXT_LEVEL_UP_MESSAGE : DEFAULT_VOICE_LEVEL_UP_MESSAGE;
+        const messageTemplate = customMessage || defaultMessage;
+        const typeLabel = xpType === 'text' ? '텍스트' : '음성';
         const formattedMessage = messageTemplate
           .replace(/{user}/g, `<@${userId}>`)
           .replace(/{username}/g, user.username)
           .replace(/{displayname}/g, member.displayName)
           .replace(/{level}/g, level.toString())
           .replace(/{xp}/g, xp.toLocaleString())
-          .replace(/{server}/g, guild.name);
+          .replace(/{server}/g, guild.name)
+          .replace(/{type}/g, typeLabel);
 
         await (channel as TextChannel).send(formattedMessage);
-        console.log(`[LEVEL UP] Sent notification to channel ${levelUpChannelId}`);
+        console.log(`[${xpType.toUpperCase()} LEVEL UP] Sent notification to channel ${levelUpChannelId}`);
       } catch (error) {
         console.error('[LEVEL UP] Failed to send notification:', error);
       }
@@ -198,11 +204,11 @@ export function createXpHandler(container: Container, client: Client) {
 
       if (result.data.granted) {
         console.log(
-          `[VOICE XP] ${userId} earned ${result.data.xp} XP (total: ${result.data.totalXp}, level: ${result.data.level})`
+          `[VOICE XP] ${userId} earned ${result.data.xp} XP (total: ${result.data.totalXp}, voice level: ${result.data.level})`
         );
 
         if (result.data.leveledUp) {
-          console.log(`[LEVEL UP] ${userId} reached level ${result.data.level}!`);
+          console.log(`[VOICE LEVEL UP] ${userId} reached voice level ${result.data.level}!`);
 
           // Apply level rewards (roles)
           await this.applyLevelRewards(
@@ -225,6 +231,7 @@ export function createXpHandler(container: Container, client: Client) {
             userId,
             result.data.level!,
             result.data.totalXp!,
+            'voice',
             result.data.levelUpChannelId,
             result.data.levelUpMessage
           );
@@ -236,62 +243,108 @@ export function createXpHandler(container: Container, client: Client) {
 
     /**
      * 레벨 요구사항 변경 시 모든 유저의 레벨과 역할을 동기화합니다.
+     * xpType을 지정하면 해당 타입만 동기화, 지정하지 않으면 둘 다 동기화
      */
-    async syncAllUserLevelsAndRewards(guildId: string): Promise<{
+    async syncAllUserLevelsAndRewards(guildId: string, xpType?: XpType): Promise<{
       success: boolean;
-      updatedCount: number;
+      textUpdatedCount: number;
+      voiceUpdatedCount: number;
       totalUsers: number;
     }> {
-      console.log(`[SYNC] Starting level sync for guild ${guildId}...`);
+      console.log(`[SYNC] Starting level sync for guild ${guildId} (type: ${xpType || 'all'})...`);
 
-      const result = await container.xpService.syncAllUserLevels(guildId);
+      let textUpdatedCount = 0;
+      let voiceUpdatedCount = 0;
+      let totalUsers = 0;
 
-      if (!result.success) {
-        console.error('[SYNC] Failed to sync levels:', result.error);
-        return { success: false, updatedCount: 0, totalUsers: 0 };
+      // Sync text levels
+      if (!xpType || xpType === 'text') {
+        const textResult = await container.xpService.syncAllUserTextLevels(guildId);
+        if (!textResult.success) {
+          console.error('[SYNC] Failed to sync text levels:', textResult.error);
+        } else {
+          const { updatedUsers, totalUsers: total } = textResult.data;
+          totalUsers = total;
+          console.log(`[SYNC] Found ${updatedUsers.length} users with text level changes`);
+
+          for (const user of updatedUsers) {
+            console.log(`[SYNC] User ${user.userId}: Text Level ${user.oldLevel} -> ${user.newLevel}`);
+            await this.applyLevelRewards(guildId, user.userId, user.rolesToAdd, user.rolesToRemove);
+          }
+          textUpdatedCount = updatedUsers.length;
+        }
       }
 
-      const { updatedUsers, totalUsers } = result.data;
-      console.log(`[SYNC] Found ${updatedUsers.length} users with level changes out of ${totalUsers} total`);
+      // Sync voice levels
+      if (!xpType || xpType === 'voice') {
+        const voiceResult = await container.xpService.syncAllUserVoiceLevels(guildId);
+        if (!voiceResult.success) {
+          console.error('[SYNC] Failed to sync voice levels:', voiceResult.error);
+        } else {
+          const { updatedUsers, totalUsers: total } = voiceResult.data;
+          if (total > totalUsers) totalUsers = total;
+          console.log(`[SYNC] Found ${updatedUsers.length} users with voice level changes`);
 
-      // 각 유저에게 역할 적용
-      for (const user of updatedUsers) {
-        console.log(`[SYNC] User ${user.userId}: Level ${user.oldLevel} -> ${user.newLevel}`);
-
-        await this.applyLevelRewards(
-          guildId,
-          user.userId,
-          user.rolesToAdd,
-          user.rolesToRemove
-        );
+          for (const user of updatedUsers) {
+            console.log(`[SYNC] User ${user.userId}: Voice Level ${user.oldLevel} -> ${user.newLevel}`);
+            await this.applyLevelRewards(guildId, user.userId, user.rolesToAdd, user.rolesToRemove);
+          }
+          voiceUpdatedCount = updatedUsers.length;
+        }
       }
 
       console.log(`[SYNC] Completed level sync for guild ${guildId}`);
       return {
         success: true,
-        updatedCount: updatedUsers.length,
+        textUpdatedCount,
+        voiceUpdatedCount,
         totalUsers,
       };
     },
 
     /**
      * 해금 채널 설정 변경 시 모든 채널 권한을 동기화합니다.
+     * xpType을 지정하면 해당 타입만 동기화, 지정하지 않으면 둘 다 동기화
      */
-    async syncAllChannelPermissions(guildId: string): Promise<{
+    async syncAllChannelPermissions(guildId: string, xpType?: XpType): Promise<{
       success: boolean;
       lockedChannels: number;
       totalPermissionsSet: number;
     }> {
-      console.log(`[CHANNEL SYNC] Starting channel sync for guild ${guildId}...`);
+      console.log(`[CHANNEL SYNC] Starting channel sync for guild ${guildId} (type: ${xpType || 'all'})...`);
 
-      const result = await container.xpService.syncAllUserChannels(guildId);
+      let allChannelsToLock: string[] = [];
+      let allUserChannelPermissions: { channelId: string; userIds: string[] }[] = [];
 
-      if (!result.success) {
-        console.error('[CHANNEL SYNC] Failed to sync channels:', result.error);
-        return { success: false, lockedChannels: 0, totalPermissionsSet: 0 };
+      // Sync text channels
+      if (!xpType || xpType === 'text') {
+        const textResult = await container.xpService.syncAllUserTextChannels(guildId);
+        if (!textResult.success) {
+          console.error('[CHANNEL SYNC] Failed to sync text channels:', textResult.error);
+        } else {
+          allChannelsToLock = [...allChannelsToLock, ...textResult.data.channelsToLock];
+          allUserChannelPermissions = [...allUserChannelPermissions, ...textResult.data.userChannelPermissions];
+        }
       }
 
-      const { channelsToLock, userChannelPermissions } = result.data;
+      // Sync voice channels
+      if (!xpType || xpType === 'voice') {
+        const voiceResult = await container.xpService.syncAllUserVoiceChannels(guildId);
+        if (!voiceResult.success) {
+          console.error('[CHANNEL SYNC] Failed to sync voice channels:', voiceResult.error);
+        } else {
+          // 중복 제거 (같은 채널이 text/voice 둘 다 있을 수 있음)
+          for (const channelId of voiceResult.data.channelsToLock) {
+            if (!allChannelsToLock.includes(channelId)) {
+              allChannelsToLock.push(channelId);
+            }
+          }
+          allUserChannelPermissions = [...allUserChannelPermissions, ...voiceResult.data.userChannelPermissions];
+        }
+      }
+
+      const channelsToLock = allChannelsToLock;
+      const userChannelPermissions = allUserChannelPermissions;
 
       try {
         const guild = await client.guilds.fetch(guildId);

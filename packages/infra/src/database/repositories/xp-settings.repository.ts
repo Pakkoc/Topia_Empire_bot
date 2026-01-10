@@ -1,5 +1,5 @@
 import type { Pool, RowDataPacket } from 'mysql2/promise';
-import type { XpSettingsRepositoryPort, XpSettings, RepositoryError, LevelReward, LevelChannel, HotTimeConfig, LevelRequirement, XpMultiplier } from '@topia/core';
+import type { XpSettingsRepositoryPort, XpSettings, RepositoryError, LevelReward, LevelChannel, HotTimeConfig, LevelRequirement, XpMultiplier, XpType } from '@topia/core';
 import { Result } from '@topia/core';
 
 interface XpSettingsRow extends RowDataPacket {
@@ -42,6 +42,7 @@ interface HotTimeChannelRow extends RowDataPacket {
 interface LevelRewardRow extends RowDataPacket {
   id: number;
   guild_id: string;
+  type: 'text' | 'voice';
   level: number;
   role_id: string;
   remove_on_higher_level: number;
@@ -51,12 +52,14 @@ interface LevelRewardRow extends RowDataPacket {
 interface LevelChannelRow extends RowDataPacket {
   id: number;
   guild_id: string;
+  type: 'text' | 'voice';
   level: number;
   channel_id: string;
 }
 
 interface LevelRequirementRow extends RowDataPacket {
   guild_id: string;
+  type: 'text' | 'voice';
   level: number;
   required_xp: number;
   created_at: Date;
@@ -225,19 +228,20 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
     }
   }
 
-  async getLevelRewards(guildId: string): Promise<Result<LevelReward[], RepositoryError>> {
+  async getLevelRewards(guildId: string, xpType: XpType): Promise<Result<LevelReward[], RepositoryError>> {
     try {
       const [rows] = await this.pool.execute<LevelRewardRow[]>(
-        `SELECT id, guild_id, level, role_id, remove_on_higher_level, created_at
+        `SELECT id, guild_id, type, level, role_id, remove_on_higher_level, created_at
          FROM xp_level_rewards
-         WHERE guild_id = ?
+         WHERE guild_id = ? AND type = ?
          ORDER BY level`,
-        [guildId]
+        [guildId, xpType]
       );
 
       return Result.ok(rows.map(r => ({
         id: r.id,
         guildId: r.guild_id,
+        type: r.type,
         level: r.level,
         roleId: r.role_id,
         removeOnHigherLevel: Boolean(r.remove_on_higher_level),
@@ -251,19 +255,20 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
     }
   }
 
-  async getLevelChannels(guildId: string): Promise<Result<LevelChannel[], RepositoryError>> {
+  async getLevelChannels(guildId: string, xpType: XpType): Promise<Result<LevelChannel[], RepositoryError>> {
     try {
       const [rows] = await this.pool.execute<LevelChannelRow[]>(
-        `SELECT id, guild_id, level, channel_id
+        `SELECT id, guild_id, type, level, channel_id
          FROM xp_level_channels
-         WHERE guild_id = ?
+         WHERE guild_id = ? AND type = ?
          ORDER BY level`,
-        [guildId]
+        [guildId, xpType]
       );
 
       return Result.ok(rows.map(r => ({
         id: r.id,
         guildId: r.guild_id,
+        type: r.type,
         level: r.level,
         channelId: r.channel_id,
       })));
@@ -275,18 +280,19 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
     }
   }
 
-  async getLevelRequirements(guildId: string): Promise<Result<LevelRequirement[], RepositoryError>> {
+  async getLevelRequirements(guildId: string, xpType: XpType): Promise<Result<LevelRequirement[], RepositoryError>> {
     try {
       const [rows] = await this.pool.execute<LevelRequirementRow[]>(
-        `SELECT guild_id, level, required_xp, created_at, updated_at
+        `SELECT guild_id, type, level, required_xp, created_at, updated_at
          FROM xp_level_requirements
-         WHERE guild_id = ?
+         WHERE guild_id = ? AND type = ?
          ORDER BY level`,
-        [guildId]
+        [guildId, xpType]
       );
 
       return Result.ok(rows.map(r => ({
         guildId: r.guild_id,
+        type: r.type,
         level: r.level,
         requiredXp: r.required_xp,
         createdAt: r.created_at,
@@ -300,13 +306,13 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
     }
   }
 
-  async saveLevelRequirement(guildId: string, level: number, requiredXp: number): Promise<Result<void, RepositoryError>> {
+  async saveLevelRequirement(guildId: string, xpType: XpType, level: number, requiredXp: number): Promise<Result<void, RepositoryError>> {
     try {
       await this.pool.execute(
-        `INSERT INTO xp_level_requirements (guild_id, level, required_xp)
-         VALUES (?, ?, ?)
+        `INSERT INTO xp_level_requirements (guild_id, type, level, required_xp)
+         VALUES (?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE required_xp = VALUES(required_xp), updated_at = NOW()`,
-        [guildId, level, requiredXp]
+        [guildId, xpType, level, requiredXp]
       );
 
       return Result.ok(undefined);
@@ -318,11 +324,11 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
     }
   }
 
-  async deleteLevelRequirement(guildId: string, level: number): Promise<Result<void, RepositoryError>> {
+  async deleteLevelRequirement(guildId: string, xpType: XpType, level: number): Promise<Result<void, RepositoryError>> {
     try {
       await this.pool.execute(
-        `DELETE FROM xp_level_requirements WHERE guild_id = ? AND level = ?`,
-        [guildId, level]
+        `DELETE FROM xp_level_requirements WHERE guild_id = ? AND type = ? AND level = ?`,
+        [guildId, xpType, level]
       );
 
       return Result.ok(undefined);
@@ -334,11 +340,11 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
     }
   }
 
-  async deleteAllLevelRequirements(guildId: string): Promise<Result<void, RepositoryError>> {
+  async deleteAllLevelRequirements(guildId: string, xpType: XpType): Promise<Result<void, RepositoryError>> {
     try {
       await this.pool.execute(
-        `DELETE FROM xp_level_requirements WHERE guild_id = ?`,
-        [guildId]
+        `DELETE FROM xp_level_requirements WHERE guild_id = ? AND type = ?`,
+        [guildId, xpType]
       );
 
       return Result.ok(undefined);

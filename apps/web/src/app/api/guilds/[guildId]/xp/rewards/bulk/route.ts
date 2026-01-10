@@ -6,9 +6,12 @@ import { notifyBotSettingsChanged } from "@/lib/bot-notify";
 import { z } from "zod";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
+type XpType = 'text' | 'voice';
+
 interface RewardRow extends RowDataPacket {
   id: number;
   guild_id: string;
+  type: XpType;
   level: number;
   role_id: string;
 }
@@ -29,6 +32,8 @@ export async function POST(
   }
 
   const { guildId } = await params;
+  const { searchParams } = new URL(request.url);
+  const xpType = (searchParams.get("type") || "text") as XpType;
 
   try {
     const body = await request.json();
@@ -36,10 +41,10 @@ export async function POST(
 
     const pool = db();
 
-    // 이미 존재하는 보상 조회 (같은 레벨, 같은 역할)
+    // 이미 존재하는 보상 조회 (같은 타입, 같은 레벨, 같은 역할)
     const [existing] = await pool.query<RewardRow[]>(
-      `SELECT role_id FROM xp_level_rewards WHERE guild_id = ? AND level = ? AND role_id IN (?)`,
-      [guildId, validatedData.level, validatedData.roleIds]
+      `SELECT role_id FROM xp_level_rewards WHERE guild_id = ? AND type = ? AND level = ? AND role_id IN (?)`,
+      [guildId, xpType, validatedData.level, validatedData.roleIds]
     );
 
     const existingRoleIds = new Set(existing.map((e) => e.role_id));
@@ -56,21 +61,24 @@ export async function POST(
     // 새 보상 추가
     const values = newRoleIds.map((roleId) => [
       guildId,
+      xpType,
       validatedData.level,
       roleId,
       validatedData.removeOnHigherLevel,
     ]);
     await pool.query<ResultSetHeader>(
-      `INSERT INTO xp_level_rewards (guild_id, level, role_id, remove_on_higher_level) VALUES ?`,
+      `INSERT INTO xp_level_rewards (guild_id, type, level, role_id, remove_on_higher_level) VALUES ?`,
       [values]
     );
+
+    const typeLabel = xpType === 'text' ? '텍스트' : '음성';
 
     // 봇에 설정 변경 알림 (비동기, 대기 안함)
     notifyBotSettingsChanged({
       guildId,
       type: "xp-reward",
       action: "추가",
-      details: `레벨 ${validatedData.level}에 역할 ${newRoleIds.length}개 추가`,
+      details: `${typeLabel} 레벨 ${validatedData.level}에 역할 ${newRoleIds.length}개 추가`,
     });
 
     return NextResponse.json({

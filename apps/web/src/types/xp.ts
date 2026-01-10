@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// XP Type
+export type XpType = 'text' | 'voice';
+
 // XP Settings
 export const xpSettingsSchema = z.object({
   guildId: z.string(),
@@ -57,6 +60,7 @@ export type CreateXpExclusion = z.infer<typeof createXpExclusionSchema>;
 export const levelRewardSchema = z.object({
   id: z.number(),
   guildId: z.string(),
+  type: z.enum(["text", "voice"]),
   level: z.number().min(1).max(999),
   roleId: z.string(),
   removeOnHigherLevel: z.boolean(),
@@ -64,20 +68,21 @@ export const levelRewardSchema = z.object({
 
 export type LevelReward = z.infer<typeof levelRewardSchema>;
 
-export const createLevelRewardSchema = levelRewardSchema.omit({ id: true, guildId: true });
+export const createLevelRewardSchema = levelRewardSchema.omit({ id: true, guildId: true, type: true });
 export type CreateLevelReward = z.infer<typeof createLevelRewardSchema>;
 
 // Level Unlock Channel
 export const levelUnlockChannelSchema = z.object({
   id: z.number(),
   guildId: z.string(),
+  type: z.enum(["text", "voice"]),
   level: z.number().min(1).max(999),
   channelId: z.string(),
 });
 
 export type LevelUnlockChannel = z.infer<typeof levelUnlockChannelSchema>;
 
-export const createLevelUnlockChannelSchema = levelUnlockChannelSchema.omit({ id: true, guildId: true });
+export const createLevelUnlockChannelSchema = levelUnlockChannelSchema.omit({ id: true, guildId: true, type: true });
 export type CreateLevelUnlockChannel = z.infer<typeof createLevelUnlockChannelSchema>;
 
 // XP Multiplier (채널/역할별 배율)

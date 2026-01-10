@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChanges } from "@/contexts/unsaved-changes-context";
 import { useEffect } from "react";
 import { Icon } from "@iconify/react";
-import { LevelReward } from "@/types/xp";
+import { LevelReward, XpType } from "@/types/xp";
 
 export default function LevelRewardsPage() {
   const params = useParams();
@@ -39,16 +39,20 @@ export default function LevelRewardsPage() {
   const { toast } = useToast();
   const { setHasUnsavedChanges } = useUnsavedChanges();
 
+  // XP Type state for role rewards and channels
+  const [rewardXpType, setRewardXpType] = useState<XpType>("text");
+  const [channelXpType, setChannelXpType] = useState<XpType>("text");
+
   // Role Rewards State
   const [rewardLevel, setRewardLevel] = useState(5);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
   const [removeOnHigherLevel, setRemoveOnHigherLevel] = useState(false);
 
-  const { data: rewards, isLoading: rewardsLoading } = useLevelRewards(guildId);
+  const { data: rewards, isLoading: rewardsLoading } = useLevelRewards(guildId, rewardXpType);
   const { data: roles, isLoading: rolesLoading } = useRoles(guildId);
-  const createRewardBulk = useCreateLevelRewardBulk(guildId);
-  const updateReward = useUpdateLevelReward(guildId);
-  const deleteReward = useDeleteLevelReward(guildId);
+  const createRewardBulk = useCreateLevelRewardBulk(guildId, rewardXpType);
+  const updateReward = useUpdateLevelReward(guildId, rewardXpType);
+  const deleteReward = useDeleteLevelReward(guildId, rewardXpType);
 
   const roleOptions: MultiSelectOption[] = (roles ?? []).map((r) => ({
     value: r.id,
@@ -146,10 +150,10 @@ export default function LevelRewardsPage() {
     setHasUnsavedChanges(hasRewardFormData || hasChannelFormData);
   }, [selectedRoleIds, selectedChannelId, setHasUnsavedChanges]);
 
-  const { data: levelChannels, isLoading: channelsLoading } = useLevelChannels(guildId);
+  const { data: levelChannels, isLoading: channelsLoading } = useLevelChannels(guildId, channelXpType);
   const { data: channels, isLoading: allChannelsLoading } = useChannels(guildId);
-  const createLevelChannel = useCreateLevelChannel(guildId);
-  const deleteLevelChannel = useDeleteLevelChannel(guildId);
+  const createLevelChannel = useCreateLevelChannel(guildId, channelXpType);
+  const deleteLevelChannel = useDeleteLevelChannel(guildId, channelXpType);
 
   const assignedChannelIds = new Set(levelChannels?.map((lc) => lc.channelId) ?? []);
   const availableChannels = (channels ?? []).filter((c) => !assignedChannelIds.has(c.id));
@@ -265,18 +269,52 @@ export default function LevelRewardsPage() {
         </TabsList>
 
         {/* 역할 보상 탭 */}
-        <TabsContent value="roles" className="animate-fade-up">
+        <TabsContent value="roles" className="animate-fade-up space-y-6">
+          {/* XP Type Sub-Tabs */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setRewardXpType("text")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                rewardXpType === "text"
+                  ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-transparent"
+                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <Icon icon="solar:chat-line-linear" className="h-4 w-4" />
+              텍스트 레벨
+            </button>
+            <button
+              onClick={() => setRewardXpType("voice")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                rewardXpType === "voice"
+                  ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white border-transparent"
+                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <Icon icon="solar:microphone-linear" className="h-4 w-4" />
+              음성 레벨
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Rewards List */}
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  rewardXpType === "text"
+                    ? "bg-gradient-to-br from-blue-500 to-cyan-500"
+                    : "bg-gradient-to-br from-green-500 to-emerald-500"
+                }`}>
                   <Icon icon="solar:cup-star-bold" className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white">역할 보상 목록</h3>
-                  <p className="text-sm text-white/50">레벨 달성 시 지급되는 역할</p>
+                  <h3 className="font-semibold text-white">
+                    {rewardXpType === "text" ? "텍스트" : "음성"} 레벨 역할 보상
+                  </h3>
+                  <p className="text-sm text-white/50">
+                    {rewardXpType === "text" ? "텍스트" : "음성"} 레벨 달성 시 지급되는 역할
+                  </p>
                 </div>
               </div>
             </div>
@@ -427,18 +465,52 @@ export default function LevelRewardsPage() {
         </TabsContent>
 
         {/* 해금 채널 탭 */}
-        <TabsContent value="channels" className="animate-fade-up">
+        <TabsContent value="channels" className="animate-fade-up space-y-6">
+          {/* XP Type Sub-Tabs */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setChannelXpType("text")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                channelXpType === "text"
+                  ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-transparent"
+                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <Icon icon="solar:chat-line-linear" className="h-4 w-4" />
+              텍스트 레벨
+            </button>
+            <button
+              onClick={() => setChannelXpType("voice")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                channelXpType === "voice"
+                  ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white border-transparent"
+                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <Icon icon="solar:microphone-linear" className="h-4 w-4" />
+              음성 레벨
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Level Channels List */}
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  channelXpType === "text"
+                    ? "bg-gradient-to-br from-blue-500 to-cyan-500"
+                    : "bg-gradient-to-br from-green-500 to-emerald-500"
+                }`}>
                   <Icon icon="solar:lock-unlocked-bold" className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white">해금 채널 목록</h3>
-                  <p className="text-sm text-white/50">레벨별 접근 가능 채널 설정</p>
+                  <h3 className="font-semibold text-white">
+                    {channelXpType === "text" ? "텍스트" : "음성"} 레벨 해금 채널
+                  </h3>
+                  <p className="text-sm text-white/50">
+                    {channelXpType === "text" ? "텍스트" : "음성"} 레벨별 접근 가능 채널 설정
+                  </p>
                 </div>
               </div>
             </div>
