@@ -223,24 +223,26 @@ export default function CurrencySettingsPage() {
             />
           </div>
 
-          {/* 화폐 관리자 설정 - 토피 */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
-            <div className="p-6 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-                  <Icon
-                    icon="solar:shield-user-linear"
-                    className="h-5 w-5 text-white"
-                  />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white">{settings?.topyName ?? "토피"} 관리자</h3>
-                  <p className="text-white/50 text-sm">
-                    활동형 화폐를 무제한 지급할 수 있는 유저
-                  </p>
+          {/* 화폐 관리자 설정 - 2열 그리드 */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* 토피 관리자 */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
+              <div className="p-6 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                    <Icon
+                      icon="solar:shield-user-linear"
+                      className="h-5 w-5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">{settings?.topyName ?? "토피"} 관리자</h3>
+                    <p className="text-white/50 text-sm">
+                      활동형 화폐 지급 권한
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
             <div className="p-6 space-y-4">
               {/* Add topy manager */}
               <div className="flex gap-3">
@@ -357,26 +359,26 @@ export default function CurrencySettingsPage() {
                 </div>
               )}
             </div>
-          </div>
+            </div>
 
-          {/* 화폐 관리자 설정 - 루비 */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
-            <div className="p-6 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center">
-                  <Icon
-                    icon="solar:shield-user-linear"
-                    className="h-5 w-5 text-white"
-                  />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white">{settings?.rubyName ?? "루비"} 관리자</h3>
-                  <p className="text-white/50 text-sm">
-                    유료 화폐를 무제한 지급할 수 있는 유저
-                  </p>
+            {/* 루비 관리자 */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
+              <div className="p-6 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center">
+                    <Icon
+                      icon="solar:shield-user-linear"
+                      className="h-5 w-5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">{settings?.rubyName ?? "루비"} 관리자</h3>
+                    <p className="text-white/50 text-sm">
+                      유료 화폐 지급 권한
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
             <div className="p-6 space-y-4">
               {/* Add ruby manager */}
               <div className="flex gap-3">
@@ -505,11 +507,12 @@ export default function CurrencySettingsPage() {
                       유료 화폐 관리 주의
                     </p>
                     <p className="text-xs text-rose-300/70 mt-1">
-                      {settings?.rubyName ?? "루비"}는 유료 화폐이므로 신뢰할 수 있는 관리자만 지정하세요.
+                      신뢰할 수 있는 관리자만 지정하세요.
                     </p>
                   </div>
                 </div>
               </div>
+            </div>
             </div>
           </div>
 
@@ -525,9 +528,8 @@ export default function CurrencySettingsPage() {
                   화폐 관리자 안내
                 </p>
                 <p className="text-xs text-violet-300/70 mt-1">
-                  화폐 관리자는{" "}
                   <code className="bg-violet-500/20 px-1 rounded">/지급</code>{" "}
-                  명령어로 다른 유저에게 해당 화폐를 무제한 지급할 수 있습니다.
+                  명령어로 해당 화폐를 무제한 지급할 수 있습니다.
                 </p>
               </div>
             </div>
