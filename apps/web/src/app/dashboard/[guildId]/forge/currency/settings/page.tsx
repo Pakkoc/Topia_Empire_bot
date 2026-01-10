@@ -37,7 +37,6 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 const currencySettingsFormSchema = z.object({
-  enabled: z.boolean(),
   topyName: z.string().min(1).max(20),
   rubyName: z.string().min(1).max(20),
   topyManagerEnabled: z.boolean(),
@@ -89,7 +88,6 @@ export default function CurrencySettingsPage() {
   const form = useForm<CurrencySettingsFormValues>({
     resolver: zodResolver(currencySettingsFormSchema),
     defaultValues: {
-      enabled: true,
       topyName: "토피",
       rubyName: "루비",
       topyManagerEnabled: true,
@@ -124,7 +122,6 @@ export default function CurrencySettingsPage() {
   useEffect(() => {
     if (settings) {
       form.reset({
-        enabled: Boolean(settings.enabled),
         topyName: settings.topyName ?? "토피",
         rubyName: settings.rubyName ?? "루비",
         topyManagerEnabled: settings.topyManagerEnabled !== false,
@@ -203,32 +200,6 @@ export default function CurrencySettingsPage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* 시스템 활성화 */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
-            <FormField
-              control={form.control}
-              name="enabled"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-white font-medium text-lg">
-                      화폐 시스템 활성화
-                    </FormLabel>
-                    <FormDescription className="text-white/40">
-                      활동 보상으로 토피를 획득할 수 있습니다
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
-
           {/* 화폐 관리자 설정 - 2열 그리드 */}
           <div className="grid gap-6 lg:grid-cols-2">
             {/* 토피 관리자 */}
