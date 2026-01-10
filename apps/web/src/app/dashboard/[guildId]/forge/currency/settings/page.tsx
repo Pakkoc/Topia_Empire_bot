@@ -214,9 +214,9 @@ export default function CurrencySettingsPage() {
                       />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-white">활동형 화폐 관리자</h3>
+                      <h3 className="font-semibold text-white">활동형 화폐({settings?.topyName ?? "토피"}) 관리자</h3>
                       <p className="text-white/50 text-sm">
-                        {settings?.topyName ?? "토피"} 지급 권한
+                        지급 권한 관리
                       </p>
                     </div>
                   </div>
@@ -366,9 +366,9 @@ export default function CurrencySettingsPage() {
                       />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-white">수익형 화폐 관리자</h3>
+                      <h3 className="font-semibold text-white">수익형 화폐({settings?.rubyName ?? "루비"}) 관리자</h3>
                       <p className="text-white/50 text-sm">
-                        {settings?.rubyName ?? "루비"} 지급 권한
+                        지급 권한 관리
                       </p>
                     </div>
                   </div>
@@ -946,9 +946,9 @@ export default function CurrencySettingsPage() {
                     />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">활동형 화폐 이체</h3>
+                    <h3 className="font-semibold text-white">활동형 화폐({settings?.topyName ?? "토피"}) 이체</h3>
                     <p className="text-white/50 text-sm">
-                      {settings?.topyName ?? "토피"} 이체 규칙
+                      이체 규칙 설정
                     </p>
                   </div>
                 </div>
@@ -1035,9 +1035,9 @@ export default function CurrencySettingsPage() {
                     />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">수익형 화폐 이체</h3>
+                    <h3 className="font-semibold text-white">수익형 화폐({settings?.rubyName ?? "루비"}) 이체</h3>
                     <p className="text-white/50 text-sm">
-                      {settings?.rubyName ?? "루비"} 이체 규칙
+                      이체 규칙 설정
                     </p>
                   </div>
                 </div>
