@@ -19,6 +19,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { useUnsavedChanges } from "@/contexts/unsaved-changes-context";
 import {
   useAddCurrencyManager,
@@ -89,6 +103,7 @@ export default function CurrencySettingsPage() {
   // 채널 목록 및 거래 알림 채널
   const { data: channels = [] } = useTextChannels(guildId);
   const [currencyLogChannelId, setCurrencyLogChannelId] = useState<string | null>(null);
+  const [logChannelOpen, setLogChannelOpen] = useState(false);
 
   const form = useForm<CurrencySettingsFormValues>({
     resolver: zodResolver(currencySettingsFormSchema),
@@ -1161,22 +1176,76 @@ export default function CurrencySettingsPage() {
                 <label className="text-white/70 text-sm font-medium">
                   알림 채널
                 </label>
-                <Select
-                  value={currencyLogChannelId ?? "none"}
-                  onValueChange={handleLogChannelChange}
-                >
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                    <SelectValue placeholder="채널 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">설정 안함 (명령어 실행 채널)</SelectItem>
-                    {channels.map((channel) => (
-                      <SelectItem key={channel.id} value={channel.id}>
-                        #{channel.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={logChannelOpen} onOpenChange={setLogChannelOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={logChannelOpen}
+                      className="w-full justify-between bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
+                    >
+                      {currencyLogChannelId
+                        ? `#${channels.find((c) => c.id === currencyLogChannelId)?.name ?? "알 수 없는 채널"}`
+                        : "설정 안함 (명령어 실행 채널)"}
+                      <Icon
+                        icon="solar:alt-arrow-down-linear"
+                        className="ml-2 h-4 w-4 shrink-0 opacity-50"
+                      />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0 bg-slate-900 border-white/10">
+                    <Command className="bg-transparent">
+                      <CommandInput
+                        placeholder="채널 검색..."
+                        className="h-9 text-white placeholder:text-white/40"
+                      />
+                      <CommandList>
+                        <CommandEmpty className="text-white/50 text-sm py-6 text-center">
+                          검색 결과가 없습니다
+                        </CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="none"
+                            onSelect={() => {
+                              handleLogChannelChange("none");
+                              setLogChannelOpen(false);
+                            }}
+                            className="text-white aria-selected:bg-white/10"
+                          >
+                            <Icon
+                              icon="solar:close-circle-linear"
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                !currencyLogChannelId ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            설정 안함 (명령어 실행 채널)
+                          </CommandItem>
+                          {channels.map((channel) => (
+                            <CommandItem
+                              key={channel.id}
+                              value={channel.name}
+                              onSelect={() => {
+                                handleLogChannelChange(channel.id);
+                                setLogChannelOpen(false);
+                              }}
+                              className="text-white aria-selected:bg-white/10"
+                            >
+                              <Icon
+                                icon="solar:check-circle-linear"
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  currencyLogChannelId === channel.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              #{channel.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <p className="text-xs text-white/40">
                   미설정 시 이체/지급 명령어를 실행한 채널에 결과가 표시됩니다
                 </p>
