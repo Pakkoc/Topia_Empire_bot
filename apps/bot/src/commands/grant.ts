@@ -95,7 +95,7 @@ export const grantCommand: Command = {
       return;
     }
 
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true });
 
     try {
       // 화폐 설정 가져오기
@@ -188,7 +188,7 @@ export const grantCommand: Command = {
             )
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                `**${interaction.user.displayName}**(관리자) → **${targetUser.displayName}**\n` +
+                `<@${interaction.user.id}>(관리자) → <@${targetUser.id}>\n` +
                 `금액: **+${amount.toLocaleString()} ${currencyName}**` +
                 (description ? `\n📝 사유: ${description}` : '')
               )
@@ -199,16 +199,12 @@ export const grantCommand: Command = {
             flags: MessageFlags.IsComponentsV2,
           });
         }
-
-        await interaction.editReply({
-          content: `✅ **${targetUser.displayName}**님에게 **${amount.toLocaleString()} ${currencyName}**를 지급했습니다.`,
-        });
-      } else {
-        await interaction.editReply({
-          components: [successContainer.toJSON()],
-          flags: MessageFlags.IsComponentsV2,
-        });
       }
+
+      // 명령어 실행 채널에는 ephemeral로 응답
+      await interaction.editReply({
+        content: `✅ **${targetUser.displayName}**님에게 **${amount.toLocaleString()} ${currencyName}**를 지급했습니다.`,
+      });
 
       // 받는 사람에게 DM 알림 (실패해도 무시)
       const guildName = interaction.guild?.name ?? '서버';
