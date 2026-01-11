@@ -270,9 +270,9 @@ export default function TransactionsPage() {
           <div className="hidden md:grid grid-cols-12 gap-4 p-4 border-b border-white/10 bg-white/5">
             <div className="col-span-2 text-white/50 text-sm font-medium">유형</div>
             <div className="col-span-2 text-white/50 text-sm font-medium">유저</div>
-            <div className="col-span-3 text-white/50 text-sm font-medium">사유</div>
+            <div className="col-span-2 text-white/50 text-sm font-medium">사유</div>
             <div className="col-span-2 text-white/50 text-sm font-medium text-right">금액</div>
-            <div className="col-span-1 text-white/50 text-sm font-medium text-right">잔액</div>
+            <div className="col-span-2 text-white/50 text-sm font-medium text-right">잔액</div>
             <div className="col-span-2 text-white/50 text-sm font-medium text-right">일시</div>
           </div>
 
@@ -316,15 +316,15 @@ export default function TransactionsPage() {
                 </div>
 
                 {/* Description */}
-                <div className="col-span-3 flex items-center">
+                <div className="col-span-2 flex items-center">
                   <p className="text-white/70 text-sm truncate">
                     {tx.description || "-"}
                   </p>
                 </div>
 
                 {/* Amount */}
-                <div className="col-span-2 flex items-center justify-end">
-                  <p className={`font-bold text-sm ${
+                <div className="col-span-2 flex flex-col items-end justify-center">
+                  <p className={`font-bold text-sm whitespace-nowrap ${
                     tx.transactionType === "transfer_out" ||
                     tx.transactionType === "shop_purchase" ||
                     tx.transactionType === "market_buy" ||
@@ -338,11 +338,16 @@ export default function TransactionsPage() {
                   }`}>
                     {formatAmount(tx.amount, tx.transactionType)}
                   </p>
+                  {tx.transactionType === "transfer_out" && BigInt(tx.fee) > 0 && (
+                    <p className="text-xs text-yellow-400/70 whitespace-nowrap">
+                      (수수료: {BigInt(tx.fee).toLocaleString()})
+                    </p>
+                  )}
                 </div>
 
                 {/* Balance */}
-                <div className="col-span-1 flex items-center justify-end">
-                  <p className="text-white/50 text-sm">
+                <div className="col-span-2 flex items-center justify-end">
+                  <p className="text-white/50 text-sm whitespace-nowrap">
                     {formatBalance(tx.balanceAfter)}
                   </p>
                 </div>
