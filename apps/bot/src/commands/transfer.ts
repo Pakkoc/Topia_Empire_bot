@@ -129,7 +129,7 @@ export const transferCommand: Command = {
             .addComponents(
               new ButtonBuilder()
                 .setCustomId('use_reduction')
-                .setLabel('감면권 사용 (수수료 면제)')
+                .setLabel(`감면권 사용 (${expectedFee.toLocaleString()} ${currencyName} 감면)`)
                 .setStyle(ButtonStyle.Primary),
               new ButtonBuilder()
                 .setCustomId('skip_reduction')
