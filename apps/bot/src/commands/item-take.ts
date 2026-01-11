@@ -159,7 +159,7 @@ export const itemTakeCommand: Command = {
       return;
     }
 
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true });
 
     try {
       const result = await container.shopService.takeItem(
@@ -248,7 +248,7 @@ export const itemTakeCommand: Command = {
             )
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                `**${interaction.user.displayName}**(관리자) ← **${targetUser.displayName}**\n` +
+                `<@${interaction.user.id}>(관리자) ← <@${targetUser.id}>\n` +
                 `아이템: **${item.name}** ${quantity}개` +
                 (reason ? `\n📝 사유: ${reason}` : '')
               )
@@ -259,16 +259,12 @@ export const itemTakeCommand: Command = {
             flags: MessageFlags.IsComponentsV2,
           });
         }
-
-        await interaction.editReply({
-          content: `✅ **${targetUser.displayName}**님에게서 **${item.name}** ${quantity}개를 회수했습니다.`,
-        });
-      } else {
-        await interaction.editReply({
-          components: [successContainer.toJSON()],
-          flags: MessageFlags.IsComponentsV2,
-        });
       }
+
+      // 명령어 실행 채널에는 ephemeral로 응답
+      await interaction.editReply({
+        content: `✅ **${targetUser.displayName}**님에게서 **${item.name}** ${quantity}개를 회수했습니다.`,
+      });
 
       // 회수 대상에게 DM 알림
       const guildName = interaction.guild?.name ?? '서버';
