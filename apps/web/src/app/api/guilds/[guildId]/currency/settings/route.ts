@@ -36,6 +36,8 @@ interface CurrencySettingsRow extends RowDataPacket {
   monthly_tax_enabled: number;
   monthly_tax_percent: string;
   currency_log_channel_id: string | null;
+  item_manager_role_id: string | null;
+  item_log_channel_id: string | null;
 }
 
 function rowToSettings(row: CurrencySettingsRow) {
@@ -69,6 +71,8 @@ function rowToSettings(row: CurrencySettingsRow) {
     monthlyTaxEnabled: row.monthly_tax_enabled === 1,
     monthlyTaxPercent: parseFloat(row.monthly_tax_percent) || 3.3,
     currencyLogChannelId: row.currency_log_channel_id ?? null,
+    itemManagerRoleId: row.item_manager_role_id ?? null,
+    itemLogChannelId: row.item_log_channel_id ?? null,
   };
 }
 
@@ -150,6 +154,8 @@ export async function PATCH(
       monthlyTaxEnabled: "monthly_tax_enabled",
       monthlyTaxPercent: "monthly_tax_percent",
       currencyLogChannelId: "currency_log_channel_id",
+      itemManagerRoleId: "item_manager_role_id",
+      itemLogChannelId: "item_log_channel_id",
     };
 
     const updates: string[] = [];

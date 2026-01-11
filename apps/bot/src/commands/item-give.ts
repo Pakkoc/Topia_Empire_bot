@@ -1,19 +1,18 @@
 import {
   SlashCommandBuilder,
-  PermissionFlagsBits,
   ContainerBuilder,
   TextDisplayBuilder,
   SeparatorBuilder,
   SeparatorSpacingSize,
   MessageFlags,
+  PermissionFlagsBits,
 } from 'discord.js';
 import type { Command } from './types';
 
 export const itemGiveCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('아이템지급')
-    .setDescription('유저에게 아이템을 지급합니다 (관리자 전용)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDescription('유저에게 아이템을 지급합니다 (아이템 관리자 전용)')
     .addUserOption(option =>
       option
         .setName('유저')
@@ -88,6 +87,32 @@ export const itemGiveCommand: Command = {
     if (!guildId) {
       await interaction.reply({
         content: '서버에서만 사용할 수 있습니다.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    // 권한 체크: 설정된 역할 또는 관리자
+    const settingsResult = await container.currencyService.getSettings(guildId);
+    const settings = settingsResult.success ? settingsResult.data : null;
+    const itemManagerRoleId = settings?.itemManagerRoleId;
+    const itemLogChannelId = settings?.itemLogChannelId;
+
+    const member = interaction.member;
+    const hasManagerRole = itemManagerRoleId && member && 'roles' in member &&
+      (Array.isArray(member.roles)
+        ? member.roles.includes(itemManagerRoleId)
+        : member.roles.cache.has(itemManagerRoleId));
+    const isAdmin = member && 'permissions' in member &&
+      member.permissions instanceof Object &&
+      'has' in member.permissions &&
+      member.permissions.has(PermissionFlagsBits.Administrator);
+
+    if (!hasManagerRole && !isAdmin) {
+      await interaction.reply({
+        content: itemManagerRoleId
+          ? '이 명령어는 아이템 관리자 역할을 가진 유저만 사용할 수 있습니다.'
+          : '이 명령어는 관리자만 사용할 수 있습니다.',
         ephemeral: true,
       });
       return;
@@ -177,10 +202,41 @@ export const itemGiveCommand: Command = {
           new TextDisplayBuilder().setContent(infoText)
         );
 
-      await interaction.editReply({
-        components: [successContainer.toJSON()],
-        flags: MessageFlags.IsComponentsV2,
-      });
+      // 로그 채널이 설정되어 있으면 해당 채널로 전송
+      if (itemLogChannelId) {
+        const logChannel = await interaction.guild?.channels.fetch(itemLogChannelId).catch(() => null);
+        if (logChannel?.isTextBased()) {
+          const logContainer = new ContainerBuilder()
+            .setAccentColor(0x00FF00)
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent('# 🎁 아이템 지급 내역')
+            )
+            .addSeparatorComponents(
+              new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+            )
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                `**${interaction.user.displayName}**(관리자) → **${targetUser.displayName}**\n` +
+                `아이템: **${item.name}** ${quantity}개` +
+                (reason ? `\n📝 사유: ${reason}` : '')
+              )
+            );
+
+          await logChannel.send({
+            components: [logContainer.toJSON()],
+            flags: MessageFlags.IsComponentsV2,
+          });
+        }
+
+        await interaction.editReply({
+          content: `✅ **${targetUser.displayName}**님에게 **${item.name}** ${quantity}개를 지급했습니다.`,
+        });
+      } else {
+        await interaction.editReply({
+          components: [successContainer.toJSON()],
+          flags: MessageFlags.IsComponentsV2,
+        });
+      }
 
       // 받는 사람에게 DM 알림
       const guildName = interaction.guild?.name ?? '서버';

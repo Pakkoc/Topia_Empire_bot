@@ -52,6 +52,10 @@ export interface CurrencySettings {
   // 화폐 거래 알림 채널
   currencyLogChannelId: string | null;
 
+  // 아이템 관리자 역할 및 로그 채널
+  itemManagerRoleId: string | null;
+  itemLogChannelId: string | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -97,6 +101,9 @@ export function createDefaultCurrencySettings(guildId: string): CurrencySettings
     shopMessageId: null,
 
     currencyLogChannelId: null,
+
+    itemManagerRoleId: null,
+    itemLogChannelId: null,
 
     createdAt: now,
     updatedAt: now,

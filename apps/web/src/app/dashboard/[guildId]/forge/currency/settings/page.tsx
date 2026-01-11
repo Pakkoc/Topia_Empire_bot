@@ -42,6 +42,7 @@ import {
   useRemoveCurrencyManager,
   useUpdateCurrencySettings,
   useTextChannels,
+  useRoles,
 } from "@/hooks/queries";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -105,6 +106,13 @@ export default function CurrencySettingsPage() {
   const [currencyLogChannelId, setCurrencyLogChannelId] = useState<string | null>(null);
   const [logChannelOpen, setLogChannelOpen] = useState(false);
 
+  // 역할 목록 및 아이템 관리자 설정
+  const { data: roles = [] } = useRoles(guildId);
+  const [itemManagerRoleId, setItemManagerRoleId] = useState<string | null>(null);
+  const [itemLogChannelId, setItemLogChannelId] = useState<string | null>(null);
+  const [itemRoleOpen, setItemRoleOpen] = useState(false);
+  const [itemChannelOpen, setItemChannelOpen] = useState(false);
+
   const form = useForm<CurrencySettingsFormValues>({
     resolver: zodResolver(currencySettingsFormSchema),
     defaultValues: {
@@ -166,6 +174,8 @@ export default function CurrencySettingsPage() {
         monthlyTaxPercent: settings.monthlyTaxPercent ?? 3.3,
       });
       setCurrencyLogChannelId(settings.currencyLogChannelId ?? null);
+      setItemManagerRoleId(settings.itemManagerRoleId ?? null);
+      setItemLogChannelId(settings.itemLogChannelId ?? null);
     }
   }, [settings, form]);
 
@@ -194,6 +204,42 @@ export default function CurrencySettingsPage() {
       toast({
         title: "설정 저장 완료",
         description: "거래 알림 채널이 설정되었습니다.",
+      });
+    } catch {
+      toast({
+        title: "저장 실패",
+        description: "채널 설정을 저장하는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleItemManagerRoleChange = async (roleId: string) => {
+    const newValue = roleId === "none" ? null : roleId;
+    setItemManagerRoleId(newValue);
+    try {
+      await updateSettings.mutateAsync({ itemManagerRoleId: newValue });
+      toast({
+        title: "설정 저장 완료",
+        description: "아이템 관리자 역할이 설정되었습니다.",
+      });
+    } catch {
+      toast({
+        title: "저장 실패",
+        description: "역할 설정을 저장하는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleItemLogChannelChange = async (channelId: string) => {
+    const newValue = channelId === "none" ? null : channelId;
+    setItemLogChannelId(newValue);
+    try {
+      await updateSettings.mutateAsync({ itemLogChannelId: newValue });
+      toast({
+        title: "설정 저장 완료",
+        description: "아이템 로그 채널이 설정되었습니다.",
       });
     } catch {
       toast({
@@ -1353,6 +1399,210 @@ export default function CurrencySettingsPage() {
                       매월 마지막 날 23시에 모든 유저의 {settings?.topyName ?? "토피"} 잔액에서 세금이
                       자동으로 차감됩니다. 세금 이력은 거래 기록에서 확인할 수
                       있습니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 아이템 관리자 설정 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
+            <div className="p-6 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-500 flex items-center justify-center">
+                  <Icon
+                    icon="solar:box-linear"
+                    className="h-5 w-5 text-white"
+                  />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">아이템 관리자</h3>
+                  <p className="text-white/50 text-sm">
+                    아이템 지급/회수 명령어 권한 및 로그 설정
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* 아이템 관리자 역할 */}
+              <div className="space-y-2">
+                <label className="text-white/70 text-sm font-medium">
+                  아이템 관리자 역할
+                </label>
+                <Popover open={itemRoleOpen} onOpenChange={setItemRoleOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={itemRoleOpen}
+                      className="w-full justify-between bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
+                    >
+                      {itemManagerRoleId
+                        ? `@${roles.find((r) => r.id === itemManagerRoleId)?.name ?? "알 수 없는 역할"}`
+                        : "역할 선택 (미설정 시 관리자만 사용 가능)"}
+                      <Icon
+                        icon="solar:alt-arrow-down-linear"
+                        className="ml-2 h-4 w-4 shrink-0 opacity-50"
+                      />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0 bg-slate-900 border-white/10">
+                    <Command className="bg-transparent">
+                      <CommandInput
+                        placeholder="역할 검색..."
+                        className="h-9 text-white placeholder:text-white/40"
+                      />
+                      <CommandList>
+                        <CommandEmpty className="text-white/50 text-sm py-6 text-center">
+                          검색 결과가 없습니다
+                        </CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="none"
+                            onSelect={() => {
+                              handleItemManagerRoleChange("none");
+                              setItemRoleOpen(false);
+                            }}
+                            className="text-white aria-selected:bg-white/10"
+                          >
+                            <Icon
+                              icon="solar:close-circle-linear"
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                !itemManagerRoleId ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            설정 안함 (관리자만 사용 가능)
+                          </CommandItem>
+                          {roles.map((role) => (
+                            <CommandItem
+                              key={role.id}
+                              value={role.name}
+                              onSelect={() => {
+                                handleItemManagerRoleChange(role.id);
+                                setItemRoleOpen(false);
+                              }}
+                              className="text-white aria-selected:bg-white/10"
+                            >
+                              <Icon
+                                icon="solar:check-circle-linear"
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  itemManagerRoleId === role.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <span
+                                className="w-3 h-3 rounded-full mr-2"
+                                style={{ backgroundColor: role.color ? `#${role.color.toString(16).padStart(6, '0')}` : '#99AAB5' }}
+                              />
+                              @{role.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-white/40">
+                  선택한 역할을 가진 유저가 /아이템지급, /아이템회수 명령어를 사용할 수 있습니다
+                </p>
+              </div>
+
+              {/* 아이템 로그 채널 */}
+              <div className="space-y-2">
+                <label className="text-white/70 text-sm font-medium">
+                  아이템 로그 채널
+                </label>
+                <Popover open={itemChannelOpen} onOpenChange={setItemChannelOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={itemChannelOpen}
+                      className="w-full justify-between bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
+                    >
+                      {itemLogChannelId
+                        ? `#${channels.find((c) => c.id === itemLogChannelId)?.name ?? "알 수 없는 채널"}`
+                        : "채널 선택 (미설정 시 명령어 실행 채널)"}
+                      <Icon
+                        icon="solar:alt-arrow-down-linear"
+                        className="ml-2 h-4 w-4 shrink-0 opacity-50"
+                      />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0 bg-slate-900 border-white/10">
+                    <Command className="bg-transparent">
+                      <CommandInput
+                        placeholder="채널 검색..."
+                        className="h-9 text-white placeholder:text-white/40"
+                      />
+                      <CommandList>
+                        <CommandEmpty className="text-white/50 text-sm py-6 text-center">
+                          검색 결과가 없습니다
+                        </CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="none"
+                            onSelect={() => {
+                              handleItemLogChannelChange("none");
+                              setItemChannelOpen(false);
+                            }}
+                            className="text-white aria-selected:bg-white/10"
+                          >
+                            <Icon
+                              icon="solar:close-circle-linear"
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                !itemLogChannelId ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            설정 안함 (명령어 실행 채널)
+                          </CommandItem>
+                          {channels.map((channel) => (
+                            <CommandItem
+                              key={channel.id}
+                              value={channel.name}
+                              onSelect={() => {
+                                handleItemLogChannelChange(channel.id);
+                                setItemChannelOpen(false);
+                              }}
+                              className="text-white aria-selected:bg-white/10"
+                            >
+                              <Icon
+                                icon="solar:check-circle-linear"
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  itemLogChannelId === channel.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              #{channel.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-white/40">
+                  아이템 지급/회수 시 로그가 기록되는 채널입니다
+                </p>
+              </div>
+
+              {/* 안내 */}
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <Icon
+                    icon="solar:info-circle-linear"
+                    className="w-5 h-5 text-purple-400 mt-0.5"
+                  />
+                  <div>
+                    <p className="text-sm text-purple-300 font-medium">
+                      아이템 관리자 안내
+                    </p>
+                    <p className="text-xs text-purple-300/70 mt-1">
+                      설정된 역할을 가진 유저는 모든 채널에서 아이템 지급/회수 명령어를 사용할 수 있으며,
+                      결과는 설정된 로그 채널에 기록됩니다.
                     </p>
                   </div>
                 </div>

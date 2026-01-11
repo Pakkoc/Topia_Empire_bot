@@ -33,6 +33,9 @@ export const currencySettingsSchema = z.object({
   monthlyTaxPercent: z.number().min(0).max(100),
   // 화폐 거래 알림 채널
   currencyLogChannelId: z.string().nullable().optional(),
+  // 아이템 관리자 역할 및 로그 채널
+  itemManagerRoleId: z.string().nullable().optional(),
+  itemLogChannelId: z.string().nullable().optional(),
 });
 
 export type CurrencySettings = z.infer<typeof currencySettingsSchema>;
@@ -128,6 +131,8 @@ export const DEFAULT_CURRENCY_SETTINGS: Omit<CurrencySettings, "guildId"> = {
   monthlyTaxEnabled: false,
   monthlyTaxPercent: 3.3,
   currencyLogChannelId: null,
+  itemManagerRoleId: null,
+  itemLogChannelId: null,
 };
 
 export const CHANNEL_CATEGORY_LABELS: Record<string, string> = {

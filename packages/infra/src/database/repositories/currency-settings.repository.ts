@@ -41,6 +41,8 @@ interface CurrencySettingsRow extends RowDataPacket {
   shop_channel_id: string | null;
   shop_message_id: string | null;
   currency_log_channel_id: string | null;
+  item_manager_role_id: string | null;
+  item_log_channel_id: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -116,6 +118,8 @@ function toCurrencySettings(row: CurrencySettingsRow): CurrencySettings {
     shopChannelId: row.shop_channel_id ?? null,
     shopMessageId: row.shop_message_id ?? null,
     currencyLogChannelId: row.currency_log_channel_id ?? null,
+    itemManagerRoleId: row.item_manager_role_id ?? null,
+    itemLogChannelId: row.item_log_channel_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -157,8 +161,9 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           transfer_fee_topy_percent, transfer_fee_ruby_percent,
           shop_fee_topy_percent, shop_fee_ruby_percent,
           monthly_tax_enabled, monthly_tax_percent,
-          shop_channel_id, shop_message_id, currency_log_channel_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          shop_channel_id, shop_message_id, currency_log_channel_id,
+          item_manager_role_id, item_log_channel_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          enabled = VALUES(enabled),
          topy_name = VALUES(topy_name),
@@ -188,6 +193,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
          shop_channel_id = VALUES(shop_channel_id),
          shop_message_id = VALUES(shop_message_id),
          currency_log_channel_id = VALUES(currency_log_channel_id),
+         item_manager_role_id = VALUES(item_manager_role_id),
+         item_log_channel_id = VALUES(item_log_channel_id),
          updated_at = VALUES(updated_at)`,
         [
           settings.guildId,
@@ -219,6 +226,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           settings.shopChannelId,
           settings.shopMessageId,
           settings.currencyLogChannelId,
+          settings.itemManagerRoleId,
+          settings.itemLogChannelId,
           settings.createdAt,
           settings.updatedAt,
         ]
