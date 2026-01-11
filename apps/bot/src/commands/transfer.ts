@@ -106,9 +106,11 @@ export const transferCommand: Command = {
     try {
       // 화폐 설정 가져오기
       const settingsResult = await container.currencyService.getSettings(guildId);
-      const topyName = settingsResult.success && settingsResult.data?.topyName || '토피';
-      const rubyName = settingsResult.success && settingsResult.data?.rubyName || '루비';
+      const settings = settingsResult.success ? settingsResult.data : null;
+      const topyName = settings?.topyName || '토피';
+      const rubyName = settings?.rubyName || '루비';
       const currencyName = currencyType === 'topy' ? topyName : rubyName;
+      const logChannelId = settings?.currencyLogChannelId;
 
       // 수수료 미리 계산
       const feeResult = await container.currencyService.calculateTransferFee(guildId, BigInt(amount), currencyType);
@@ -281,10 +283,46 @@ export const transferCommand: Command = {
           new TextDisplayBuilder().setContent(`💰 **남은 잔액**: ${fromBalance.toLocaleString()} ${currencyName}`)
         );
 
-      await interaction.editReply({
-        components: [successContainer.toJSON()],
-        flags: MessageFlags.IsComponentsV2,
-      });
+      // 알림 채널이 설정되어 있으면 해당 채널로 전송
+      if (logChannelId) {
+        const logChannel = await interaction.guild?.channels.fetch(logChannelId).catch(() => null);
+        if (logChannel?.isTextBased()) {
+          // 로그 채널용 메시지 (보내는 사람 정보 포함)
+          const logContainer = new ContainerBuilder()
+            .setAccentColor(0x00FF00)
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent('# 💸 이체 내역')
+            )
+            .addSeparatorComponents(
+              new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+            )
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                `**${interaction.user.displayName}** → **${receiver.displayName}**\n` +
+                `금액: **${transferAmount.toLocaleString()} ${currencyName}**` +
+                (hasFee && !usedReductionItem ? `\n수수료: **${fee.toLocaleString()} ${currencyName}**` : '') +
+                (usedReductionItem ? '\n🎫 감면권 사용' : '') +
+                (reason ? `\n📝 사유: ${reason}` : '')
+              )
+            );
+
+          await logChannel.send({
+            components: [logContainer.toJSON()],
+            flags: MessageFlags.IsComponentsV2,
+          });
+        }
+
+        // 명령어 실행 채널에는 간단한 응답
+        await interaction.editReply({
+          content: `✅ **${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다. (남은 잔액: ${fromBalance.toLocaleString()})`,
+        });
+      } else {
+        // 기존 방식: 현재 채널에 응답
+        await interaction.editReply({
+          components: [successContainer.toJSON()],
+          flags: MessageFlags.IsComponentsV2,
+        });
+      }
 
       // DM 알림 발송 (실패해도 무시)
       const guildName = interaction.guild?.name ?? '서버';

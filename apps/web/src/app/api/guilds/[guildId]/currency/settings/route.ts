@@ -35,6 +35,7 @@ interface CurrencySettingsRow extends RowDataPacket {
   shop_message_id: string | null;
   monthly_tax_enabled: number;
   monthly_tax_percent: string;
+  currency_log_channel_id: string | null;
 }
 
 function rowToSettings(row: CurrencySettingsRow) {
@@ -67,6 +68,7 @@ function rowToSettings(row: CurrencySettingsRow) {
     shopMessageId: row.shop_message_id ?? null,
     monthlyTaxEnabled: row.monthly_tax_enabled === 1,
     monthlyTaxPercent: parseFloat(row.monthly_tax_percent) || 3.3,
+    currencyLogChannelId: row.currency_log_channel_id ?? null,
   };
 }
 
@@ -147,6 +149,7 @@ export async function PATCH(
       shopFeeRubyPercent: "shop_fee_ruby_percent",
       monthlyTaxEnabled: "monthly_tax_enabled",
       monthlyTaxPercent: "monthly_tax_percent",
+      currencyLogChannelId: "currency_log_channel_id",
     };
 
     const updates: string[] = [];

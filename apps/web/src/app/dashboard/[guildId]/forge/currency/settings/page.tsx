@@ -27,6 +27,7 @@ import {
   useMembers,
   useRemoveCurrencyManager,
   useUpdateCurrencySettings,
+  useTextChannels,
 } from "@/hooks/queries";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -84,6 +85,10 @@ export default function CurrencySettingsPage() {
   const members = membersData?.members ?? [];
   const [selectedTopyUserId, setSelectedTopyUserId] = useState<string>("");
   const [selectedRubyUserId, setSelectedRubyUserId] = useState<string>("");
+
+  // 채널 목록 및 거래 알림 채널
+  const { data: channels = [] } = useTextChannels(guildId);
+  const [currencyLogChannelId, setCurrencyLogChannelId] = useState<string | null>(null);
 
   const form = useForm<CurrencySettingsFormValues>({
     resolver: zodResolver(currencySettingsFormSchema),
@@ -145,6 +150,7 @@ export default function CurrencySettingsPage() {
         monthlyTaxEnabled: Boolean(settings.monthlyTaxEnabled),
         monthlyTaxPercent: settings.monthlyTaxPercent ?? 3.3,
       });
+      setCurrencyLogChannelId(settings.currencyLogChannelId ?? null);
     }
   }, [settings, form]);
 
@@ -160,6 +166,24 @@ export default function CurrencySettingsPage() {
       toast({
         title: "저장 실패",
         description: "설정을 저장하는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLogChannelChange = async (channelId: string) => {
+    const newValue = channelId === "none" ? null : channelId;
+    setCurrencyLogChannelId(newValue);
+    try {
+      await updateSettings.mutateAsync({ currencyLogChannelId: newValue });
+      toast({
+        title: "설정 저장 완료",
+        description: "거래 알림 채널이 설정되었습니다.",
+      });
+    } catch {
+      toast({
+        title: "저장 실패",
+        description: "채널 설정을 저장하는 중 오류가 발생했습니다.",
         variant: "destructive",
       });
     }
@@ -1108,6 +1132,71 @@ export default function CurrencySettingsPage() {
                         이체 수수료 설정에 주의하세요.
                       </p>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 화폐 거래 알림 채널 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
+            <div className="p-6 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                  <Icon
+                    icon="solar:bell-linear"
+                    className="h-5 w-5 text-white"
+                  />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">화폐 거래 알림</h3>
+                  <p className="text-white/50 text-sm">
+                    이체 및 지급 내역을 특정 채널에 기록합니다
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="space-y-2">
+                <label className="text-white/70 text-sm font-medium">
+                  알림 채널
+                </label>
+                <Select
+                  value={currencyLogChannelId ?? "none"}
+                  onValueChange={handleLogChannelChange}
+                >
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                    <SelectValue placeholder="채널 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">설정 안함 (명령어 실행 채널)</SelectItem>
+                    {channels.map((channel) => (
+                      <SelectItem key={channel.id} value={channel.id}>
+                        #{channel.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-white/40">
+                  미설정 시 이체/지급 명령어를 실행한 채널에 결과가 표시됩니다
+                </p>
+              </div>
+
+              {/* 안내 */}
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <Icon
+                    icon="solar:info-circle-linear"
+                    className="w-5 h-5 text-blue-400 mt-0.5"
+                  />
+                  <div>
+                    <p className="text-sm text-blue-300 font-medium">
+                      거래 알림 안내
+                    </p>
+                    <p className="text-xs text-blue-300/70 mt-1">
+                      이체(/송금) 및 관리자 지급/차감 명령어 실행 시
+                      설정된 채널에 결과 메시지가 전송됩니다.
+                    </p>
                   </div>
                 </div>
               </div>

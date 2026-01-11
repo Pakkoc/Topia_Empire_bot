@@ -100,9 +100,11 @@ export const deductCommand: Command = {
     try {
       // 화폐 설정 가져오기
       const settingsResult = await container.currencyService.getSettings(guildId);
-      const topyName = settingsResult.success && settingsResult.data?.topyName || '토피';
-      const rubyName = settingsResult.success && settingsResult.data?.rubyName || '루비';
+      const settings = settingsResult.success ? settingsResult.data : null;
+      const topyName = settings?.topyName || '토피';
+      const rubyName = settings?.rubyName || '루비';
       const currencyName = currencyType === 'topy' ? topyName : rubyName;
+      const logChannelId = settings?.currencyLogChannelId;
 
       const result = await container.currencyService.adminRemoveCurrency(
         guildId,
@@ -176,10 +178,41 @@ export const deductCommand: Command = {
           )
         );
 
-      await interaction.editReply({
-        components: [successContainer.toJSON()],
-        flags: MessageFlags.IsComponentsV2,
-      });
+      // 알림 채널이 설정되어 있으면 해당 채널로 전송
+      if (logChannelId) {
+        const logChannel = await interaction.guild?.channels.fetch(logChannelId).catch(() => null);
+        if (logChannel?.isTextBased()) {
+          const logContainer = new ContainerBuilder()
+            .setAccentColor(0xFF6B6B)
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent('# 💸 차감 내역')
+            )
+            .addSeparatorComponents(
+              new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+            )
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                `**${interaction.user.displayName}**(관리자) → **${targetUser.displayName}**\n` +
+                `금액: **-${amount.toLocaleString()} ${currencyName}**` +
+                (description ? `\n📝 사유: ${description}` : '')
+              )
+            );
+
+          await logChannel.send({
+            components: [logContainer.toJSON()],
+            flags: MessageFlags.IsComponentsV2,
+          });
+        }
+
+        await interaction.editReply({
+          content: `✅ **${targetUser.displayName}**님의 **${amount.toLocaleString()} ${currencyName}**를 차감했습니다.`,
+        });
+      } else {
+        await interaction.editReply({
+          components: [successContainer.toJSON()],
+          flags: MessageFlags.IsComponentsV2,
+        });
+      }
 
       // 차감 대상에게 DM 알림 (실패해도 무시)
       const guildName = interaction.guild?.name ?? '서버';

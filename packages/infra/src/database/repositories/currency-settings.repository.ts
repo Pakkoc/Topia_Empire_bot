@@ -40,6 +40,7 @@ interface CurrencySettingsRow extends RowDataPacket {
   monthly_tax_percent: string;
   shop_channel_id: string | null;
   shop_message_id: string | null;
+  currency_log_channel_id: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -114,6 +115,7 @@ function toCurrencySettings(row: CurrencySettingsRow): CurrencySettings {
     monthlyTaxPercent: parseFloat(row.monthly_tax_percent) || 3.3,
     shopChannelId: row.shop_channel_id ?? null,
     shopMessageId: row.shop_message_id ?? null,
+    currencyLogChannelId: row.currency_log_channel_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -155,8 +157,8 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           transfer_fee_topy_percent, transfer_fee_ruby_percent,
           shop_fee_topy_percent, shop_fee_ruby_percent,
           monthly_tax_enabled, monthly_tax_percent,
-          shop_channel_id, shop_message_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          shop_channel_id, shop_message_id, currency_log_channel_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          enabled = VALUES(enabled),
          topy_name = VALUES(topy_name),
@@ -185,6 +187,7 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
          monthly_tax_percent = VALUES(monthly_tax_percent),
          shop_channel_id = VALUES(shop_channel_id),
          shop_message_id = VALUES(shop_message_id),
+         currency_log_channel_id = VALUES(currency_log_channel_id),
          updated_at = VALUES(updated_at)`,
         [
           settings.guildId,
@@ -215,6 +218,7 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           settings.monthlyTaxPercent,
           settings.shopChannelId,
           settings.shopMessageId,
+          settings.currencyLogChannelId,
           settings.createdAt,
           settings.updatedAt,
         ]

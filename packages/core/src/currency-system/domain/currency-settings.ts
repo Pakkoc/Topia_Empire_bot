@@ -49,6 +49,9 @@ export interface CurrencySettings {
   shopChannelId: string | null;
   shopMessageId: string | null;
 
+  // 화폐 거래 알림 채널
+  currencyLogChannelId: string | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -92,6 +95,8 @@ export function createDefaultCurrencySettings(guildId: string): CurrencySettings
 
     shopChannelId: null,
     shopMessageId: null,
+
+    currencyLogChannelId: null,
 
     createdAt: now,
     updatedAt: now,
