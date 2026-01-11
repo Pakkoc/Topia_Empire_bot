@@ -79,6 +79,13 @@ export const vaultCommand: Command = {
       // 화폐 설정 가져오기
       const settingsResult = await container.currencyService.getSettings(guildId);
       const topyName = settingsResult.success && settingsResult.data?.topyName || '토피';
+      const rubyName = settingsResult.success && settingsResult.data?.rubyName || '루비';
+
+      // 현재 지갑 잔액 가져오기
+      const walletsResult = await container.currencyService.getWallets(guildId, userId);
+      const wallets = walletsResult.success ? walletsResult.data : { topy: null, ruby: null };
+      const topyBalance = wallets.topy?.balance ?? BigInt(0);
+      const rubyBalance = wallets.ruby?.balance ?? BigInt(0);
 
       if (subcommand === '확인') {
         const result = await container.vaultService.getVaultSummary(guildId, userId);
@@ -92,12 +99,40 @@ export const vaultCommand: Command = {
 
         const { vault, storageLimit, interestRate, tierName } = result.data;
 
+        // 구독이 없어도 일반 금고(잔액 확인)는 표시
         if (!vault && storageLimit === BigInt(0)) {
+          const basicVaultContainer = new ContainerBuilder();
+
+          basicVaultContainer.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('# 🏦 내 금고')
+          );
+          basicVaultContainer.addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+          );
+          basicVaultContainer.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('**일반 금고** (디토뱅크 미구독)')
+          );
+          basicVaultContainer.addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+          );
+
+          let balanceText = `💰 **${topyName}** (활동형 화폐): ${topyBalance.toLocaleString()}\n`;
+          balanceText += `💎 **${rubyName}** (수익형 화폐): ${rubyBalance.toLocaleString()}`;
+
+          basicVaultContainer.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(balanceText)
+          );
+          basicVaultContainer.addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+          );
+          basicVaultContainer.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              '-# 💡 디토 실버/골드 구독 시 예금 및 이자 혜택을 받을 수 있습니다'
+            )
+          );
+
           await interaction.editReply({
-            components: [createMessageContainer(
-              '🔒 금고 이용 불가',
-              '금고는 **디토 실버** 또는 **디토 골드** 구독자만 이용할 수 있습니다.\n\n상점에서 디토뱅크 구독권을 구매해보세요!'
-            )],
+            components: [basicVaultContainer.toJSON()],
             flags: IS_COMPONENTS_V2,
           });
           return;
@@ -122,13 +157,25 @@ export const vaultCommand: Command = {
           new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
         );
 
-        let infoText = `💰 **예치금**: ${depositedAmount.toLocaleString()} ${topyName}\n`;
-        infoText += `📊 **한도**: ${storageLimit.toLocaleString()} ${topyName}\n`;
-        infoText += `📈 **월 이자율**: ${interestRate}%\n`;
-        infoText += `🔓 **남은 한도**: ${remainingLimit.toLocaleString()} ${topyName}`;
+        // 현재 지갑 잔액
+        let balanceText = `💰 **${topyName}** (활동형 화폐): ${topyBalance.toLocaleString()}\n`;
+        balanceText += `💎 **${rubyName}** (수익형 화폐): ${rubyBalance.toLocaleString()}`;
 
         vaultContainer.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(infoText)
+          new TextDisplayBuilder().setContent(balanceText)
+        );
+        vaultContainer.addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        );
+
+        // 금고 예치 정보
+        let vaultText = `🏦 **금고 예치금**: ${depositedAmount.toLocaleString()} ${topyName}\n`;
+        vaultText += `📊 **한도**: ${storageLimit.toLocaleString()} ${topyName}\n`;
+        vaultText += `📈 **월 이자율**: ${interestRate}%\n`;
+        vaultText += `🔓 **남은 한도**: ${remainingLimit.toLocaleString()} ${topyName}`;
+
+        vaultContainer.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(vaultText)
         );
         vaultContainer.addSeparatorComponents(
           new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
@@ -231,7 +278,8 @@ export const vaultCommand: Command = {
     } catch (error) {
       console.error('금고 명령어 오류:', error);
       await interaction.editReply({
-        content: '금고 처리 중 오류가 발생했습니다.',
+        components: [createMessageContainer('❌ 오류 발생', '금고 처리 중 오류가 발생했습니다.')],
+        flags: IS_COMPONENTS_V2,
       });
     }
   },
