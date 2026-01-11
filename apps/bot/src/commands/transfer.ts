@@ -315,7 +315,8 @@ export const transferCommand: Command = {
 
       // 명령어 실행 채널에는 ephemeral로 응답
       await interaction.editReply({
-        content: `✅ **${receiver.displayName}**님에게 **${transferAmount.toLocaleString()} ${currencyName}**를 보냈습니다. (남은 잔액: ${fromBalance.toLocaleString()})`,
+        components: [successContainer.toJSON()],
+        flags: MessageFlags.IsComponentsV2,
       });
 
       // DM 알림 발송 (실패해도 무시)
@@ -381,8 +382,21 @@ export const transferCommand: Command = {
       }).catch(() => {});
     } catch (error) {
       console.error('이체 명령어 오류:', error);
+      const errorContainer = new ContainerBuilder()
+        .setAccentColor(0xFF0000)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('# ❌ 오류 발생')
+        )
+        .addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        )
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('이체 처리 중 오류가 발생했습니다.')
+        );
+
       await interaction.editReply({
-        content: '이체 처리 중 오류가 발생했습니다.',
+        components: [errorContainer.toJSON()],
+        flags: MessageFlags.IsComponentsV2,
       });
     }
   },

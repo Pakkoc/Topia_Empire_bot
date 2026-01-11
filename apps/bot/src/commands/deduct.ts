@@ -207,7 +207,8 @@ export const deductCommand: Command = {
 
       // 명령어 실행 채널에는 ephemeral로 응답
       await interaction.editReply({
-        content: `✅ **${targetUser.displayName}**님의 **${amount.toLocaleString()} ${currencyName}**를 차감했습니다.`,
+        components: [successContainer.toJSON()],
+        flags: MessageFlags.IsComponentsV2,
       });
 
       // 차감 대상에게 DM 알림 (실패해도 무시)
@@ -242,8 +243,21 @@ export const deductCommand: Command = {
       }).catch(() => {});
     } catch (error) {
       console.error('차감 명령어 오류:', error);
+      const errorContainer = new ContainerBuilder()
+        .setAccentColor(0xFF0000)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('# ❌ 오류 발생')
+        )
+        .addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        )
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('차감 처리 중 오류가 발생했습니다.')
+        );
+
       await interaction.editReply({
-        content: '차감 처리 중 오류가 발생했습니다.',
+        components: [errorContainer.toJSON()],
+        flags: MessageFlags.IsComponentsV2,
       });
     }
   },

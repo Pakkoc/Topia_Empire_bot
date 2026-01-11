@@ -203,7 +203,8 @@ export const grantCommand: Command = {
 
       // 명령어 실행 채널에는 ephemeral로 응답
       await interaction.editReply({
-        content: `✅ **${targetUser.displayName}**님에게 **${amount.toLocaleString()} ${currencyName}**를 지급했습니다.`,
+        components: [successContainer.toJSON()],
+        flags: MessageFlags.IsComponentsV2,
       });
 
       // 받는 사람에게 DM 알림 (실패해도 무시)
@@ -238,8 +239,21 @@ export const grantCommand: Command = {
       }).catch(() => {});
     } catch (error) {
       console.error('지급 명령어 오류:', error);
+      const errorContainer = new ContainerBuilder()
+        .setAccentColor(0xFF0000)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('# ❌ 오류 발생')
+        )
+        .addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        )
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('지급 처리 중 오류가 발생했습니다.')
+        );
+
       await interaction.editReply({
-        content: '지급 처리 중 오류가 발생했습니다.',
+        components: [errorContainer.toJSON()],
+        flags: MessageFlags.IsComponentsV2,
       });
     }
   },
