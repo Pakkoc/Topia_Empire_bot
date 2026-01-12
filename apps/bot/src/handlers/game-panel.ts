@@ -979,29 +979,55 @@ export async function handleGameTeamAssign(
     .setPlaceholder('팀을 선택하세요')
     .addOptions(selectOptions);
 
-  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(teamSelect);
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(teamSelect);
 
-  // 팀 배정 현황 텍스트 생성 (멤버 목록 포함)
-  let statusText = '**📊 현재 팀 배정 현황**\n\n';
+  // Components V2 Container 생성
+  const uiContainer = new ContainerBuilder();
+
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# 🎲 팀 배정')
+  );
+  uiContainer.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('배정할 팀을 선택하세요')
+  );
+  uiContainer.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  // 팀 배정 현황 텍스트 생성
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('**📊 현재 팀 배정 현황**')
+  );
+
   for (let i = 1; i <= game.teamCount; i++) {
     const members = teamMembers[i] || [];
     const maxDisplay = game.maxPlayersPerTeam ? `/${game.maxPlayersPerTeam}` : '';
-    statusText += `${getTeamEmoji(i)} **${i}팀** (${members.length}${maxDisplay}명)\n`;
+    let teamText = `${getTeamEmoji(i)} **${i}팀** (${members.length}${maxDisplay}명)`;
     if (members.length > 0) {
       const memberNames = members.map(id => userNames[id] || `유저(${id.slice(-4)})`);
-      statusText += `-# ${memberNames.join(', ')}\n`;
+      teamText += `\n-# ${memberNames.join(', ')}`;
     }
-  }
-  statusText += `\n⏳ **미배정**: ${unassignedMembers.length}명`;
-  if (unassignedMembers.length > 0) {
-    const unassignedNames = unassignedMembers.map(id => userNames[id] || `유저(${id.slice(-4)})`);
-    statusText += `\n-# ${unassignedNames.join(', ')}`
+    uiContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(teamText)
+    );
   }
 
+  // 미배정 멤버
+  let unassignedText = `\n⏳ **미배정**: ${unassignedMembers.length}명`;
+  if (unassignedMembers.length > 0) {
+    const unassignedNames = unassignedMembers.map(id => userNames[id] || `유저(${id.slice(-4)})`);
+    unassignedText += `\n-# ${unassignedNames.join(', ')}`;
+  }
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(unassignedText)
+  );
+
   await interaction.reply({
-    content: `🎲 배정할 팀을 선택하세요:\n\n${statusText}`,
-    components: [row],
-    ephemeral: true,
+    components: [uiContainer.toJSON(), selectRow.toJSON()],
+    flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
   });
   scheduleEphemeralDelete(interaction);
 }
@@ -1095,29 +1121,56 @@ export async function handleGameTeamSelect(
     .setMaxValues(Math.min(unassignedParticipants.length, 25))
     .addOptions(participantOptions);
 
-  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(userSelect);
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(userSelect);
 
-  // 팀 배정 현황 텍스트 생성 (멤버 목록 포함)
-  let statusText = '**📊 현재 팀 배정 현황**\n\n';
+  // Components V2 Container 생성
+  const uiContainer = new ContainerBuilder();
+
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`# ${getTeamEmoji(teamNumber)} ${teamNumber}팀 팀원 선택`)
+  );
+  uiContainer.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('팀에 배정할 멤버를 선택하세요')
+  );
+  uiContainer.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  // 팀 배정 현황 텍스트 생성
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('**📊 현재 팀 배정 현황**')
+  );
+
   for (let i = 1; i <= game.teamCount; i++) {
     const members = teamMembers[i] || [];
     const maxDisplay = game.maxPlayersPerTeam ? `/${game.maxPlayersPerTeam}` : '';
     const isSelected = i === teamNumber ? ' ◀' : '';
-    statusText += `${getTeamEmoji(i)} **${i}팀** (${members.length}${maxDisplay}명)${isSelected}\n`;
+    let teamText = `${getTeamEmoji(i)} **${i}팀** (${members.length}${maxDisplay}명)${isSelected}`;
     if (members.length > 0) {
       const memberNames = members.map(id => userNames[id] || `유저(${id.slice(-4)})`);
-      statusText += `-# ${memberNames.join(', ')}\n`;
+      teamText += `\n-# ${memberNames.join(', ')}`;
     }
-  }
-  statusText += `\n⏳ **미배정**: ${unassignedParticipants.length}명`;
-  if (unassignedParticipants.length > 0) {
-    const unassignedNames = unassignedParticipants.map(p => userNames[p.userId] || `유저(${p.userId.slice(-4)})`);
-    statusText += `\n-# ${unassignedNames.join(', ')}`;
+    uiContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(teamText)
+    );
   }
 
+  // 미배정 멤버
+  let unassignedText = `\n⏳ **미배정**: ${unassignedParticipants.length}명`;
+  if (unassignedParticipants.length > 0) {
+    const unassignedNames = unassignedParticipants.map(p => userNames[p.userId] || `유저(${p.userId.slice(-4)})`);
+    unassignedText += `\n-# ${unassignedNames.join(', ')}`;
+  }
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(unassignedText)
+  );
+
   await interaction.update({
-    content: `${getTeamEmoji(teamNumber)} **${teamNumber}팀** 팀원을 선택하세요:\n\n${statusText}`,
-    components: [row],
+    components: [uiContainer.toJSON(), selectRow.toJSON()],
+    flags: MessageFlags.IsComponentsV2,
   });
 }
 
@@ -1130,7 +1183,11 @@ export async function handleGameTeamUsers(
 ) {
   const guildId = interaction.guildId;
   if (!guildId) {
-    await interaction.update({ content: '서버에서만 사용할 수 있습니다.', components: [] });
+    const errorContainer = new ContainerBuilder();
+    errorContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('❌ 서버에서만 사용할 수 있습니다.')
+    );
+    await interaction.update({ components: [errorContainer.toJSON()], flags: MessageFlags.IsComponentsV2 });
     return;
   }
 
@@ -1153,7 +1210,17 @@ export async function handleGameTeamUsers(
       errorMessage = `${assignResult.error.teamNumber}팀 정원을 초과합니다. (현재 ${assignResult.error.currentPlayers}/${assignResult.error.maxPlayers}명)`;
     }
 
-    await interaction.update({ content: `❌ ${errorMessage}`, components: [] });
+    const errorContainer = new ContainerBuilder();
+    errorContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('# ❌ 팀 배정 실패')
+    );
+    errorContainer.addSeparatorComponents(
+      new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+    );
+    errorContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(errorMessage)
+    );
+    await interaction.update({ components: [errorContainer.toJSON()], flags: MessageFlags.IsComponentsV2 });
     return;
   }
 
@@ -1187,9 +1254,20 @@ export async function handleGameTeamUsers(
     }
   }
 
+  const successContainer = new ContainerBuilder();
+  successContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# ✅ 팀 배정 완료')
+  );
+  successContainer.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  successContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`${getTeamEmoji(teamNumber)} **${teamNumber}팀**에 ${selectedUserIds.length}명을 배정했습니다.`)
+  );
+
   await interaction.update({
-    content: `✅ ${getTeamEmoji(teamNumber)} **${teamNumber}팀**에 ${selectedUserIds.length}명을 배정했습니다.`,
-    components: [],
+    components: [successContainer.toJSON()],
+    flags: MessageFlags.IsComponentsV2,
   });
 }
 
