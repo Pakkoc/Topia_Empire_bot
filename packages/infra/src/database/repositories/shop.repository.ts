@@ -21,6 +21,7 @@ interface ShopItemRow extends RowDataPacket {
   ruby_price: string | null;
   currency_type: 'topy' | 'ruby' | 'both';
   item_type: ShopItemType | null;
+  effect_percent: number | null;
   duration_days: number;
   stock: number | null;
   max_per_user: number | null;
@@ -55,6 +56,7 @@ function toShopItem(row: ShopItemRow): ShopItem {
     rubyPrice: row.ruby_price != null ? BigInt(row.ruby_price) : null,
     currencyType: row.currency_type,
     itemType: row.item_type ?? 'custom',
+    effectPercent: row.effect_percent,
     durationDays: row.duration_days,
     stock: row.stock,
     maxPerUser: row.max_per_user,
@@ -209,8 +211,8 @@ export class ShopRepository implements ShopRepositoryPort {
     try {
       const [result] = await this.pool.execute<ResultSetHeader>(
         `INSERT INTO shop_items_v2
-         (guild_id, name, description, topy_price, ruby_price, currency_type, item_type, duration_days, stock, max_per_user, enabled)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (guild_id, name, description, topy_price, ruby_price, currency_type, item_type, effect_percent, duration_days, stock, max_per_user, enabled)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           input.guildId,
           input.name,
@@ -219,6 +221,7 @@ export class ShopRepository implements ShopRepositoryPort {
           input.rubyPrice?.toString() ?? null,
           input.currencyType,
           input.itemType ?? 'custom',
+          input.effectPercent ?? null,
           input.durationDays ?? 0,
           input.stock ?? null,
           input.maxPerUser ?? null,
@@ -271,6 +274,10 @@ export class ShopRepository implements ShopRepositoryPort {
       if (input.itemType !== undefined) {
         fields.push('item_type = ?');
         values.push(input.itemType);
+      }
+      if (input.effectPercent !== undefined) {
+        fields.push('effect_percent = ?');
+        values.push(input.effectPercent);
       }
       if (input.durationDays !== undefined) {
         fields.push('duration_days = ?');
@@ -401,6 +408,38 @@ export class ShopRepository implements ShopRepositoryPort {
       }
 
       return Result.ok(toUserItemV2(firstRow));
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async findUserItemWithEffectByType(
+    guildId: string,
+    userId: string,
+    itemType: ShopItemType
+  ): Promise<Result<{ userItem: UserItemV2; effectPercent: number | null } | null, RepositoryError>> {
+    try {
+      // shop_items_v2와 조인하여 item_type과 effect_percent 함께 조회
+      const [rows] = await this.pool.execute<(UserItemV2Row & { effect_percent: number | null })[]>(
+        `SELECT ui.*, si.effect_percent FROM user_items_v2 ui
+         INNER JOIN shop_items_v2 si ON ui.shop_item_id = si.id
+         WHERE ui.guild_id = ? AND ui.user_id = ? AND si.item_type = ?
+         LIMIT 1`,
+        [guildId, userId, itemType]
+      );
+
+      const firstRow = rows[0];
+      if (!firstRow) {
+        return Result.ok(null);
+      }
+
+      return Result.ok({
+        userItem: toUserItemV2(firstRow),
+        effectPercent: firstRow.effect_percent,
+      });
     } catch (error) {
       return Result.err({
         type: 'QUERY_ERROR',

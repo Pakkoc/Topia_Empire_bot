@@ -117,25 +117,43 @@ export const transferCommand: Command = {
       const expectedFee = feeResult.success ? feeResult.data.fee : BigInt(0);
 
       // 이체수수료감면권 확인 (토피만 수수료 있음)
-      let skipFee = false;
       let usedReductionItem = false;
+      let reductionPercent = 0; // 감면 비율 (0 = 감면 안함, 100 = 완전 면제)
 
       if (expectedFee > BigInt(0)) {
         const reductionResult = await container.shopV2Service.checkTransferFeeReduction(guildId, senderId);
 
         if (reductionResult.success && reductionResult.data.hasReduction) {
+          const itemReductionPercent = reductionResult.data.reductionPercent;
+          const isFullExempt = itemReductionPercent >= 100;
+
+          // 감면 후 예상 수수료 계산
+          const reducedFee = isFullExempt
+            ? BigInt(0)
+            : (expectedFee * BigInt(100 - itemReductionPercent)) / BigInt(100);
+          const savedFee = expectedFee - reducedFee;
+
+          // 버튼 라벨 설정
+          const useButtonLabel = isFullExempt
+            ? `감면권 사용 (${expectedFee.toLocaleString()} ${currencyName} 면제)`
+            : `감면권 사용 (${savedFee.toLocaleString()} ${currencyName} 감면, 수수료 ${reducedFee.toLocaleString()})`;
+
           // 버튼 UI 표시
           const row = new ActionRowBuilder<ButtonBuilder>()
             .addComponents(
               new ButtonBuilder()
                 .setCustomId('use_reduction')
-                .setLabel(`감면권 사용 (${expectedFee.toLocaleString()} ${currencyName} 감면)`)
+                .setLabel(useButtonLabel)
                 .setStyle(ButtonStyle.Primary),
               new ButtonBuilder()
                 .setCustomId('skip_reduction')
                 .setLabel(`그냥 이체 (수수료 ${expectedFee.toLocaleString()} ${currencyName})`)
                 .setStyle(ButtonStyle.Secondary),
             );
+
+          const reductionText = isFullExempt
+            ? '100% 면제'
+            : `${itemReductionPercent}% 감면 (${savedFee.toLocaleString()} ${currencyName} 절약)`;
 
           const confirmContainer = new ContainerBuilder()
             .setAccentColor(0xFFAA00)
@@ -148,7 +166,8 @@ export const transferCommand: Command = {
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
                 `이체 금액: **${amount.toLocaleString()} ${currencyName}**\n` +
-                `수수료: **${expectedFee.toLocaleString()} ${currencyName}**\n\n` +
+                `기본 수수료: **${expectedFee.toLocaleString()} ${currencyName}**\n` +
+                `감면권 효과: **${reductionText}**\n\n` +
                 `이체수수료감면권을 사용하시겠습니까?`
               )
             )
@@ -175,7 +194,7 @@ export const transferCommand: Command = {
               // 감면권 사용
               const userItemId = reductionResult.data.userItemId!;
               await container.shopV2Service.useTransferFeeReduction(guildId, senderId, userItemId);
-              skipFee = true;
+              reductionPercent = itemReductionPercent;
               usedReductionItem = true;
             }
 
@@ -210,7 +229,8 @@ export const transferCommand: Command = {
         BigInt(amount),
         currencyType,
         reason ?? undefined,
-        skipFee
+        false, // skipFee는 하위호환용, feeReductionPercent 사용
+        usedReductionItem ? reductionPercent : undefined
       );
 
       if (!result.success) {

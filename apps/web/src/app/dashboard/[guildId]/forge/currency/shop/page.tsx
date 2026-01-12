@@ -94,6 +94,7 @@ const shopItemFormSchema = z.object({
   topyPrice: z.coerce.number().min(0, "가격은 0 이상이어야 합니다").optional(),
   rubyPrice: z.coerce.number().min(0, "가격은 0 이상이어야 합니다").optional(),
   currencyType: z.enum(["topy", "ruby", "both"]),
+  effectPercent: z.coerce.number().min(1).max(100).optional(), // 효과 비율 (세금면제권, 이체감면권)
   durationDays: z.coerce.number().min(0).optional(),
   stock: z.coerce.number().min(0).optional(),
   maxPerUser: z.coerce.number().min(1).optional(),
@@ -188,6 +189,7 @@ export default function ShopV2Page() {
       topyPrice: 0,
       rubyPrice: 0,
       currencyType: "topy",
+      effectPercent: 100,
       durationDays: 0,
       stock: undefined,
       maxPerUser: undefined,
@@ -270,6 +272,9 @@ export default function ShopV2Page() {
       const topyPrice = data.currencyType === "ruby" ? null : data.topyPrice ?? 0;
       const rubyPrice = data.currencyType === "topy" ? null : data.rubyPrice ?? 0;
 
+      // 효과 비율 (세금면제권, 이체감면권일 때만 적용)
+      const effectPercent = data.effectPercent && data.effectPercent !== 100 ? data.effectPercent : null;
+
       if (editingItem) {
         await updateItem.mutateAsync({
           id: editingItem.id,
@@ -279,6 +284,7 @@ export default function ShopV2Page() {
             topyPrice,
             rubyPrice,
             currencyType: data.currencyType,
+            effectPercent,
             durationDays: data.durationDays ?? 0,
             stock: data.stock || null,
             maxPerUser: data.maxPerUser || null,
@@ -295,6 +301,7 @@ export default function ShopV2Page() {
           topyPrice,
           rubyPrice,
           currencyType: data.currencyType,
+          effectPercent,
           durationDays: data.durationDays ?? 0,
           stock: data.stock,
           maxPerUser: data.maxPerUser,
@@ -342,6 +349,7 @@ export default function ShopV2Page() {
       topyPrice: item.topyPrice ?? 0,
       rubyPrice: item.rubyPrice ?? 0,
       currencyType: item.currencyType,
+      effectPercent: item.effectPercent ?? 100,
       durationDays: item.durationDays || 0,
       stock: item.stock || undefined,
       maxPerUser: item.maxPerUser || undefined,
@@ -607,6 +615,39 @@ export default function ShopV2Page() {
             </FormItem>
           )}
         />
+
+        {/* 효과 비율 - 세금면제권, 이체감면권일 때만 표시 */}
+        {editingItem && (editingItem.itemType === "tax_exemption" || editingItem.itemType === "transfer_fee_reduction") && (
+          <FormField
+            control={form.control}
+            name="effectPercent"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white/70 flex items-center gap-2">
+                  <Icon icon="solar:percent-linear" className="h-4 w-4 text-cyan-400" />
+                  {editingItem.itemType === "tax_exemption" ? "세금 감면 비율" : "수수료 감면 비율"} (%)
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    placeholder="100"
+                    {...field}
+                    value={field.value || 100}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </FormControl>
+                <FormDescription className="text-xs text-white/40">
+                  {editingItem.itemType === "tax_exemption"
+                    ? "세금의 몇 %를 면제할지 설정합니다 (100% = 전액 면제)"
+                    : "수수료의 몇 %를 감면할지 설정합니다 (100% = 전액 면제)"}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <FormField

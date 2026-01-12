@@ -51,44 +51,53 @@ export class TaxService {
 
   /**
    * 세금면제권 확인 (미리보기용 - 소모하지 않음)
+   * @returns hasExemption: 면제권 보유 여부, exemptPercent: 면제 비율 (1-100)
    */
   private async checkTaxExemption(
     guildId: string,
     userId: string
-  ): Promise<{ hasExemption: boolean }> {
-    const itemResult = await this.shopRepo.findUserItemByType(guildId, userId, 'tax_exemption');
+  ): Promise<{ hasExemption: boolean; exemptPercent: number }> {
+    const itemResult = await this.shopRepo.findUserItemWithEffectByType(guildId, userId, 'tax_exemption');
     if (!itemResult.success) {
-      return { hasExemption: false };
+      return { hasExemption: false, exemptPercent: 0 };
     }
 
-    const item = itemResult.data;
-    if (item && item.quantity > 0) {
-      return { hasExemption: true };
+    const result = itemResult.data;
+    if (result && result.userItem.quantity > 0) {
+      // effectPercent가 null이면 100% (기본값)
+      const exemptPercent = result.effectPercent ?? 100;
+      return { hasExemption: true, exemptPercent };
     }
 
-    return { hasExemption: false };
+    return { hasExemption: false, exemptPercent: 0 };
   }
 
   /**
    * 세금면제권 사용 (실제 소모)
+   * @returns used: 사용 여부, exemptPercent: 면제 비율 (1-100), reason: 사용 사유
    */
   private async useTaxExemption(
     guildId: string,
     userId: string
-  ): Promise<{ used: boolean; reason?: string }> {
-    const itemResult = await this.shopRepo.findUserItemByType(guildId, userId, 'tax_exemption');
+  ): Promise<{ used: boolean; exemptPercent: number; reason?: string }> {
+    const itemResult = await this.shopRepo.findUserItemWithEffectByType(guildId, userId, 'tax_exemption');
     if (!itemResult.success) {
-      return { used: false };
+      return { used: false, exemptPercent: 0 };
     }
 
-    const item = itemResult.data;
-    if (item && item.quantity > 0) {
+    const result = itemResult.data;
+    if (result && result.userItem.quantity > 0) {
+      // effectPercent가 null이면 100% (기본값)
+      const exemptPercent = result.effectPercent ?? 100;
       // 세금면제권 1개 소모
-      await this.shopRepo.decreaseUserItemQuantity(item.id, 1);
-      return { used: true, reason: '세금면제권 사용' };
+      await this.shopRepo.decreaseUserItemQuantity(result.userItem.id, 1);
+      const reason = exemptPercent === 100
+        ? '세금면제권 사용 (100% 면제)'
+        : `세금면제권 사용 (${exemptPercent}% 감면)`;
+      return { used: true, exemptPercent, reason };
     }
 
-    return { used: false };
+    return { used: false, exemptPercent: 0 };
   }
 
   /**
@@ -115,19 +124,32 @@ export class TaxService {
     for (const wallet of walletsResult.data) {
       if (wallet.balance <= BigInt(0)) continue;
 
-      const taxAmount = calculateMonthlyTax(wallet.balance, settings.monthlyTaxPercent);
+      const fullTaxAmount = calculateMonthlyTax(wallet.balance, settings.monthlyTaxPercent);
 
       // 세금면제권 확인 (미리보기에서는 소모하지 않음)
-      const { hasExemption } = await this.checkTaxExemption(guildId, wallet.userId);
-      const exempted = hasExemption;
-      const exemptionReason = exempted ? '세금면제권 보유' : undefined;
+      const { hasExemption, exemptPercent } = await this.checkTaxExemption(guildId, wallet.userId);
+
+      // 부분 면제 계산: 세금 * (100 - 면제비율) / 100
+      let actualTaxAmount = fullTaxAmount;
+      let exemptionReason: string | undefined;
+
+      if (hasExemption) {
+        if (exemptPercent >= 100) {
+          actualTaxAmount = BigInt(0);
+          exemptionReason = '세금면제권 보유 (100% 면제)';
+        } else {
+          // 부분 면제
+          actualTaxAmount = (fullTaxAmount * BigInt(100 - exemptPercent)) / BigInt(100);
+          exemptionReason = `세금면제권 보유 (${exemptPercent}% 감면)`;
+        }
+      }
 
       results.push({
         userId: wallet.userId,
         balanceBefore: wallet.balance,
-        taxAmount: exempted ? BigInt(0) : taxAmount,
-        balanceAfter: exempted ? wallet.balance : wallet.balance - taxAmount,
-        exempted,
+        taxAmount: actualTaxAmount,
+        balanceAfter: wallet.balance - actualTaxAmount,
+        exempted: hasExemption,
         exemptionReason,
       });
     }
@@ -187,26 +209,38 @@ export class TaxService {
     for (const wallet of walletsResult.data) {
       if (wallet.balance <= BigInt(0)) continue;
 
-      const taxAmount = calculateMonthlyTax(wallet.balance, settings.monthlyTaxPercent);
+      const fullTaxAmount = calculateMonthlyTax(wallet.balance, settings.monthlyTaxPercent);
 
       // 세금면제권 사용 시도 (실제 소모)
-      const { used: exempted, reason: exemptionReason } = await this.useTaxExemption(guildId, wallet.userId);
+      const { used: hasExemption, exemptPercent, reason: exemptionReason } = await this.useTaxExemption(guildId, wallet.userId);
 
-      const balanceAfter = exempted ? wallet.balance : wallet.balance - taxAmount;
-      const actualTaxAmount = exempted ? BigInt(0) : taxAmount;
+      // 부분 면제 계산
+      let actualTaxAmount = fullTaxAmount;
+      if (hasExemption) {
+        if (exemptPercent >= 100) {
+          actualTaxAmount = BigInt(0);
+        } else {
+          // 부분 면제: 세금 * (100 - 면제비율) / 100
+          actualTaxAmount = (fullTaxAmount * BigInt(100 - exemptPercent)) / BigInt(100);
+        }
+      }
 
-      // 세금 차감
-      if (!exempted && taxAmount > BigInt(0)) {
-        await this.topyWalletRepo.updateBalance(guildId, wallet.userId, taxAmount, 'subtract');
+      const balanceAfter = wallet.balance - actualTaxAmount;
+
+      // 세금 차감 (부분 면제 포함)
+      if (actualTaxAmount > BigInt(0)) {
+        await this.topyWalletRepo.updateBalance(guildId, wallet.userId, actualTaxAmount, 'subtract');
 
         // 거래 기록 저장
         await this.transactionRepo.save(
-          createTransaction(guildId, wallet.userId, 'topy', 'tax', -taxAmount, balanceAfter)
+          createTransaction(guildId, wallet.userId, 'topy', 'tax', -actualTaxAmount, balanceAfter)
         );
 
         taxedUsers++;
-        totalTaxAmount += taxAmount;
-      } else if (exempted) {
+        totalTaxAmount += actualTaxAmount;
+      }
+
+      if (hasExemption) {
         exemptedUsers++;
       }
 
@@ -219,7 +253,7 @@ export class TaxService {
         amount: actualTaxAmount,
         balanceBefore: wallet.balance,
         balanceAfter,
-        exempted,
+        exempted: hasExemption,
         exemptionReason: exemptionReason ?? null,
         processedAt: now,
       };
@@ -230,7 +264,7 @@ export class TaxService {
         balanceBefore: wallet.balance,
         taxAmount: actualTaxAmount,
         balanceAfter,
-        exempted,
+        exempted: hasExemption,
         exemptionReason,
       });
     }

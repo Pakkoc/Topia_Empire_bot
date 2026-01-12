@@ -562,7 +562,8 @@ export class CurrencyService {
 
   /**
    * 화폐 이체
-   * @param skipFee - true면 수수료 면제 (감면권 사용 시)
+   * @param skipFee - true면 수수료 완전 면제 (하위호환용, feeReductionPercent가 우선)
+   * @param feeReductionPercent - 수수료 감면 비율 (1-100), 100이면 완전 면제, 50이면 50% 감면
    */
   async transfer(
     guildId: string,
@@ -571,7 +572,8 @@ export class CurrencyService {
     amount: bigint,
     currencyType: CurrencyType,
     reason?: string,
-    skipFee?: boolean
+    skipFee?: boolean,
+    feeReductionPercent?: number
   ): Promise<Result<TransferResult, CurrencyError>> {
     // 1. 자기 자신에게 이체 불가
     if (fromUserId === toUserId) {
@@ -593,14 +595,26 @@ export class CurrencyService {
       });
     }
 
-    // 3. 수수료 계산 (skipFee가 true면 수수료 0)
+    // 3. 수수료 계산
+    // feeReductionPercent가 100이면 완전 면제, 그 외에는 부분 감면
+    // skipFee=true는 하위호환용 (feeReductionPercent=100과 동일)
     let fee = BigInt(0);
-    if (!skipFee) {
+    const isFullExempt = skipFee || feeReductionPercent === 100;
+
+    if (!isFullExempt) {
       const feePercent = currencyType === 'topy'
         ? (settings?.transferFeeTopyPercent ?? CURRENCY_DEFAULTS.TRANSFER_FEE_TOPY_PERCENT)
         : (settings?.transferFeeRubyPercent ?? CURRENCY_DEFAULTS.TRANSFER_FEE_RUBY_PERCENT);
 
-      fee = feePercent > 0 ? (amount * BigInt(Math.round(feePercent * 10))) / BigInt(1000) : BigInt(0);
+      const baseFee = feePercent > 0 ? (amount * BigInt(Math.round(feePercent * 10))) / BigInt(1000) : BigInt(0);
+
+      // 부분 감면 적용
+      if (feeReductionPercent && feeReductionPercent > 0 && feeReductionPercent < 100) {
+        // 감면 후 수수료 = 원래 수수료 * (100 - 감면비율) / 100
+        fee = (baseFee * BigInt(100 - feeReductionPercent)) / BigInt(100);
+      } else {
+        fee = baseFee;
+      }
     }
     const totalRequired = amount + fee;
 

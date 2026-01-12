@@ -48,6 +48,7 @@ export const shopItemV2Schema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).nullable(),
   itemType: itemTypeEnum.default("custom"),
+  effectPercent: z.number().min(1).max(100).nullable(), // 효과 비율 (세금면제권, 이체감면권 등)
   topyPrice: z.number().min(0).nullable(),
   rubyPrice: z.number().min(0).nullable(),
   currencyType: z.enum(["topy", "ruby", "both"]),
@@ -86,6 +87,7 @@ export const createShopItemV2Schema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional(),
   itemType: itemTypeEnum.optional(),
+  effectPercent: z.number().min(1).max(100).nullable().optional(), // 효과 비율
   topyPrice: z.number().min(0).nullable().optional(),
   rubyPrice: z.number().min(0).nullable().optional(),
   currencyType: z.enum(["topy", "ruby", "both"]),
@@ -103,6 +105,7 @@ export const updateShopItemV2Schema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).nullable().optional(),
   itemType: itemTypeEnum.optional(),
+  effectPercent: z.number().min(1).max(100).nullable().optional(), // 효과 비율
   topyPrice: z.number().min(0).nullable().optional(),
   rubyPrice: z.number().min(0).nullable().optional(),
   currencyType: z.enum(["topy", "ruby", "both"]).optional(),

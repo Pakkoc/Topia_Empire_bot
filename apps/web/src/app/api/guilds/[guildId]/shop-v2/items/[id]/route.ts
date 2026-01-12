@@ -11,6 +11,7 @@ interface ShopItemV2Row extends RowDataPacket {
   name: string;
   description: string | null;
   item_type: string | null;
+  effect_percent: number | null;
   topy_price: string | null;
   ruby_price: string | null;
   currency_type: "topy" | "ruby" | "both";
@@ -28,6 +29,7 @@ function rowToShopItemV2(row: ShopItemV2Row) {
     name: row.name,
     description: row.description,
     itemType: row.item_type ?? "custom",
+    effectPercent: row.effect_percent,
     topyPrice: row.topy_price ? Number(row.topy_price) : null,
     rubyPrice: row.ruby_price ? Number(row.ruby_price) : null,
     currencyType: row.currency_type,
@@ -148,6 +150,10 @@ export async function PATCH(
       if (validatedData.itemType !== undefined) {
         updates.push("item_type = ?");
         values.push(validatedData.itemType);
+      }
+      if (validatedData.effectPercent !== undefined) {
+        updates.push("effect_percent = ?");
+        values.push(validatedData.effectPercent);
       }
 
       // Update shop item if there are changes

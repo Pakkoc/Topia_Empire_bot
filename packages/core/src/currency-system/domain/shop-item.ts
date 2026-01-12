@@ -47,6 +47,7 @@ export interface ShopItem {
   rubyPrice: bigint | null;  // 루비 가격 (ruby 또는 both일 때 사용)
   currencyType: ShopItemCurrencyType;
   itemType: ShopItemType;  // 아이템 타입
+  effectPercent: number | null;  // 효과 비율 (세금면제권, 이체감면권 등) - null=100%
   durationDays: number; // 0=영구, 양수=기간제
   stock: number | null; // null=무제한
   maxPerUser: number | null; // null=무제한
@@ -62,6 +63,7 @@ export interface CreateShopItemInput {
   rubyPrice?: bigint | null;
   currencyType: ShopItemCurrencyType;
   itemType?: ShopItemType;
+  effectPercent?: number | null;  // 효과 비율 (세금면제권, 이체감면권 등)
   durationDays?: number;
   stock?: number | null;
   maxPerUser?: number | null;
@@ -75,6 +77,7 @@ export interface UpdateShopItemInput {
   rubyPrice?: bigint | null;
   currencyType?: ShopItemCurrencyType;
   itemType?: ShopItemType;
+  effectPercent?: number | null;  // 효과 비율 (세금면제권, 이체감면권 등)
   durationDays?: number;
   stock?: number | null;
   maxPerUser?: number | null;

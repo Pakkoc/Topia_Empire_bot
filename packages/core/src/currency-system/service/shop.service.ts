@@ -482,21 +482,36 @@ export class ShopService {
 
   /**
    * 이체수수료감면권 확인
+   * @returns hasReduction: 감면권 보유 여부, reductionPercent: 감면 비율 (1-100)
    */
   async checkTransferFeeReduction(
     guildId: string,
     userId: string
-  ): Promise<Result<{ hasReduction: boolean; userItemId?: bigint }, CurrencyError>> {
-    const result = await this.checkItemByType(guildId, userId, 'transfer_fee_reduction');
-    if (!result.success) {
-      return result;
+  ): Promise<Result<{ hasReduction: boolean; reductionPercent: number; userItemId?: bigint }, CurrencyError>> {
+    const itemResult = await this.shopRepo.findUserItemWithEffectByType(guildId, userId, 'transfer_fee_reduction');
+    if (!itemResult.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: itemResult.error } };
+    }
+
+    const result = itemResult.data;
+    if (result && result.userItem.quantity > 0) {
+      // effectPercent가 null이면 100% (기본값)
+      const reductionPercent = result.effectPercent ?? 100;
+      return {
+        success: true,
+        data: {
+          hasReduction: true,
+          reductionPercent,
+          userItemId: result.userItem.id,
+        },
+      };
     }
 
     return {
       success: true,
       data: {
-        hasReduction: result.data.hasItem,
-        userItemId: result.data.userItemId,
+        hasReduction: false,
+        reductionPercent: 0,
       },
     };
   }
