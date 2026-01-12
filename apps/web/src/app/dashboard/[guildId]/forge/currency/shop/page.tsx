@@ -1178,6 +1178,24 @@ export default function ShopV2Page() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* 안내 박스 */}
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon icon="solar:lightbulb-bolt-linear" className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-amber-300 font-medium">상점 시스템 안내</p>
+            <ul className="text-sm text-amber-300/70 space-y-1 list-disc list-inside">
+              <li><strong>아이템</strong>: 유저가 {topyName}/{rubyName}로 구매할 수 있는 티켓을 등록합니다</li>
+              <li><strong>역할선택권</strong>: 구매한 티켓으로 역할을 교환할 수 있게 설정합니다 (예: 닉네임 색상 선택)</li>
+              <li><strong>패널 설치</strong>: 디스코드 채널에 상점 버튼을 설치하면 유저가 버튼 클릭으로 구매할 수 있습니다</li>
+              <li>재고, 유저당 최대 구매 수량, 유효 기간 등을 세부 설정할 수 있습니다</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Panel Setup - Unified Shop */}
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         <div className="flex items-center gap-3 mb-6">

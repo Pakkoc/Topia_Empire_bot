@@ -283,6 +283,24 @@ export default function CurrencySettingsPage() {
         <p className="text-white/50 mt-1">활동형 화폐({settings?.topyName ?? "토피"}) 획득 방식과 이체 규칙을 설정합니다</p>
       </div>
 
+      {/* 안내 박스 */}
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon icon="solar:lightbulb-bolt-linear" className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-amber-300 font-medium">화폐 시스템 안내</p>
+            <ul className="text-sm text-amber-300/70 space-y-1 list-disc list-inside">
+              <li><strong>활동형 화폐({settings?.topyName ?? "토피"})</strong>: 채팅/음성 활동으로 자동 획득하는 화폐입니다 (상점 구매, 게임 참가비 등에 사용)</li>
+              <li><strong>수익형 화폐({settings?.rubyName ?? "루비"})</strong>: 실제 결제나 장터 거래로 획득하는 유료 화폐입니다</li>
+              <li><strong>화폐 관리자</strong>: 지정된 유저가 <code className="bg-amber-500/20 px-1 rounded">/지급</code> 명령어로 화폐를 무제한 지급할 수 있습니다</li>
+              <li>텍스트/음성 보상, 이체 수수료, 월말 세금 등을 세부적으로 설정할 수 있습니다</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* 화폐 관리자 설정 - 2열 그리드 */}

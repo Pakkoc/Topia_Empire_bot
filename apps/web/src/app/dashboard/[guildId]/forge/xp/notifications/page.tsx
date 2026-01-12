@@ -133,6 +133,23 @@ export default function NotificationSettingsPage() {
         <p className="text-white/50 mt-1">레벨업 시 발송되는 알림을 설정합니다.</p>
       </div>
 
+      {/* 안내 박스 */}
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon icon="solar:lightbulb-bolt-linear" className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-amber-300 font-medium">레벨업 알림 안내</p>
+            <ul className="text-sm text-amber-300/70 space-y-1 list-disc list-inside">
+              <li>유저가 레벨업하면 지정된 채널에 축하 메시지가 자동 전송됩니다</li>
+              <li>메시지에 <code className="bg-amber-500/20 px-1 rounded">{'{user}'}</code>, <code className="bg-amber-500/20 px-1 rounded">{'{level}'}</code> 등의 변수를 사용할 수 있습니다</li>
+              <li>채널을 선택하지 않으면 알림이 비활성화됩니다</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* 알림 활성화 카드 */}

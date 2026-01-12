@@ -424,6 +424,23 @@ export default function CurrencyRulesPage() {
         <p className="text-white/50 mt-1">활동형 화폐({topyName}) 보너스 및 제한 규칙을 설정합니다.</p>
       </div>
 
+      {/* 안내 박스 */}
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon icon="solar:lightbulb-bolt-linear" className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-amber-300 font-medium">화폐 규칙 안내</p>
+            <ul className="text-sm text-amber-300/70 space-y-1 list-disc list-inside">
+              <li><strong>핫타임</strong>: 특정 시간대(예: 저녁 8시~11시)에 {topyName} 획득량을 증가시켜 활발한 활동을 유도합니다</li>
+              <li><strong>배율</strong>: 특정 채널이나 역할에 {topyName} 보너스를 적용합니다 (예: VIP 역할 2배 {topyName})</li>
+              <li><strong>{topyName} 차단</strong>: 특정 채널/역할에서 {topyName} 획득을 차단합니다 (예: 봇 명령어 채널)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <div className="flex items-center justify-between">
           <TabsList className="bg-white/5 border border-white/10 p-1 rounded-xl">

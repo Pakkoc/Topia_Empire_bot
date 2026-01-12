@@ -151,6 +151,24 @@ export default function TransactionsPage() {
         <p className="text-white/50 mt-1">서버의 {topyName}/{rubyName} 거래 내역을 확인합니다</p>
       </div>
 
+      {/* 안내 박스 */}
+      <div className="bg-violet-500/10 border border-violet-500/20 rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon icon="solar:lightbulb-bolt-linear" className="w-4 h-4 text-violet-400" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-violet-300 font-medium">거래 기록 안내</p>
+            <ul className="text-sm text-violet-300/70 space-y-1 list-disc list-inside">
+              <li>채팅/음성 보상, 이체, 상점 구매, 게임 배팅 등 모든 화폐 변동이 기록됩니다</li>
+              <li>유저 ID, 화폐 유형, 거래 유형, 날짜 필터로 특정 거래를 검색할 수 있습니다</li>
+              <li><strong className="text-green-400">+녹색</strong>은 획득, <strong className="text-red-400">-빨간색</strong>은 차감된 금액입니다</li>
+              <li>잔액 컬럼은 해당 거래 후 잔액을 표시합니다</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         <div className="flex items-center gap-3 mb-4">

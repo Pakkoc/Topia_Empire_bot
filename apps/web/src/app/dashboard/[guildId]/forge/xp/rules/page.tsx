@@ -588,6 +588,23 @@ export default function XpRulesPage() {
         </p>
       </div>
 
+      {/* 안내 박스 */}
+      <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon icon="solar:lightbulb-bolt-linear" className="w-4 h-4 text-indigo-400" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-indigo-300 font-medium">XP 규칙 안내</p>
+            <ul className="text-sm text-indigo-300/70 space-y-1 list-disc list-inside">
+              <li><strong>핫타임</strong>: 특정 시간대(예: 저녁 6시~10시)에 XP 획득량을 증가시켜 활발한 활동을 유도합니다</li>
+              <li><strong>배율</strong>: 특정 채널이나 역할에 XP 보너스를 적용합니다 (예: VIP 역할 2배 XP)</li>
+              <li><strong>XP 차단</strong>: 특정 채널/역할에서 XP 획득을 차단합니다 (예: 봇 명령어 채널, 경고자 역할)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}

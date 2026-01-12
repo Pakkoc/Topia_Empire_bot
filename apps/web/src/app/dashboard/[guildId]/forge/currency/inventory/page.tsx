@@ -142,6 +142,24 @@ export default function InventoryPage() {
         </Button>
       </div>
 
+      {/* 안내 박스 */}
+      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon icon="solar:lightbulb-bolt-linear" className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-emerald-300 font-medium">인벤토리 안내</p>
+            <ul className="text-sm text-emerald-300/70 space-y-1 list-disc list-inside">
+              <li><strong>인벤토리</strong>: 유저가 상점에서 구매하거나 지급받은 아이템 목록입니다</li>
+              <li><strong>아이템 지급</strong>: 관리자가 특정 유저에게 아이템을 직접 지급할 수 있습니다</li>
+              <li><strong>아이템 회수</strong>: 잘못 지급된 아이템을 회수할 수 있습니다</li>
+              <li>기간제 아이템은 남은 기간이 표시되며, 만료 시 자동 삭제됩니다</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Search */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 sm:max-w-xs">

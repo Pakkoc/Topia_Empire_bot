@@ -250,6 +250,24 @@ export default function LevelRewardsPage() {
         <p className="text-white/50 mt-1">레벨 달성 시 지급할 역할과 해금 채널을 설정합니다.</p>
       </div>
 
+      {/* 안내 박스 */}
+      <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon icon="solar:lightbulb-bolt-linear" className="w-4 h-4 text-purple-400" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-purple-300 font-medium">레벨 보상 안내</p>
+            <ul className="text-sm text-purple-300/70 space-y-1 list-disc list-inside">
+              <li><strong>역할 보상</strong>: 특정 레벨 달성 시 자동으로 역할을 부여합니다 (예: 레벨 10 → VIP 역할)</li>
+              <li><strong>해금 채널</strong>: 특정 레벨 달성 시 숨겨진 채널에 접근할 수 있게 됩니다</li>
+              <li><strong>상위 레벨 제거</strong>: 더 높은 레벨에 도달하면 이전 역할을 자동 제거합니다 (레벨별 역할 구분용)</li>
+              <li>텍스트 레벨과 음성 레벨 보상을 별도로 설정할 수 있습니다</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <Tabs defaultValue="roles" className="space-y-6">
         <TabsList className="bg-white/5 border border-white/10 p-1 rounded-xl">
           <TabsTrigger

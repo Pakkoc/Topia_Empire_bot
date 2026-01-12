@@ -45,6 +45,24 @@ export default function WalletsPage() {
         <p className="text-white/50 mt-1">서버 멤버의 {topyName}/{rubyName} 잔액을 확인합니다</p>
       </div>
 
+      {/* 안내 박스 */}
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon icon="solar:lightbulb-bolt-linear" className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-amber-300 font-medium">지갑 시스템 안내</p>
+            <ul className="text-sm text-amber-300/70 space-y-1 list-disc list-inside">
+              <li><strong>활동형 화폐({topyName})</strong>: 채팅/음성 활동으로 자동 획득되는 화폐입니다</li>
+              <li><strong>수익형 화폐({rubyName})</strong>: 결제나 장터 거래로 획득하는 유료 화폐입니다</li>
+              <li>유저 ID로 검색하여 특정 유저의 잔액을 확인할 수 있습니다</li>
+              <li>화폐 지급/차감은 <code className="bg-amber-500/20 px-1 rounded">/지급</code> 명령어 또는 화폐 관리자 권한으로 가능합니다</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Top 5 Leaderboard */}
       {leaderboardData && leaderboardData.leaderboard.length > 0 && (
         <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-sm rounded-2xl border border-amber-500/20 p-6">
