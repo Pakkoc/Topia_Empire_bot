@@ -628,7 +628,7 @@ export class GameRepository implements GameRepositoryPort {
     totalReward: bigint
   ): Promise<GameResult> {
     const [result] = await this.pool.query<ResultSetHeader>(
-      `INSERT INTO game_results (game_id, team_number, rank, reward_percent, total_reward)
+      `INSERT INTO game_results (game_id, team_number, \`rank\`, reward_percent, total_reward)
        VALUES (?, ?, ?, ?, ?)`,
       [gameId.toString(), teamNumber, rank, rewardPercent, totalReward.toString()]
     );
