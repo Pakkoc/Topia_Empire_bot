@@ -183,7 +183,7 @@ export default function GameCenterPage() {
         name: newCategoryName.trim(),
         teamCount,
         maxPlayersPerTeam: newCategoryMaxPlayers ? parseInt(newCategoryMaxPlayers) : null,
-        winnerTakesAll: newCategoryWinnerTakesAll,
+        winnerTakesAll: newCategoryUseCustomRewards ? false : newCategoryWinnerTakesAll,
         rankRewards,
       });
       setNewCategoryName("");
@@ -631,7 +631,9 @@ export default function GameCenterPage() {
                     <p className="text-white/40 text-xs">
                       {category.teamCount}팀
                       {category.maxPlayersPerTeam && ` · 팀당 ${category.maxPlayersPerTeam}명`}
-                      {category.winnerTakesAll && " · 승자독식"}
+                      {category.rankRewards
+                        ? ` · 커스텀 (${Object.entries(category.rankRewards).map(([r, p]) => `${r}등:${p}%`).join(', ')})`
+                        : category.winnerTakesAll && " · 승자독식"}
                     </p>
                   </div>
                 </div>
