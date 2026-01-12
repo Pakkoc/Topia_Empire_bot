@@ -139,27 +139,67 @@ function createGameContainer(
     }
   }
 
-  // 참가자 목록
+  // 참가자 목록 / 팀 배정 현황
   if (participants.length > 0) {
     container.addSeparatorComponents(
       new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
     );
 
+    // 팀별 멤버 분류
+    const teamMembers: Record<number, GameParticipant[]> = {};
+    const unassignedMembers: GameParticipant[] = [];
+    for (const p of participants) {
+      if (p.teamNumber === null) {
+        unassignedMembers.push(p);
+      } else {
+        if (!teamMembers[p.teamNumber]) {
+          teamMembers[p.teamNumber] = [];
+        }
+        teamMembers[p.teamNumber]!.push(p);
+      }
+    }
+
+    // 팀에 배정된 멤버가 있는지 확인
+    const hasAssignedMembers = Object.keys(teamMembers).length > 0;
+
     if (game.status === 'open' || game.status === 'team_assign') {
-      const participantMentions = participants.map(p => `<@${p.userId}>`).join(', ');
-      container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          `**📋 참가자 목록**\n${participantMentions.length > 900 ? participantMentions.substring(0, 897) + '...' : participantMentions}`
-        )
-      );
+      // 팀 배정 현황 표시 (배정된 멤버가 있을 경우)
+      if (hasAssignedMembers) {
+        let teamsText = '**📊 팀 배정 현황**\n';
+        for (let teamNum = 1; teamNum <= game.teamCount; teamNum++) {
+          const members = teamMembers[teamNum] || [];
+          const teamEmoji = getTeamEmoji(teamNum);
+          if (members.length > 0) {
+            const memberMentions = members.map(p => `<@${p.userId}>`).join(', ');
+            teamsText += `${teamEmoji} **${teamNum}팀**: ${memberMentions}\n`;
+          } else {
+            teamsText += `${teamEmoji} **${teamNum}팀**: (없음)\n`;
+          }
+        }
+        if (unassignedMembers.length > 0) {
+          const unassignedMentions = unassignedMembers.map(p => `<@${p.userId}>`).join(', ');
+          teamsText += `\n⏳ **미배정**: ${unassignedMentions}`;
+        }
+        container.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(teamsText.trim())
+        );
+      } else {
+        // 아직 팀 배정이 없으면 참가자 목록만 표시
+        const participantMentions = participants.map(p => `<@${p.userId}>`).join(', ');
+        container.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `**📋 참가자 목록**\n${participantMentions.length > 900 ? participantMentions.substring(0, 897) + '...' : participantMentions}`
+          )
+        );
+      }
     } else if (game.status === 'in_progress' || game.status === 'finished') {
       let teamsText = '';
       for (let teamNum = 1; teamNum <= game.teamCount; teamNum++) {
-        const teamMembers = participants.filter(p => p.teamNumber === teamNum);
-        if (teamMembers.length > 0) {
-          const teamColor = getTeamEmoji(teamNum);
-          const memberMentions = teamMembers.map(p => `<@${p.userId}>`).join(', ');
-          teamsText += `${teamColor} **${teamNum}팀**: ${memberMentions}\n`;
+        const members = teamMembers[teamNum] || [];
+        if (members.length > 0) {
+          const teamEmoji = getTeamEmoji(teamNum);
+          const memberMentions = members.map(p => `<@${p.userId}>`).join(', ');
+          teamsText += `${teamEmoji} **${teamNum}팀**: ${memberMentions}\n`;
         }
       }
       if (teamsText) {
