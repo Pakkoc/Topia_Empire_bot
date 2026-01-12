@@ -30,8 +30,8 @@ interface Container {
   currencyService: CurrencyService;
 }
 
-// 10분 후 ephemeral 메시지 삭제
-const EPHEMERAL_DELETE_DELAY = 10 * 60 * 1000;
+// 5초 후 ephemeral 메시지 삭제
+const EPHEMERAL_DELETE_DELAY = 5 * 1000;
 
 function scheduleEphemeralDelete(interaction: ButtonInteraction | ModalSubmitInteraction | UserSelectMenuInteraction | StringSelectMenuInteraction | any) {
   setTimeout(async () => {
