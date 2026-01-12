@@ -602,13 +602,16 @@ export async function handleGameCreateModal(
   let customEntryFee: bigint | null = null;
 
   if (categoryId) {
-    // 카테고리에서 팀 수 가져오기
+    // 카테고리에서 설정 가져오기
     const categoriesResult = await container.gameService.getCategories(guildId);
     if (categoriesResult.success) {
       const category = categoriesResult.data.find(c => c.id === categoryId);
       if (category) {
         teamCount = category.teamCount;
         selectedCategoryId = category.id;
+        maxPlayersPerTeam = category.maxPlayersPerTeam;
+        customWinnerTakesAll = category.winnerTakesAll || null;
+        customRankRewards = category.rankRewards;
       }
     }
   } else {
