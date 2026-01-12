@@ -544,6 +544,38 @@ export class GameService {
   }
 
   /**
+   * 팀 배정 해제 (미배정 상태로 변경)
+   */
+  async unassignTeam(
+    gameId: bigint,
+    userIds: string[]
+  ): Promise<Result<void, CurrencyError>> {
+    try {
+      // 게임 조회
+      const game = await this.gameRepo.findGameById(gameId);
+      if (!game) {
+        return Result.err({ type: 'GAME_NOT_FOUND' });
+      }
+
+      // 각 유저에 대해 팀 해제
+      for (const userId of userIds) {
+        const participant = await this.gameRepo.findParticipantByGameAndUser(gameId, userId);
+        if (participant) {
+          await this.gameRepo.unassignTeam(participant.id);
+        }
+      }
+
+      return Result.ok(undefined);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
    * 팀 배정 완료 → 경기 시작
    */
   async startGame(gameId: bigint): Promise<Result<Game, CurrencyError>> {

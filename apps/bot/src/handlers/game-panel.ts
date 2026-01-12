@@ -962,24 +962,40 @@ export async function handleGameTeamAssign(
     // 멤버 조회 실패해도 계속 진행
   }
 
-  // 팀 선택 메뉴
-  const selectOptions = [];
+  // 팀 버튼 생성
+  const teamButtons: ButtonBuilder[] = [];
   for (let i = 1; i <= game.teamCount; i++) {
     const currentCount = teamMembers[i]?.length || 0;
     const maxDisplay = game.maxPlayersPerTeam ? `/${game.maxPlayersPerTeam}` : '';
-    selectOptions.push({
-      label: `${i}팀 (${currentCount}${maxDisplay}명)`,
-      value: i.toString(),
-      emoji: getTeamEmoji(i),
-    });
+    teamButtons.push(
+      new ButtonBuilder()
+        .setCustomId(`game_team_edit_${gameId}_${i}`)
+        .setLabel(`${i}팀 (${currentCount}${maxDisplay}명)`)
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji(getTeamEmoji(i))
+    );
   }
 
-  const teamSelect = new StringSelectMenuBuilder()
-    .setCustomId(`game_team_select_${gameId}_${userId}`)
-    .setPlaceholder('팀을 선택하세요')
-    .addOptions(selectOptions);
+  // 팀 해제 버튼
+  const removeButton = new ButtonBuilder()
+    .setCustomId(`game_team_remove_${gameId}`)
+    .setLabel('팀 해제')
+    .setStyle(ButtonStyle.Danger)
+    .setEmoji('🔓');
 
-  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(teamSelect);
+  // 버튼 행 구성 (최대 5개씩)
+  const buttonRows: ActionRowBuilder<ButtonBuilder>[] = [];
+  const allButtons = [...teamButtons];
+
+  for (let i = 0; i < allButtons.length; i += 5) {
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      allButtons.slice(i, i + 5)
+    );
+    buttonRows.push(row);
+  }
+
+  // 팀 해제 버튼은 별도 행에
+  const removeRow = new ActionRowBuilder<ButtonBuilder>().addComponents(removeButton);
 
   // Components V2 Container 생성
   const uiContainer = new ContainerBuilder();
@@ -991,7 +1007,7 @@ export async function handleGameTeamAssign(
     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
   );
   uiContainer.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent('배정할 팀을 선택하세요')
+    new TextDisplayBuilder().setContent('편집할 팀을 선택하거나, 팀 해제로 배정을 취소하세요')
   );
   uiContainer.addSeparatorComponents(
     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
@@ -1026,7 +1042,7 @@ export async function handleGameTeamAssign(
   );
 
   await interaction.reply({
-    components: [uiContainer.toJSON(), selectRow.toJSON()],
+    components: [uiContainer.toJSON(), ...buttonRows.map(r => r.toJSON()), removeRow.toJSON()],
     flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
   });
   scheduleEphemeralDelete(interaction);
@@ -1170,6 +1186,408 @@ export async function handleGameTeamSelect(
 
   await interaction.update({
     components: [uiContainer.toJSON(), selectRow.toJSON()],
+    flags: MessageFlags.IsComponentsV2,
+  });
+}
+
+/**
+ * 팀 편집 버튼 핸들러 (버튼 방식)
+ */
+export async function handleGameTeamEdit(
+  interaction: ButtonInteraction,
+  container: Container,
+  gameId: bigint,
+  teamNumber: number
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 권한 확인
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  if (!isAdminUser(interaction, managerRoleId)) {
+    await interaction.reply({
+      content: '❌ 관리자만 팀을 편집할 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 게임 정보 조회
+  const gameResult = await container.gameService.getGameById(gameId);
+  if (!gameResult.success) {
+    await interaction.reply({ content: '❌ 게임을 찾을 수 없습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+  const game = gameResult.data;
+
+  // 참가자 목록 조회
+  const participantsResult = await container.gameService.getParticipants(gameId);
+  if (!participantsResult.success) {
+    await interaction.reply({ content: '❌ 참가자 목록을 불러올 수 없습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const participants = participantsResult.data;
+
+  // 해당 팀에 속하지 않은 참가자만 선택 가능 (미배정 + 다른 팀)
+  const selectableParticipants = participants.filter(p => p.teamNumber !== teamNumber);
+
+  if (selectableParticipants.length === 0) {
+    await interaction.reply({
+      content: '✅ 모든 참가자가 이미 이 팀에 배정되었습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 팀별 멤버 분류
+  const teamMembers: Record<number, string[]> = {};
+  const unassignedMembers: string[] = [];
+  for (const p of participants) {
+    if (p.teamNumber === null) {
+      unassignedMembers.push(p.userId);
+    } else {
+      if (!teamMembers[p.teamNumber]) {
+        teamMembers[p.teamNumber] = [];
+      }
+      teamMembers[p.teamNumber]!.push(p.userId);
+    }
+  }
+
+  // Discord에서 유저 이름을 가져오기 위해 멤버 조회
+  const allUserIds = participants.map(p => p.userId);
+  const userNames: Record<string, string> = {};
+  try {
+    const guild = interaction.guild;
+    if (guild) {
+      for (const odminId of allUserIds) {
+        try {
+          const member = await guild.members.fetch(odminId);
+          userNames[odminId] = member.displayName || member.user.username;
+        } catch {
+          userNames[odminId] = `유저(${odminId.slice(-4)})`;
+        }
+      }
+    }
+  } catch {
+    // 멤버 조회 실패해도 계속 진행
+  }
+
+  const odminUserId = interaction.user.id;
+
+  // 참가자 선택 메뉴 (현재 팀 표시)
+  const participantOptions = selectableParticipants.slice(0, 25).map(p => {
+    const teamLabel = p.teamNumber === null ? '미배정' : `${p.teamNumber}팀`;
+    return {
+      label: userNames[p.userId] || `유저(${p.userId.slice(-4)})`,
+      value: p.userId,
+      description: `현재: ${teamLabel}`,
+    };
+  });
+
+  const userSelect = new StringSelectMenuBuilder()
+    .setCustomId(`game_team_users_${gameId}_${teamNumber}_${odminUserId}`)
+    .setPlaceholder('팀에 추가할 멤버를 선택하세요')
+    .setMinValues(1)
+    .setMaxValues(Math.min(selectableParticipants.length, 25))
+    .addOptions(participantOptions);
+
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(userSelect);
+
+  // Components V2 Container 생성
+  const uiContainer = new ContainerBuilder();
+
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`# ${getTeamEmoji(teamNumber)} ${teamNumber}팀 편집`)
+  );
+  uiContainer.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('팀에 추가할 멤버를 선택하세요\n-# 다른 팀에서 이동하거나 미배정 멤버를 추가할 수 있습니다')
+  );
+  uiContainer.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  // 팀 배정 현황 텍스트 생성
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('**📊 현재 팀 배정 현황**')
+  );
+
+  for (let i = 1; i <= game.teamCount; i++) {
+    const members = teamMembers[i] || [];
+    const maxDisplay = game.maxPlayersPerTeam ? `/${game.maxPlayersPerTeam}` : '';
+    const isSelected = i === teamNumber ? ' ◀' : '';
+    let teamText = `${getTeamEmoji(i)} **${i}팀** (${members.length}${maxDisplay}명)${isSelected}`;
+    if (members.length > 0) {
+      const memberNames = members.map(id => userNames[id] || `유저(${id.slice(-4)})`);
+      teamText += `\n-# ${memberNames.join(', ')}`;
+    }
+    uiContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(teamText)
+    );
+  }
+
+  // 미배정 멤버
+  let unassignedText = `\n⏳ **미배정**: ${unassignedMembers.length}명`;
+  if (unassignedMembers.length > 0) {
+    const unassignedNames = unassignedMembers.map(id => userNames[id] || `유저(${id.slice(-4)})`);
+    unassignedText += `\n-# ${unassignedNames.join(', ')}`;
+  }
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(unassignedText)
+  );
+
+  await interaction.reply({
+    components: [uiContainer.toJSON(), selectRow.toJSON()],
+    flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+  });
+  scheduleEphemeralDelete(interaction);
+}
+
+/**
+ * 팀 해제 버튼 핸들러
+ */
+export async function handleGameTeamRemove(
+  interaction: ButtonInteraction,
+  container: Container,
+  gameId: bigint
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 권한 확인
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  if (!isAdminUser(interaction, managerRoleId)) {
+    await interaction.reply({
+      content: '❌ 관리자만 팀 배정을 해제할 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 게임 정보 조회
+  const gameResult = await container.gameService.getGameById(gameId);
+  if (!gameResult.success) {
+    await interaction.reply({ content: '❌ 게임을 찾을 수 없습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+  const game = gameResult.data;
+
+  // 참가자 목록 조회
+  const participantsResult = await container.gameService.getParticipants(gameId);
+  if (!participantsResult.success) {
+    await interaction.reply({ content: '❌ 참가자 목록을 불러올 수 없습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const participants = participantsResult.data;
+
+  // 팀에 배정된 참가자만 선택 가능
+  const assignedParticipants = participants.filter(p => p.teamNumber !== null);
+
+  if (assignedParticipants.length === 0) {
+    await interaction.reply({
+      content: '❌ 팀에 배정된 참가자가 없습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 팀별 멤버 분류
+  const teamMembers: Record<number, string[]> = {};
+  for (const p of participants) {
+    if (p.teamNumber !== null) {
+      if (!teamMembers[p.teamNumber]) {
+        teamMembers[p.teamNumber] = [];
+      }
+      teamMembers[p.teamNumber]!.push(p.userId);
+    }
+  }
+
+  // Discord에서 유저 이름을 가져오기 위해 멤버 조회
+  const allUserIds = participants.map(p => p.userId);
+  const userNames: Record<string, string> = {};
+  try {
+    const guild = interaction.guild;
+    if (guild) {
+      for (const odminId of allUserIds) {
+        try {
+          const member = await guild.members.fetch(odminId);
+          userNames[odminId] = member.displayName || member.user.username;
+        } catch {
+          userNames[odminId] = `유저(${odminId.slice(-4)})`;
+        }
+      }
+    }
+  } catch {
+    // 멤버 조회 실패해도 계속 진행
+  }
+
+  const odminUserId = interaction.user.id;
+
+  // 참가자 선택 메뉴 (현재 팀 표시)
+  const participantOptions = assignedParticipants.slice(0, 25).map(p => ({
+    label: userNames[p.userId] || `유저(${p.userId.slice(-4)})`,
+    value: p.userId,
+    description: `현재: ${p.teamNumber}팀`,
+  }));
+
+  const userSelect = new StringSelectMenuBuilder()
+    .setCustomId(`game_team_unassign_${gameId}_${odminUserId}`)
+    .setPlaceholder('팀에서 해제할 멤버를 선택하세요')
+    .setMinValues(1)
+    .setMaxValues(Math.min(assignedParticipants.length, 25))
+    .addOptions(participantOptions);
+
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(userSelect);
+
+  // Components V2 Container 생성
+  const uiContainer = new ContainerBuilder();
+
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# 🔓 팀 해제')
+  );
+  uiContainer.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('팀에서 해제할 멤버를 선택하세요\n-# 선택한 멤버는 미배정 상태로 변경됩니다')
+  );
+  uiContainer.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  // 팀 배정 현황 텍스트 생성
+  uiContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('**📊 현재 팀 배정 현황**')
+  );
+
+  for (let i = 1; i <= game.teamCount; i++) {
+    const members = teamMembers[i] || [];
+    const maxDisplay = game.maxPlayersPerTeam ? `/${game.maxPlayersPerTeam}` : '';
+    let teamText = `${getTeamEmoji(i)} **${i}팀** (${members.length}${maxDisplay}명)`;
+    if (members.length > 0) {
+      const memberNames = members.map(id => userNames[id] || `유저(${id.slice(-4)})`);
+      teamText += `\n-# ${memberNames.join(', ')}`;
+    }
+    uiContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(teamText)
+    );
+  }
+
+  await interaction.reply({
+    components: [uiContainer.toJSON(), selectRow.toJSON()],
+    flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+  });
+  scheduleEphemeralDelete(interaction);
+}
+
+/**
+ * 팀 해제 선택 완료 핸들러
+ */
+export async function handleGameTeamUnassign(
+  interaction: StringSelectMenuInteraction,
+  container: Container
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    const errorContainer = new ContainerBuilder();
+    errorContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('❌ 서버에서만 사용할 수 있습니다.')
+    );
+    await interaction.update({ components: [errorContainer.toJSON()], flags: MessageFlags.IsComponentsV2 });
+    return;
+  }
+
+  // customId: game_team_unassign_{gameId}_{userId}
+  const parts = interaction.customId.split('_');
+  const gameId = BigInt(parts[3]!);
+
+  const selectedUserIds = interaction.values;
+
+  // 팀 해제 실행
+  const unassignResult = await container.gameService.unassignTeam(gameId, selectedUserIds);
+
+  if (!unassignResult.success) {
+    const errorContainer = new ContainerBuilder();
+    errorContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('# ❌ 팀 해제 실패')
+    );
+    errorContainer.addSeparatorComponents(
+      new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+    );
+    errorContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('팀 해제 처리 중 오류가 발생했습니다.')
+    );
+    await interaction.update({ components: [errorContainer.toJSON()], flags: MessageFlags.IsComponentsV2 });
+    return;
+  }
+
+  // 화폐 설정 조회
+  const currencySettingsResult = await container.currencyService.getSettings(guildId);
+  const topyName = (currencySettingsResult.success && currencySettingsResult.data?.topyName) || '토피';
+
+  // 게임 메시지 업데이트
+  const gameResult = await container.gameService.getGameById(gameId);
+  if (gameResult.success) {
+    const game = gameResult.data;
+
+    try {
+      if (game.messageId) {
+        const channel = interaction.channel as TextChannel;
+        const message = await channel.messages.fetch(game.messageId);
+
+        const participantsResult = await container.gameService.getParticipants(gameId);
+        const participants = participantsResult.success ? participantsResult.data : [];
+
+        const gameContainer = createGameContainer(game, topyName, participants);
+        const buttons = createGameButtons(game, true);
+        await message.edit({
+          components: [gameContainer, ...buttons],
+          flags: MessageFlags.IsComponentsV2,
+          embeds: [],
+        });
+      }
+    } catch (err) {
+      console.error('[GAME] Failed to update game message:', err);
+    }
+  }
+
+  const successContainer = new ContainerBuilder();
+  successContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# ✅ 팀 해제 완료')
+  );
+  successContainer.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+  successContainer.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`${selectedUserIds.length}명의 팀 배정을 해제했습니다.`)
+  );
+
+  await interaction.update({
+    components: [successContainer.toJSON()],
     flags: MessageFlags.IsComponentsV2,
   });
 }

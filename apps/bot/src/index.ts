@@ -38,6 +38,9 @@ import {
   handleGameTeamAssign,
   handleGameTeamSelect,
   handleGameTeamUsers,
+  handleGameTeamEdit,
+  handleGameTeamRemove,
+  handleGameTeamUnassign,
   handleGameStart,
   handleGameResult,
   handleGameResultRank,
@@ -498,6 +501,22 @@ async function main() {
           return;
         }
 
+        // 팀 편집 버튼 (관리자) - game_team_edit_{gameId}_{teamNumber}
+        if (customId.startsWith('game_team_edit_')) {
+          const parts = customId.split('_');
+          const gameId = BigInt(parts[3]!);
+          const teamNumber = parseInt(parts[4]!, 10);
+          await handleGameTeamEdit(interaction, container, gameId, teamNumber);
+          return;
+        }
+
+        // 팀 해제 버튼 (관리자) - game_team_remove_{gameId}
+        if (customId.startsWith('game_team_remove_')) {
+          const gameId = BigInt(customId.replace('game_team_remove_', ''));
+          await handleGameTeamRemove(interaction, container, gameId);
+          return;
+        }
+
         // 경기 시작 버튼 (관리자)
         if (customId.startsWith('game_start_')) {
           const gameId = BigInt(customId.replace('game_start_', ''));
@@ -604,6 +623,12 @@ async function main() {
         // 게임 팀 유저 선택 (참가자 선택)
         if (customId.startsWith('game_team_users_')) {
           await handleGameTeamUsers(interaction, container);
+          return;
+        }
+
+        // 게임 팀 해제 선택
+        if (customId.startsWith('game_team_unassign_')) {
+          await handleGameTeamUnassign(interaction, container);
           return;
         }
       } catch (error) {

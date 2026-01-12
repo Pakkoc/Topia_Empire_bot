@@ -162,6 +162,11 @@ export interface GameRepositoryPort {
   assignTeamBulk(participantIds: bigint[], teamNumber: number): Promise<void>;
 
   /**
+   * 팀 배정 해제 (미배정 상태로 변경)
+   */
+  unassignTeam(participantId: bigint): Promise<void>;
+
+  /**
    * 참가자 상태 업데이트
    */
   updateParticipantStatus(participantId: bigint, status: ParticipantStatus): Promise<void>;

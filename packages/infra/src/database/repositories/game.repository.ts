@@ -588,6 +588,13 @@ export class GameRepository implements GameRepositoryPort {
     );
   }
 
+  async unassignTeam(participantId: bigint): Promise<void> {
+    await this.pool.query<ResultSetHeader>(
+      `UPDATE game_participants SET team_number = NULL, status = 'registered' WHERE id = ?`,
+      [participantId.toString()]
+    );
+  }
+
   async updateParticipantStatus(participantId: bigint, status: ParticipantStatus): Promise<void> {
     await this.pool.query<ResultSetHeader>(
       `UPDATE game_participants SET status = ? WHERE id = ?`,
