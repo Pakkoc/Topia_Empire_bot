@@ -88,9 +88,20 @@ interface PendingRoleOption {
   description?: string;
 }
 
+// 선택 가능한 아이템 타입 (인벤토리형만)
+const SELECTABLE_ITEM_TYPES = ["custom", "tax_exemption", "transfer_fee_reduction"] as const;
+type SelectableItemType = (typeof SELECTABLE_ITEM_TYPES)[number];
+
+const SELECTABLE_ITEM_TYPE_LABELS: Record<SelectableItemType, string> = {
+  custom: "일반",
+  tax_exemption: "세금면제권",
+  transfer_fee_reduction: "이체수수료감면권",
+};
+
 const shopItemFormSchema = z.object({
   name: z.string().min(1, "이름을 입력하세요").max(100),
   description: z.string().max(500).optional(),
+  itemType: z.enum(SELECTABLE_ITEM_TYPES).optional(), // 아이템 타입
   topyPrice: z.coerce.number().min(0, "가격은 0 이상이어야 합니다").optional(),
   rubyPrice: z.coerce.number().min(0, "가격은 0 이상이어야 합니다").optional(),
   currencyType: z.enum(["topy", "ruby", "both"]),
@@ -186,6 +197,7 @@ export default function ShopV2Page() {
     defaultValues: {
       name: "",
       description: "",
+      itemType: "custom",
       topyPrice: 0,
       rubyPrice: 0,
       currencyType: "topy",
@@ -204,6 +216,7 @@ export default function ShopV2Page() {
 
   const hasRoleTicket = form.watch("hasRoleTicket");
   const currencyType = form.watch("currencyType");
+  const itemType = form.watch("itemType");
 
   // Add pending role option
   const handleAddRoleOption = () => {
@@ -281,6 +294,7 @@ export default function ShopV2Page() {
           data: {
             name: data.name,
             description: data.description || null,
+            itemType: data.itemType ?? "custom",
             topyPrice,
             rubyPrice,
             currencyType: data.currencyType,
@@ -298,6 +312,7 @@ export default function ShopV2Page() {
         await createItem.mutateAsync({
           name: data.name,
           description: data.description,
+          itemType: data.itemType ?? "custom",
           topyPrice,
           rubyPrice,
           currencyType: data.currencyType,
@@ -343,9 +358,15 @@ export default function ShopV2Page() {
       ? Math.floor(item.roleTicket.effectDurationSeconds / (24 * 60 * 60))
       : 0;
 
+    // itemType이 선택 가능한 타입인지 확인 (아니면 custom으로 설정)
+    const selectableItemType = SELECTABLE_ITEM_TYPES.includes(item.itemType as SelectableItemType)
+      ? (item.itemType as SelectableItemType)
+      : "custom";
+
     form.reset({
       name: item.name,
       description: item.description || "",
+      itemType: selectableItemType,
       topyPrice: item.topyPrice ?? 0,
       rubyPrice: item.rubyPrice ?? 0,
       currencyType: item.currencyType,
@@ -499,6 +520,34 @@ export default function ShopV2Page() {
 
         <FormField
           control={form.control}
+          name="itemType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-white/70">아이템 타입</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || "custom"}>
+                <FormControl>
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {SELECTABLE_ITEM_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {SELECTABLE_ITEM_TYPE_LABELS[type]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription className="text-xs text-white/40">
+                세금면제권/이체수수료감면권은 효과 비율을 설정할 수 있습니다
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="description"
           render={({ field }) => (
             <FormItem>
@@ -617,7 +666,7 @@ export default function ShopV2Page() {
         />
 
         {/* 효과 비율 - 세금면제권, 이체감면권일 때만 표시 */}
-        {editingItem && (editingItem.itemType === "tax_exemption" || editingItem.itemType === "transfer_fee_reduction") && (
+        {(itemType === "tax_exemption" || itemType === "transfer_fee_reduction") && (
           <FormField
             control={form.control}
             name="effectPercent"
@@ -625,7 +674,7 @@ export default function ShopV2Page() {
               <FormItem>
                 <FormLabel className="text-white/70 flex items-center gap-2">
                   <Icon icon="solar:percent-linear" className="h-4 w-4 text-cyan-400" />
-                  {editingItem.itemType === "tax_exemption" ? "세금 감면 비율" : "수수료 감면 비율"} (%)
+                  {itemType === "tax_exemption" ? "세금 감면 비율" : "수수료 감면 비율"} (%)
                 </FormLabel>
                 <FormControl>
                   <Input
@@ -639,7 +688,7 @@ export default function ShopV2Page() {
                   />
                 </FormControl>
                 <FormDescription className="text-xs text-white/40">
-                  {editingItem.itemType === "tax_exemption"
+                  {itemType === "tax_exemption"
                     ? "세금의 몇 %를 면제할지 설정합니다 (100% = 전액 면제)"
                     : "수수료의 몇 %를 감면할지 설정합니다 (100% = 전액 면제)"}
                 </FormDescription>
