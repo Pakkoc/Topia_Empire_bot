@@ -10,7 +10,7 @@ export type ShopItemCurrencyType = 'topy' | 'ruby' | 'both';
  * 상점 아이템 타입 (특수 로직이 필요한 아이템 식별)
  * - custom: 일반 (기본값)
  * - warning_reduction: 경고차감권
- * - tax_exemption: 세금면제권
+ * - tax_exemption: 세금감면권
  * - transfer_fee_reduction: 이체수수료감면권
  * - activity_boost: 활동부스트권
  * - premium_afk: 프리미엄잠수방
@@ -61,7 +61,7 @@ export interface ShopItem {
   rubyPrice: bigint | null;  // 루비 가격 (ruby 또는 both일 때 사용)
   currencyType: ShopItemCurrencyType;
   itemType: ShopItemType;  // 아이템 타입
-  effectPercent: number | null;  // 효과 비율 (세금면제권, 이체감면권 등) - null=100%
+  effectPercent: number | null;  // 효과 비율 (세금감면권, 이체감면권 등) - null=100%
   effectConfig: ShopItemEffectConfig;  // 효과 설정 (디토뱅크 등) - JSON
   durationDays: number; // 0=영구, 양수=기간제
   stock: number | null; // null=무제한
@@ -78,7 +78,7 @@ export interface CreateShopItemInput {
   rubyPrice?: bigint | null;
   currencyType: ShopItemCurrencyType;
   itemType?: ShopItemType;
-  effectPercent?: number | null;  // 효과 비율 (세금면제권, 이체감면권 등)
+  effectPercent?: number | null;  // 효과 비율 (세금감면권, 이체감면권 등)
   effectConfig?: ShopItemEffectConfig;  // 효과 설정 (디토뱅크 등)
   durationDays?: number;
   stock?: number | null;
@@ -93,7 +93,7 @@ export interface UpdateShopItemInput {
   rubyPrice?: bigint | null;
   currencyType?: ShopItemCurrencyType;
   itemType?: ShopItemType;
-  effectPercent?: number | null;  // 효과 비율 (세금면제권, 이체감면권 등)
+  effectPercent?: number | null;  // 효과 비율 (세금감면권, 이체감면권 등)
   effectConfig?: ShopItemEffectConfig;  // 효과 설정 (디토뱅크 등)
   durationDays?: number;
   stock?: number | null;

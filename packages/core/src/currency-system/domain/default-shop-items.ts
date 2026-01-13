@@ -28,7 +28,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     isRoleItem: false,
   },
   {
-    name: '세금면제권',
+    name: '세금감면권',
     description: '월말 세금 징수 시 자동으로 소모되어 세금을 면제받습니다.',
     itemType: 'tax_exemption',
     currencyType: 'topy',
@@ -118,7 +118,7 @@ export function isSystemItemType(itemType: ShopItemType): boolean {
 export const ITEM_TYPE_LABELS: Record<ShopItemType, string> = {
   custom: '일반',
   warning_reduction: '경고차감권',
-  tax_exemption: '세금면제권',
+  tax_exemption: '세금감면권',
   transfer_fee_reduction: '이체수수료감면권',
   activity_boost: '활동부스트권',
   premium_afk: '프리미엄잠수방',

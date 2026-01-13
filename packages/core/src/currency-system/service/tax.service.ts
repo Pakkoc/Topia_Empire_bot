@@ -50,7 +50,7 @@ export class TaxService {
   ) {}
 
   /**
-   * 세금면제권 확인 (미리보기용 - 소모하지 않음)
+   * 세금감면권 확인 (미리보기용 - 소모하지 않음)
    * @returns hasExemption: 면제권 보유 여부, exemptPercent: 면제 비율 (1-100)
    */
   private async checkTaxExemption(
@@ -73,7 +73,7 @@ export class TaxService {
   }
 
   /**
-   * 세금면제권 사용 (실제 소모)
+   * 세금감면권 사용 (실제 소모)
    * @returns used: 사용 여부, exemptPercent: 면제 비율 (1-100), reason: 사용 사유
    */
   private async useTaxExemption(
@@ -89,11 +89,11 @@ export class TaxService {
     if (result && result.userItem.quantity > 0) {
       // effectPercent가 null이면 100% (기본값)
       const exemptPercent = result.effectPercent ?? 100;
-      // 세금면제권 1개 소모
+      // 세금감면권 1개 소모
       await this.shopRepo.decreaseUserItemQuantity(result.userItem.id, 1);
       const reason = exemptPercent === 100
-        ? '세금면제권 사용 (100% 면제)'
-        : `세금면제권 사용 (${exemptPercent}% 감면)`;
+        ? '세금감면권 사용 (100% 면제)'
+        : `세금감면권 사용 (${exemptPercent}% 감면)`;
       return { used: true, exemptPercent, reason };
     }
 
@@ -126,7 +126,7 @@ export class TaxService {
 
       const fullTaxAmount = calculateMonthlyTax(wallet.balance, settings.monthlyTaxPercent);
 
-      // 세금면제권 확인 (미리보기에서는 소모하지 않음)
+      // 세금감면권 확인 (미리보기에서는 소모하지 않음)
       const { hasExemption, exemptPercent } = await this.checkTaxExemption(guildId, wallet.userId);
 
       // 부분 면제 계산: 세금 * (100 - 면제비율) / 100
@@ -136,11 +136,11 @@ export class TaxService {
       if (hasExemption) {
         if (exemptPercent >= 100) {
           actualTaxAmount = BigInt(0);
-          exemptionReason = '세금면제권 보유 (100% 면제)';
+          exemptionReason = '세금감면권 보유 (100% 면제)';
         } else {
           // 부분 면제
           actualTaxAmount = (fullTaxAmount * BigInt(100 - exemptPercent)) / BigInt(100);
-          exemptionReason = `세금면제권 보유 (${exemptPercent}% 감면)`;
+          exemptionReason = `세금감면권 보유 (${exemptPercent}% 감면)`;
         }
       }
 
@@ -211,7 +211,7 @@ export class TaxService {
 
       const fullTaxAmount = calculateMonthlyTax(wallet.balance, settings.monthlyTaxPercent);
 
-      // 세금면제권 사용 시도 (실제 소모)
+      // 세금감면권 사용 시도 (실제 소모)
       const { used: hasExemption, exemptPercent, reason: exemptionReason } = await this.useTaxExemption(guildId, wallet.userId);
 
       // 부분 면제 계산

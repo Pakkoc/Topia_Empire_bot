@@ -61,7 +61,7 @@ export const shopItemV2Schema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).nullable(),
   itemType: itemTypeEnum.default("custom"),
-  effectPercent: z.number().min(1).max(100).nullable(), // 효과 비율 (세금면제권, 이체감면권 등)
+  effectPercent: z.number().min(1).max(100).nullable(), // 효과 비율 (세금감면권, 이체감면권 등)
   effectConfig: effectConfigSchema.optional(), // 효과 설정 (디토뱅크 등)
   topyPrice: z.number().min(0).nullable(),
   rubyPrice: z.number().min(0).nullable(),

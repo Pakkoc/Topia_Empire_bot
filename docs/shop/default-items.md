@@ -16,7 +16,7 @@
 | 아이템           | item_type                | 설명             | 동작 방식                  |
 | ---------------- | ------------------------ | ---------------- | -------------------------- |
 | 경고차감권       | `warning_reduction`      | 경고 1회 차감    | 티켓 문의를 통해 수동 처리 |
-| 세금면제권       | `tax_exemption`          | 월말 세금 면제   | 세금 징수 시 자동 소모     |
+| 세금감면권       | `tax_exemption`          | 월말 세금 면제   | 세금 징수 시 자동 소모     |
 | 이체수수료감면권 | `transfer_fee_reduction` | 이체 수수료 면제 | 이체 시 선택적 사용        |
 
 ### 역할지급형 (기간제)
@@ -33,13 +33,13 @@
 
 ---
 
-## 세금면제권 동작
+## 세금감면권 동작
 
 ### 자동 소모 로직
 
 월말 세금 징수 시 (`TaxService.processMonthlyTax`):
 
-1. 유저가 세금면제권을 보유하고 있는지 확인
+1. 유저가 세금감면권을 보유하고 있는지 확인
 2. 보유 시 1개 자동 소모
 3. 해당 월 세금 면제 처리
 
@@ -116,7 +116,7 @@ if (item.itemType === "dito_silver" || item.itemType === "dito_gold") {
 시스템 아이템(`custom`이 아닌 item_type)은 파란색 배지로 표시:
 
 ```
-[활성] [세금면제권] 세금면제권
+[활성] [세금감면권] 세금감면권
        ^^^^^^^^^^^ 시스템 아이템 배지
 ```
 
@@ -140,7 +140,7 @@ CREATE INDEX idx_shop_item_type ON shop_items_v2 (guild_id, item_type);
 | ------------------------ | ------------------- |
 | `custom`                 | 일반                |
 | `warning_reduction`      | 경고차감권          |
-| `tax_exemption`          | 세금면제권          |
+| `tax_exemption`          | 세금감면권          |
 | `transfer_fee_reduction` | 이체수수료감면권    |
 | `activity_boost`         | 활동부스트권        |
 | `premium_afk`            | 프리미엄잠수방      |
@@ -158,6 +158,6 @@ CREATE INDEX idx_shop_item_type ON shop_items_v2 (guild_id, item_type);
 | ---------------------------------------------------------------- | ------------------ |
 | `packages/core/src/currency-system/domain/default-shop-items.ts` | 디폴트 아이템 정의 |
 | `packages/core/src/currency-system/domain/shop-item.ts`          | ShopItemType 타입  |
-| `packages/core/src/currency-system/service/tax.service.ts`       | 세금면제권 로직    |
+| `packages/core/src/currency-system/service/tax.service.ts`       | 세금감면권 로직    |
 | `apps/bot/src/commands/transfer.ts`                              | 이체감면권 UI      |
 | `apps/web/src/app/api/guilds/[guildId]/shop-v2/seed/route.ts`    | 시딩 API           |
