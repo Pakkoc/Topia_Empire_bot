@@ -11,6 +11,8 @@ export interface BankSubscription {
   guildId: string;
   userId: string;
   tier: BankTier;
+  vaultLimit: bigint | null;      // 커스텀 금고 한도 (null이면 기본값)
+  interestRate: number | null;    // 커스텀 월 이자율 (null이면 기본값)
   startsAt: Date;
   expiresAt: Date;
   createdAt: Date;
@@ -85,7 +87,9 @@ export function createBankSubscription(
   guildId: string,
   userId: string,
   tier: BankTier,
-  startsAt: Date
+  startsAt: Date,
+  vaultLimit?: bigint | null,
+  interestRate?: number | null
 ): Omit<BankSubscription, 'id' | 'createdAt'> {
   const expiresAt = new Date(startsAt.getTime() + SUBSCRIPTION_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
@@ -93,6 +97,8 @@ export function createBankSubscription(
     guildId,
     userId,
     tier,
+    vaultLimit: vaultLimit ?? null,
+    interestRate: interestRate ?? null,
     startsAt,
     expiresAt,
   };

@@ -6,9 +6,31 @@ import type { CurrencyTransactionRepositoryPort } from '../port/currency-transac
 import type { BankSubscriptionRepositoryPort } from '../port/bank-subscription-repository.port';
 import type { UserVault, VaultDepositResult, VaultWithdrawResult, VaultInterestResult } from '../domain/user-vault';
 import { calculateInterest } from '../domain/user-vault';
-import { getBankBenefits } from '../domain/bank-subscription';
+import { getBankBenefits, type BankSubscription } from '../domain/bank-subscription';
 import { Result } from '../../shared/types/result';
 import { createTransaction } from '../domain/currency-transaction';
+
+/**
+ * 구독에서 실제 적용될 금고 한도 계산
+ * (커스텀 값이 있으면 사용, 없으면 기본값)
+ */
+function getEffectiveStorageLimit(subscription: BankSubscription): bigint {
+  if (subscription.vaultLimit != null) {
+    return subscription.vaultLimit;
+  }
+  return getBankBenefits(subscription.tier).storageLimit;
+}
+
+/**
+ * 구독에서 실제 적용될 이자율 계산
+ * (커스텀 값이 있으면 사용, 없으면 기본값)
+ */
+function getEffectiveInterestRate(subscription: BankSubscription): number {
+  if (subscription.interestRate != null) {
+    return subscription.interestRate;
+  }
+  return getBankBenefits(subscription.tier).interestRate;
+}
 
 export interface VaultSummary {
   vault: UserVault | null;
@@ -47,10 +69,9 @@ export class VaultService {
     }
 
     const subscription = subscriptionResult.data;
-    const benefits = getBankBenefits(subscription?.tier ?? null);
 
-    // 금고가 없거나 구독이 없으면 null
-    if (!subscription || benefits.storageLimit === BigInt(0)) {
+    // 구독이 없으면 기본값 반환
+    if (!subscription) {
       return {
         success: true,
         data: {
@@ -62,20 +83,24 @@ export class VaultService {
       };
     }
 
+    // 커스텀 값 또는 기본값 사용
+    const storageLimit = getEffectiveStorageLimit(subscription);
+    const interestRate = getEffectiveInterestRate(subscription);
+
     // 금고 조회
     const vaultResult = await this.vaultRepo.findByUser(guildId, userId);
     if (!vaultResult.success) {
       return { success: false, error: { type: 'REPOSITORY_ERROR', cause: vaultResult.error } };
     }
 
-    const tierName = subscription.tier === 'gold' ? '디토 골드' : '디토 실버';
+    const tierName = subscription.tier === 'gold' ? '골드' : '실버';
 
     return {
       success: true,
       data: {
         vault: vaultResult.data,
-        storageLimit: benefits.storageLimit,
-        interestRate: benefits.interestRate,
+        storageLimit,
+        interestRate,
         tierName,
       },
     };
@@ -106,8 +131,9 @@ export class VaultService {
       return { success: false, error: { type: 'NO_SUBSCRIPTION' as const } };
     }
 
-    const benefits = getBankBenefits(subscription.tier);
-    if (benefits.storageLimit === BigInt(0)) {
+    // 커스텀 값 또는 기본값 사용
+    const storageLimit = getEffectiveStorageLimit(subscription);
+    if (storageLimit === BigInt(0)) {
       return { success: false, error: { type: 'NO_SUBSCRIPTION' as const } };
     }
 
@@ -121,12 +147,12 @@ export class VaultService {
     const newTotal = currentVault.depositedAmount + amount;
 
     // 한도 확인
-    if (newTotal > benefits.storageLimit) {
+    if (newTotal > storageLimit) {
       return {
         success: false,
         error: {
           type: 'VAULT_LIMIT_EXCEEDED' as const,
-          limit: benefits.storageLimit,
+          limit: storageLimit,
           current: currentVault.depositedAmount,
           requested: amount,
         },
@@ -267,11 +293,12 @@ export class VaultService {
         continue;
       }
 
-      const benefits = getBankBenefits(subscriptionResult.data.tier);
-      if (benefits.interestRate <= 0) continue;
+      // 커스텀 값 또는 기본값 사용
+      const interestRate = getEffectiveInterestRate(subscriptionResult.data);
+      if (interestRate <= 0) continue;
 
       // 이자 계산
-      const interestAmount = calculateInterest(vault.depositedAmount, benefits.interestRate);
+      const interestAmount = calculateInterest(vault.depositedAmount, interestRate);
       if (interestAmount <= BigInt(0)) continue;
 
       // 이자 지급 (금고에 추가)
@@ -289,7 +316,7 @@ export class VaultService {
       results.push({
         userId: vault.userId,
         depositedAmount: vault.depositedAmount,
-        interestRate: benefits.interestRate,
+        interestRate,
         interestAmount,
         newTotal,
       });

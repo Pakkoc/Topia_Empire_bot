@@ -2260,7 +2260,7 @@ export async function handleGameResultRank(
         } catch {
           // 이미 삭제됨
         }
-      }, EPHEMERAL_DELETE_DELAY);
+      }, LONG_DELETE_DELAY);
     }
   } catch (err) {
     console.error('[GAME] Failed to update game message:', err);
@@ -2361,7 +2361,7 @@ export async function handleGameCancel(
         } catch {
           // 이미 삭제됨
         }
-      }, EPHEMERAL_DELETE_DELAY);
+      }, LONG_DELETE_DELAY);
     }
   } catch (err) {
     console.error('[GAME] Failed to update game message:', err);
