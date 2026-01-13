@@ -64,7 +64,7 @@ import type { ShopItemV2, InlineRoleOption } from "@/types/shop-v2";
 const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   custom: "일반",
   warning_reduction: "경고차감권",
-  tax_exemption: "세금면제권",
+  tax_exemption: "세금감면권",
   transfer_fee_reduction: "이체수수료감면권",
   activity_boost: "활동부스트권",
   premium_afk: "프리미엄잠수방",
@@ -94,7 +94,7 @@ type SelectableItemType = (typeof SELECTABLE_ITEM_TYPES)[number];
 
 const SELECTABLE_ITEM_TYPE_LABELS: Record<SelectableItemType, string> = {
   custom: "일반",
-  tax_exemption: "세금면제권",
+  tax_exemption: "세금감면권",
   transfer_fee_reduction: "이체수수료감면권",
   dito_silver: "금고 등급",
 };
