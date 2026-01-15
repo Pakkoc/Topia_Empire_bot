@@ -336,7 +336,7 @@ export default function ShopV2Page() {
             currencyType: data.currencyType,
             effectPercent,
             effectConfig,
-            durationDays: data.durationDays ?? 0,
+            durationDays: (data.hasRoleTicket && data.roleTicketPreset === "period") ? (data.durationDays ?? 30) : 0,
             stock: data.stock || null,
             maxPerUser: data.maxPerUser || null,
             enabled: data.enabled ?? true,
@@ -355,7 +355,7 @@ export default function ShopV2Page() {
           currencyType: data.currencyType,
           effectPercent,
           effectConfig,
-          durationDays: data.durationDays ?? 0,
+          durationDays: (data.hasRoleTicket && data.roleTicketPreset === "period") ? (data.durationDays ?? 30) : 0,
           stock: data.stock,
           maxPerUser: data.maxPerUser,
           enabled: data.enabled ?? true,
@@ -685,29 +685,32 @@ export default function ShopV2Page() {
           )}
         </div>
 
-        <FormField
-          control={form.control}
-          name="durationDays"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-white/70">유효 기간 (일)</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder="0"
-                  {...field}
-                  value={field.value || ""}
-                  className="bg-white/5 border-white/10 text-white"
-                />
-              </FormControl>
-              <FormDescription className="text-xs text-white/40">
-                0 = 영구, 양수 = 기간제 (일 단위)
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* 유효 기간 - 기간권 선택 시에만 표시 */}
+        {hasRoleTicket && roleTicketPreset === "period" && (
+          <FormField
+            control={form.control}
+            name="durationDays"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white/70">유효 기간 (일)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="30"
+                    {...field}
+                    value={field.value || ""}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </FormControl>
+                <FormDescription className="text-xs text-white/40">
+                  기간권의 유효 기간을 설정합니다. 만료 시 역할도 함께 제거됩니다.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* 효과 비율 - 세금면제권, 이체감면권일 때만 표시 */}
         {(itemType === "tax_exemption" || itemType === "transfer_fee_reduction") && (
