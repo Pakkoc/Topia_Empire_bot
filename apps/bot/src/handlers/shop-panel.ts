@@ -76,6 +76,7 @@ function createShopContainer(
   if (pageItems.length > 0) {
     pageItems.forEach((item, idx) => {
       const price = getItemPrice(item, currentMode) ?? BigInt(0);
+      const isLast = idx === pageItems.length - 1;
 
       let info = `**${startIdx + idx + 1}. ${item.name}**\n`;
       info += `💰 **${price.toLocaleString()}** ${currencyName}`;
@@ -95,6 +96,11 @@ function createShopContainer(
 
       if (item.description) {
         info += `\n> ${item.description}`;
+      }
+
+      // 마지막 아이템이 아니면 빈 줄 추가 (가독성 향상)
+      if (!isLast) {
+        info += '\n';
       }
 
       container.addTextDisplayComponents(
