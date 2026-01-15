@@ -83,7 +83,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     itemType: 'color_basic',
     currencyType: 'topy',
     durationDays: 0,  // 영구 (1회 사용 후 역할 영구 유지)
-    isRoleItem: true,  // 역할선택권 (고정역할 없음, 교환 가능 역할에서 선택)
+    isRoleItem: false,  // 인벤토리형 (1회 소모 후 역할 교환)
   },
   {
     name: '색상선택권(프리미엄)',
