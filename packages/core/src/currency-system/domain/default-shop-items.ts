@@ -29,7 +29,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
   },
   {
     name: '세금감면권',
-    description: '월말 세금 징수 시 자동으로 소모되어 세금을 면제받습니다.',
+    description: '월말 세금 징수 시 자동으로 1개 소모되어 세금을 감면받습니다. (감면 비율은 관리자 설정에 따름)',
     itemType: 'tax_exemption',
     currencyType: 'topy',
     durationDays: 0,
