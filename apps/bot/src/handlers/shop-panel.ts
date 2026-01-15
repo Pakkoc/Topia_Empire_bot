@@ -78,8 +78,7 @@ function createShopContainer(
       const price = getItemPrice(item, currentMode) ?? BigInt(0);
       const isLast = idx === pageItems.length - 1;
 
-      let info = `**${startIdx + idx + 1}. ${item.name}**\n`;
-      info += `💰 **${price.toLocaleString()}** ${currencyName}`;
+      let info = `**${startIdx + idx + 1}. ${item.name}** - 💰 **${price.toLocaleString()}** ${currencyName}`;
 
       if (item.durationDays > 0) {
         info += ` · ⏰ ${item.durationDays}일`;
