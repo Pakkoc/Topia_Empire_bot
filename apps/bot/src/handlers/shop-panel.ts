@@ -98,9 +98,9 @@ function createShopContainer(
         info += `\n> ${item.description}`;
       }
 
-      // 마지막 아이템이 아니면 빈 줄 추가 (가독성 향상)
+      // 마지막 아이템이 아니면 구분선 추가 (가독성 향상)
       if (!isLast) {
-        info += '\n';
+        info += '\n─────────────────────';
       }
 
       container.addTextDisplayComponents(
