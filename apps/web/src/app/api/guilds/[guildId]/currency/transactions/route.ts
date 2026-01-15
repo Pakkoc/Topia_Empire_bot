@@ -26,14 +26,39 @@ interface UserInfo {
   avatar: string | null;
 }
 
-async function fetchUserInfo(userId: string, botToken: string): Promise<UserInfo> {
+async function fetchUserInfo(guildId: string, userId: string, botToken: string): Promise<UserInfo> {
   try {
-    const response = await fetch(
+    // 서버 멤버 정보 조회 (서버 닉네임 포함)
+    const memberResponse = await fetch(
+      `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`,
+      { headers: { Authorization: `Bot ${botToken}` } }
+    );
+    if (memberResponse.ok) {
+      const memberData = await memberResponse.json();
+      const user = memberData.user;
+      // 우선순위: 서버 닉네임 > 전역 닉네임 > username
+      const displayName = memberData.nick || user.global_name || user.username;
+      // 아바타 우선순위: 서버 아바타 > 유저 아바타
+      const avatar = memberData.avatar
+        ? `https://cdn.discordapp.com/guilds/${guildId}/users/${userId}/avatars/${memberData.avatar}.png`
+        : user.avatar
+          ? `https://cdn.discordapp.com/avatars/${userId}/${user.avatar}.png`
+          : null;
+      return {
+        id: userId,
+        username: user.username,
+        displayName,
+        avatar,
+      };
+    }
+
+    // 멤버 조회 실패 시 유저 정보로 폴백
+    const userResponse = await fetch(
       `https://discord.com/api/v10/users/${userId}`,
       { headers: { Authorization: `Bot ${botToken}` } }
     );
-    if (response.ok) {
-      const userData = await response.json();
+    if (userResponse.ok) {
+      const userData = await userResponse.json();
       return {
         id: userId,
         username: userData.username,
@@ -123,7 +148,7 @@ export async function GET(
 
     if (botToken && userIds.length > 0) {
       const userInfos = await Promise.all(
-        userIds.map((id) => fetchUserInfo(id, botToken))
+        userIds.map((id) => fetchUserInfo(guildId, id, botToken))
       );
       userInfos.forEach((info) => userMap.set(info.id, info));
     }
