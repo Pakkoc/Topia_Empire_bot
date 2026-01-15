@@ -51,53 +51,67 @@ export class TaxService {
 
   /**
    * 세금감면권 확인 (미리보기용 - 소모하지 않음)
+   * 여러 종류의 감면권이 있으면 가장 높은 감면율을 가진 것을 반환
    * @returns hasExemption: 면제권 보유 여부, exemptPercent: 면제 비율 (1-100)
    */
   private async checkTaxExemption(
     guildId: string,
     userId: string
   ): Promise<{ hasExemption: boolean; exemptPercent: number }> {
-    const itemResult = await this.shopRepo.findUserItemWithEffectByType(guildId, userId, 'tax_exemption');
-    if (!itemResult.success) {
+    const itemsResult = await this.shopRepo.findAllUserItemsWithEffectByType(guildId, userId, 'tax_exemption');
+    if (!itemsResult.success) {
       return { hasExemption: false, exemptPercent: 0 };
     }
 
-    const result = itemResult.data;
-    if (result && result.userItem.quantity > 0) {
-      // effectPercent가 null이면 100% (기본값)
-      const exemptPercent = result.effectPercent ?? 100;
-      return { hasExemption: true, exemptPercent };
+    const items = itemsResult.data;
+    if (items.length === 0) {
+      return { hasExemption: false, exemptPercent: 0 };
     }
 
-    return { hasExemption: false, exemptPercent: 0 };
+    // 가장 높은 감면율을 가진 아이템 선택 (effectPercent가 null이면 100%)
+    const bestItem = items.reduce((best, current) => {
+      const bestPercent = best.effectPercent ?? 100;
+      const currentPercent = current.effectPercent ?? 100;
+      return currentPercent > bestPercent ? current : best;
+    });
+
+    const exemptPercent = bestItem.effectPercent ?? 100;
+    return { hasExemption: true, exemptPercent };
   }
 
   /**
    * 세금감면권 사용 (실제 소모)
+   * 여러 종류의 감면권이 있으면 가장 높은 감면율을 가진 것을 사용
    * @returns used: 사용 여부, exemptPercent: 면제 비율 (1-100), reason: 사용 사유
    */
   private async useTaxExemption(
     guildId: string,
     userId: string
   ): Promise<{ used: boolean; exemptPercent: number; reason?: string }> {
-    const itemResult = await this.shopRepo.findUserItemWithEffectByType(guildId, userId, 'tax_exemption');
-    if (!itemResult.success) {
+    const itemsResult = await this.shopRepo.findAllUserItemsWithEffectByType(guildId, userId, 'tax_exemption');
+    if (!itemsResult.success) {
       return { used: false, exemptPercent: 0 };
     }
 
-    const result = itemResult.data;
-    if (result && result.userItem.quantity > 0) {
-      // effectPercent가 null이면 100% (기본값)
-      const exemptPercent = result.effectPercent ?? 100;
-      // 세금감면권 1개 소모
-      await this.shopRepo.decreaseUserItemQuantity(result.userItem.id, 1);
-      const reason = exemptPercent === 100
-        ? '세금감면권 사용 (100% 면제)'
-        : `세금감면권 사용 (${exemptPercent}% 감면)`;
-      return { used: true, exemptPercent, reason };
+    const items = itemsResult.data;
+    if (items.length === 0) {
+      return { used: false, exemptPercent: 0 };
     }
 
-    return { used: false, exemptPercent: 0 };
+    // 가장 높은 감면율을 가진 아이템 선택 (effectPercent가 null이면 100%)
+    const bestItem = items.reduce((best, current) => {
+      const bestPercent = best.effectPercent ?? 100;
+      const currentPercent = current.effectPercent ?? 100;
+      return currentPercent > bestPercent ? current : best;
+    });
+
+    const exemptPercent = bestItem.effectPercent ?? 100;
+    // 세금감면권 1개 소모
+    await this.shopRepo.decreaseUserItemQuantity(bestItem.userItem.id, 1);
+    const reason = exemptPercent === 100
+      ? '세금감면권 사용 (100% 면제)'
+      : `세금감면권 사용 (${exemptPercent}% 감면)`;
+    return { used: true, exemptPercent, reason };
   }
 
   /**

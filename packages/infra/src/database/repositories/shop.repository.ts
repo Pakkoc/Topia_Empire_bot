@@ -465,6 +465,34 @@ export class ShopRepository implements ShopRepositoryPort {
     }
   }
 
+  async findAllUserItemsWithEffectByType(
+    guildId: string,
+    userId: string,
+    itemType: ShopItemType
+  ): Promise<Result<{ userItem: UserItemV2; effectPercent: number | null }[], RepositoryError>> {
+    try {
+      // shop_items_v2와 조인하여 item_type과 effect_percent 함께 조회 (수량 1 이상인 것만)
+      const [rows] = await this.pool.execute<(UserItemV2Row & { effect_percent: number | null })[]>(
+        `SELECT ui.*, si.effect_percent FROM user_items_v2 ui
+         INNER JOIN shop_items_v2 si ON ui.shop_item_id = si.id
+         WHERE ui.guild_id = ? AND ui.user_id = ? AND si.item_type = ? AND ui.quantity > 0`,
+        [guildId, userId, itemType]
+      );
+
+      return Result.ok(
+        rows.map((row) => ({
+          userItem: toUserItemV2(row),
+          effectPercent: row.effect_percent,
+        }))
+      );
+    } catch (error) {
+      return Result.err({
+        type: 'QUERY_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
   async findExpiredItems(before: Date): Promise<Result<UserItemV2[], RepositoryError>> {
     try {
       const [rows] = await this.pool.execute<UserItemV2Row[]>(

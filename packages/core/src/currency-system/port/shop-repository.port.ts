@@ -41,6 +41,11 @@ export interface ShopRepositoryPort {
     userId: string,
     itemType: ShopItemType
   ): Promise<Result<{ userItem: UserItemV2; effectPercent: number | null } | null, RepositoryError>>;
+  findAllUserItemsWithEffectByType(
+    guildId: string,
+    userId: string,
+    itemType: ShopItemType
+  ): Promise<Result<{ userItem: UserItemV2; effectPercent: number | null }[], RepositoryError>>;
   findExpiredItems(before: Date): Promise<Result<UserItemV2[], RepositoryError>>;
 
   // 아이템 구매 (수량 증가 또는 생성)
