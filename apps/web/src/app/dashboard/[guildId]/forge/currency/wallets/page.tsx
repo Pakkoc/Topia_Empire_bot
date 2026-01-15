@@ -6,6 +6,7 @@ import { useCurrencyWallets, useCurrencyLeaderboard, useCurrencySettings } from 
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icon } from "@iconify/react";
 import { useDebounce } from "react-use";
 
@@ -152,7 +153,7 @@ export default function WalletsPage() {
           {/* Header */}
           <div className="grid grid-cols-12 gap-4 p-4 border-b border-white/10 bg-white/5">
             <div className="col-span-1 text-white/50 text-sm font-medium">#</div>
-            <div className="col-span-5 text-white/50 text-sm font-medium">유저 ID</div>
+            <div className="col-span-5 text-white/50 text-sm font-medium">유저</div>
             <div className="col-span-3 text-white/50 text-sm font-medium text-right">{topyName}</div>
             <div className="col-span-3 text-white/50 text-sm font-medium text-right">{rubyName}</div>
           </div>
@@ -164,13 +165,22 @@ export default function WalletsPage() {
                 key={wallet.userId}
                 className="grid grid-cols-12 gap-4 p-4 hover:bg-white/5 transition-colors"
               >
-                <div className="col-span-1 text-white/50 text-sm">
+                <div className="col-span-1 text-white/50 text-sm flex items-center">
                   {(page - 1) * 20 + index + 1}
                 </div>
-                <div className="col-span-5 truncate">
-                  <p className="text-white font-medium truncate">{wallet.userId}</p>
+                <div className="col-span-5 flex items-center gap-2 min-w-0">
+                  <Avatar className="h-7 w-7 flex-shrink-0">
+                    <AvatarImage src={wallet.avatar ?? undefined} />
+                    <AvatarFallback className="bg-white/10 text-white/70 text-xs">
+                      {wallet.displayName?.[0]?.toUpperCase() ?? "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-white font-medium text-sm truncate">{wallet.displayName}</p>
+                    <p className="text-white/40 text-xs truncate">{wallet.userId}</p>
+                  </div>
                 </div>
-                <div className="col-span-3 text-right">
+                <div className="col-span-3 text-right flex flex-col justify-center">
                   <p className="text-amber-400 font-bold">
                     {formatBalance(wallet.topyBalance)}
                   </p>
@@ -178,7 +188,7 @@ export default function WalletsPage() {
                     총 {formatBalance(wallet.topyTotalEarned)} 획득
                   </p>
                 </div>
-                <div className="col-span-3 text-right">
+                <div className="col-span-3 text-right flex flex-col justify-center">
                   <p className="text-pink-400 font-bold">
                     {formatBalance(wallet.rubyBalance)}
                   </p>
