@@ -217,71 +217,92 @@ export default function BankPage() {
 
   return (
     <div className="space-y-8">
-      {/* 페이지 헤더 */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          {isEditingName ? (
-            <div className="flex items-center gap-2">
-              <Input
-                value={editingBankName}
-                onChange={(e) => setEditingBankName(e.target.value)}
-                placeholder="은행 이름"
-                className="bg-white/5 border-white/10 text-white text-2xl font-bold h-12 w-64"
-                maxLength={20}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSaveBankName();
-                  if (e.key === "Escape") {
-                    setIsEditingName(false);
-                    setEditingBankName(bankName);
-                  }
-                }}
-                autoFocus
-              />
-              <Button
-                size="sm"
-                onClick={handleSaveBankName}
-                disabled={updateSettings.isPending}
-                className="bg-emerald-500 hover:bg-emerald-600"
-              >
-                {updateSettings.isPending ? (
-                  <Icon icon="svg-spinners:ring-resize" className="w-4 h-4" />
-                ) : (
-                  <Icon icon="solar:check-circle-bold" className="w-4 h-4" />
-                )}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setIsEditingName(false);
-                  setEditingBankName(bankName);
-                }}
-                className="text-white/50 hover:text-white"
-              >
-                <Icon icon="solar:close-circle-bold" className="w-4 h-4" />
-              </Button>
-            </div>
-          ) : (
-            <>
-              <h1 className="text-2xl font-bold text-white">{bankName}</h1>
-              <Button
-                size="sm"
-                variant="ghost"
+      {/* 페이지 헤더 - 은행 이름 편집 */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
+            <Icon icon="solar:bank-bold" className="w-7 h-7 text-white" />
+          </div>
+          <div className="flex-1">
+            {isEditingName ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={editingBankName}
+                    onChange={(e) => setEditingBankName(e.target.value)}
+                    placeholder="은행 이름을 입력하세요"
+                    className="bg-white/10 border-white/20 text-white text-xl font-bold h-10 max-w-xs"
+                    maxLength={20}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveBankName();
+                      if (e.key === "Escape") {
+                        setIsEditingName(false);
+                        setEditingBankName(bankName);
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleSaveBankName}
+                    disabled={updateSettings.isPending}
+                    className="bg-emerald-500 hover:bg-emerald-600 h-10 px-4"
+                  >
+                    {updateSettings.isPending ? (
+                      <Icon icon="svg-spinners:ring-resize" className="w-4 h-4" />
+                    ) : (
+                      <>
+                        <Icon icon="solar:check-circle-bold" className="w-4 h-4 mr-1" />
+                        저장
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setIsEditingName(false);
+                      setEditingBankName(bankName);
+                    }}
+                    className="border-white/20 text-white/70 hover:bg-white/10 h-10"
+                  >
+                    취소
+                  </Button>
+                </div>
+                <p className="text-xs text-white/40">
+                  Enter로 저장, Esc로 취소 (최대 20자)
+                </p>
+              </div>
+            ) : (
+              <button
                 onClick={() => {
                   setEditingBankName(bankName);
                   setIsEditingName(true);
                 }}
-                className="text-white/30 hover:text-white/70"
+                className="group text-left w-full"
               >
-                <Icon icon="solar:pen-linear" className="w-4 h-4" />
-              </Button>
-            </>
-          )}
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-white group-hover:text-emerald-400 transition-colors">
+                    {bankName}
+                  </h1>
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/0 group-hover:bg-white/10 transition-all">
+                    <Icon icon="solar:pen-bold" className="w-4 h-4 text-white/30 group-hover:text-emerald-400 transition-colors" />
+                    <span className="text-xs text-white/30 group-hover:text-emerald-400 transition-colors">수정</span>
+                  </div>
+                </div>
+                <p className="text-sm text-white/50 mt-1">
+                  클릭하여 은행 이름을 변경할 수 있습니다
+                </p>
+              </button>
+            )}
+          </div>
         </div>
-        <p className="text-white/60">
-          국고 현황을 확인하고 {bankName} 패널을 설치하여 멤버들이 금융 서비스를 이용할 수 있게 하세요.
-        </p>
       </div>
+
+      {/* 페이지 설명 */}
+      <p className="text-white/60 -mt-4">
+        국고 현황을 확인하고 {bankName} 패널을 설치하여 멤버들이 금융 서비스를 이용할 수 있게 하세요.
+      </p>
 
       {/* 국고 현황 카드 */}
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
