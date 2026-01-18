@@ -130,7 +130,6 @@ const shopItemFormSchema = z.object({
   minDepositDays: z.coerce.number().min(0).optional(), // 최소 예치 기간
   transferFeeExempt: z.boolean().optional(), // 이체 수수료 면제
   purchaseFeePercent: z.coerce.number().min(0).max(100).optional(), // 구매 수수료율
-  marketFeePercent: z.coerce.number().min(0).max(100).optional(), // 장터 수수료율
   durationDays: z.coerce.number().min(0).optional(),
   stock: z.coerce.number().min(0).optional(),
   maxPerUser: z.coerce.number().min(1).optional(),
@@ -233,7 +232,6 @@ export default function ShopV2Page() {
       minDepositDays: 7,
       transferFeeExempt: true,
       purchaseFeePercent: 1.2,
-      marketFeePercent: 5,
       durationDays: 30,
       stock: undefined,
       maxPerUser: undefined,
@@ -336,7 +334,6 @@ export default function ShopV2Page() {
             minDepositDays: data.minDepositDays ?? 7,
             transferFeeExempt: data.transferFeeExempt ?? true,
             purchaseFeePercent: data.purchaseFeePercent ?? 1.2,
-            marketFeePercent: data.marketFeePercent ?? 5,
           }
         : null;
 
@@ -437,7 +434,6 @@ export default function ShopV2Page() {
       minDepositDays?: number;
       transferFeeExempt?: boolean;
       purchaseFeePercent?: number;
-      marketFeePercent?: number;
     } | null;
 
     form.reset({
@@ -454,7 +450,6 @@ export default function ShopV2Page() {
       minDepositDays: effectConfig?.minDepositDays ?? 7,
       transferFeeExempt: effectConfig?.transferFeeExempt ?? true,
       purchaseFeePercent: effectConfig?.purchaseFeePercent ?? 1.2,
-      marketFeePercent: effectConfig?.marketFeePercent ?? 5,
       durationDays: item.durationDays || 30,
       stock: item.stock || undefined,
       maxPerUser: item.maxPerUser || undefined,
@@ -902,7 +897,7 @@ export default function ShopV2Page() {
 
             {/* 수수료 설정 */}
             <h5 className="text-xs font-medium text-white/50 mt-4">수수료 혜택</h5>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="transferFeeExempt"
@@ -942,28 +937,6 @@ export default function ShopV2Page() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="marketFeePercent"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white/70">장터수수료 (%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={0.1}
-                        placeholder="5"
-                        {...field}
-                        value={field.value ?? ""}
-                        className="bg-white/5 border-white/10 text-white"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
           </div>
         )}

@@ -19,7 +19,6 @@ interface BankSubscriptionRow extends RowDataPacket {
   min_deposit_days: number | null;
   transfer_fee_exempt: number;   // MySQL boolean은 0/1로 반환됨
   purchase_fee_percent: string | null;  // DECIMAL
-  market_fee_percent: string | null;    // DECIMAL
   starts_at: Date;
   expires_at: Date;
   created_at: Date;
@@ -38,7 +37,6 @@ function rowToEntity(row: BankSubscriptionRow): BankSubscription {
     minDepositDays: row.min_deposit_days,
     transferFeeExempt: row.transfer_fee_exempt === 1,
     purchaseFeePercent: row.purchase_fee_percent ? parseFloat(row.purchase_fee_percent) : null,
-    marketFeePercent: row.market_fee_percent ? parseFloat(row.market_fee_percent) : null,
     startsAt: row.starts_at,
     expiresAt: row.expires_at,
     createdAt: row.created_at,
@@ -151,9 +149,9 @@ export class BankSubscriptionRepository implements BankSubscriptionRepositoryPor
         `INSERT INTO bank_subscriptions (
           guild_id, user_id, tier, tier_name, shop_item_id,
           vault_limit, interest_rate, min_deposit_days,
-          transfer_fee_exempt, purchase_fee_percent, market_fee_percent,
+          transfer_fee_exempt, purchase_fee_percent,
           starts_at, expires_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           subscription.guildId,
           subscription.userId,
@@ -165,7 +163,6 @@ export class BankSubscriptionRepository implements BankSubscriptionRepositoryPor
           subscription.minDepositDays,
           subscription.transferFeeExempt ? 1 : 0,
           subscription.purchaseFeePercent,
-          subscription.marketFeePercent,
           subscription.startsAt,
           subscription.expiresAt,
         ]

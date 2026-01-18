@@ -59,7 +59,6 @@ export const vaultSubscriptionEffectConfigSchema = z.object({
   minDepositDays: z.number().min(0).optional(),      // 최소 예치 기간
   transferFeeExempt: z.boolean().optional(),         // 이체 수수료 면제
   purchaseFeePercent: z.number().min(0).optional(),  // 구매 수수료율
-  marketFeePercent: z.number().min(0).optional(),    // 장터 수수료율
 });
 
 export type VaultSubscriptionEffectConfig = z.infer<typeof vaultSubscriptionEffectConfigSchema>;

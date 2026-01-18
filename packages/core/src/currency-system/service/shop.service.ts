@@ -372,7 +372,6 @@ export class ShopService {
               minDepositDays: effectConfig.minDepositDays,
               transferFeeExempt: effectConfig.transferFeeExempt,
               purchaseFeePercent: effectConfig.purchaseFeePercent,
-              marketFeePercent: effectConfig.marketFeePercent,
             },
             now,
             daysToAdd
@@ -413,7 +412,6 @@ export class ShopService {
             minDepositDays,
             transferFeeExempt: benefits.transferFeeExempt,
             purchaseFeePercent: benefits.purchaseFeePercent,
-            marketFeePercent: benefits.marketFeePercent,
             startsAt,
             expiresAt,
           });

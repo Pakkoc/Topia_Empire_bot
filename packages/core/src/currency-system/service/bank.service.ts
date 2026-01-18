@@ -204,20 +204,4 @@ export class BankService {
 
     return benefitsResult.data.transferFeeExempt;
   }
-
-  /**
-   * 장터 수수료율 조회
-   */
-  async getMarketFeePercent(
-    guildId: string,
-    userId: string
-  ): Promise<number> {
-    const benefitsResult = await this.getUserBenefits(guildId, userId);
-
-    if (!benefitsResult.success) {
-      return 5; // 기본 5%
-    }
-
-    return benefitsResult.data.marketFeePercent;
-  }
 }

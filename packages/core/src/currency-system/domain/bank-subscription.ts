@@ -18,7 +18,6 @@ export interface BankSubscription {
   minDepositDays: number | null;  // 최소 예치 기간 (null이면 기본값)
   transferFeeExempt: boolean;     // 이체 수수료 면제 여부
   purchaseFeePercent: number | null;  // 구매 수수료율 (%)
-  marketFeePercent: number | null;    // 장터 수수료율 (%)
   startsAt: Date;
   expiresAt: Date;
   createdAt: Date;
@@ -33,7 +32,6 @@ export interface BankBenefits {
   storageLimit: bigint;
   transferFeeExempt: boolean;
   purchaseFeePercent: number;  // 0 = 면제
-  marketFeePercent: number;
   interestRate: number;        // 월 이자율 (%) - 금고 예금에 적용
   minDepositDays: number;      // 최소 예치 기간 (일)
 }
@@ -62,7 +60,6 @@ export function getBankBenefits(tier: BankTier | null): BankBenefits {
       storageLimit: BigInt(200000),
       transferFeeExempt: true,
       purchaseFeePercent: 0,      // 면제
-      marketFeePercent: 3,        // 3%
       interestRate: 2,            // 월 2%
       minDepositDays: 7,          // 최소 7일 예치
     };
@@ -75,7 +72,6 @@ export function getBankBenefits(tier: BankTier | null): BankBenefits {
       storageLimit: BigInt(100000),
       transferFeeExempt: true,
       purchaseFeePercent: 1.2,    // 1.2%
-      marketFeePercent: 5,        // 5%
       interestRate: 1,            // 월 1%
       minDepositDays: 7,          // 최소 7일 예치
     };
@@ -88,7 +84,6 @@ export function getBankBenefits(tier: BankTier | null): BankBenefits {
     storageLimit: BigInt(50000),
     transferFeeExempt: false,
     purchaseFeePercent: 1.2,      // 1.2%
-    marketFeePercent: 5,          // 5%
     interestRate: 0,              // 이자 없음
     minDepositDays: 0,            // 이자 없으므로 의미 없음
   };
@@ -110,7 +105,6 @@ export function getBankBenefitsFromSubscription(subscription: BankSubscription |
       storageLimit: subscription.vaultLimit ?? BigInt(0),
       transferFeeExempt: subscription.transferFeeExempt,
       purchaseFeePercent: subscription.purchaseFeePercent ?? 1.2,
-      marketFeePercent: subscription.marketFeePercent ?? 5,
       interestRate: subscription.interestRate ?? 0,
       minDepositDays: subscription.minDepositDays ?? 0,
     };
@@ -147,7 +141,6 @@ export interface DynamicSubscriptionOptions {
   minDepositDays?: number | null;
   transferFeeExempt?: boolean;
   purchaseFeePercent?: number | null;
-  marketFeePercent?: number | null;
 }
 
 /**
@@ -176,7 +169,6 @@ export function createBankSubscription(
     minDepositDays: minDepositDays ?? null,
     transferFeeExempt: benefits.transferFeeExempt,
     purchaseFeePercent: benefits.purchaseFeePercent,
-    marketFeePercent: benefits.marketFeePercent,
     startsAt,
     expiresAt,
   };
@@ -205,7 +197,6 @@ export function createDynamicBankSubscription(
     minDepositDays: options.minDepositDays ?? null,
     transferFeeExempt: options.transferFeeExempt ?? false,
     purchaseFeePercent: options.purchaseFeePercent ?? null,
-    marketFeePercent: options.marketFeePercent ?? null,
     startsAt,
     expiresAt,
   };

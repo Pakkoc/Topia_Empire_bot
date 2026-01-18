@@ -56,7 +56,6 @@ export interface VaultSubscriptionEffectConfig {
   minDepositDays?: number;            // 최소 예치 기간 (일)
   transferFeeExempt?: boolean;        // 이체 수수료 면제 여부
   purchaseFeePercent?: number;        // 구매 수수료율 (%)
-  marketFeePercent?: number;          // 장터 수수료율 (%)
 }
 
 /**
