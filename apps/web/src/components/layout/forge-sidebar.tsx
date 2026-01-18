@@ -40,7 +40,7 @@ function createNavigation(topyName: string, rubyName: string) {
         { name: "화폐 설정", href: "/currency/settings", icon: "solar:settings-linear", iconActive: "solar:settings-bold" },
         { name: "화폐 규칙", href: "/currency/rules", icon: "solar:book-linear", iconActive: "solar:book-bold" },
         { name: "상점", href: "/currency/shop", icon: "solar:shop-linear", iconActive: "solar:shop-bold" },
-        { name: "장터", href: "/market", icon: "solar:bag-4-linear", iconActive: "solar:bag-4-bold" },
+        { name: "은행", href: "/currency/bank", icon: "solar:bank-linear", iconActive: "solar:bank-bold" },
         { name: "게임센터", href: "/currency/game", icon: "solar:gamepad-linear", iconActive: "solar:gamepad-bold" },
         { name: "지갑 관리", href: "/currency/wallets", icon: "solar:card-linear", iconActive: "solar:card-bold" },
         { name: "거래 기록", href: "/currency/transactions", icon: "solar:document-text-linear", iconActive: "solar:document-text-bold" },

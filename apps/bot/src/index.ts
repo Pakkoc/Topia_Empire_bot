@@ -1144,6 +1144,191 @@ async function main() {
     }
   });
 
+  // ========== 디토뱅크 패널 API ==========
+
+  // 디토뱅크 패널 생성
+  app.post('/api/bank/panel', async (req, res) => {
+    const { guildId, channelId } = req.body;
+
+    if (!guildId || !channelId) {
+      return res.status(400).json({ error: 'guildId and channelId are required' });
+    }
+
+    try {
+      const guild = await client.guilds.fetch(guildId);
+      const channel = await guild.channels.fetch(channelId);
+
+      if (!channel) {
+        return res.status(404).json({ error: 'Channel not found' });
+      }
+
+      if (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement) {
+        return res.status(400).json({ error: 'Channel must be a text channel' });
+      }
+
+      // 기존 설정 조회
+      const currencySettingsResult = await container.currencyService.getSettings(guildId);
+      const currencySettings = currencySettingsResult.success ? currencySettingsResult.data : null;
+
+      // 기존 패널 메시지 삭제
+      if (currencySettings?.bankPanelChannelId && currencySettings?.bankPanelMessageId) {
+        try {
+          const oldChannel = await guild.channels.fetch(currencySettings.bankPanelChannelId);
+          if (oldChannel && 'messages' in oldChannel) {
+            const oldMessage = await oldChannel.messages.fetch(currencySettings.bankPanelMessageId);
+            if (oldMessage) {
+              await oldMessage.delete();
+              console.log(`[BANK] Deleted old panel message`);
+            }
+          }
+        } catch (err) {
+          console.log(`[BANK] Could not delete old panel message: ${err}`);
+        }
+      }
+
+      // 화폐 설정
+      const topyName = currencySettings?.topyName || '토피';
+      const rubyName = currencySettings?.rubyName || '루비';
+      const bankName = currencySettings?.bankName || '디토뱅크';
+
+      // 국고 잔액 조회
+      const treasuryResult = await container.treasuryService.getTreasury(guildId);
+      const topyBalance = treasuryResult.success ? treasuryResult.data.topyBalance : BigInt(0);
+      const rubyBalance = treasuryResult.success ? treasuryResult.data.rubyBalance : BigInt(0);
+
+      // 패널 컨테이너 생성
+      const { createBankPanelContainer, createBankPanelButtons } = await import('./handlers/bank-panel.js');
+      const panelContainer = createBankPanelContainer(bankName, topyBalance, rubyBalance, topyName, rubyName);
+      const buttonRow = createBankPanelButtons();
+
+      // 채널에 패널 메시지 전송
+      const message = await channel.send({
+        components: [panelContainer, buttonRow],
+        flags: MessageFlags.IsComponentsV2,
+      });
+
+      // 설정 저장
+      if (currencySettings) {
+        currencySettings.bankPanelChannelId = channelId;
+        currencySettings.bankPanelMessageId = message.id;
+        currencySettings.updatedAt = new Date();
+        await container.currencyService.saveSettings(currencySettings);
+      } else {
+        await container.currencyService.saveSettings({
+          guildId,
+          bankPanelChannelId: channelId,
+          bankPanelMessageId: message.id,
+        } as any);
+      }
+
+      console.log(`[BANK] Panel created in channel ${channel.name} (${channelId}) in guild ${guildId}`);
+      return res.json({ success: true, messageId: message.id });
+    } catch (error) {
+      console.error('[BANK] Failed to create panel:', error);
+      return res.status(500).json({ error: 'Failed to create bank panel' });
+    }
+  });
+
+  // 디토뱅크 패널 삭제
+  app.delete('/api/bank/panel', async (req, res) => {
+    const { guildId } = req.body;
+
+    if (!guildId) {
+      return res.status(400).json({ error: 'guildId is required' });
+    }
+
+    try {
+      const guild = await client.guilds.fetch(guildId);
+
+      // 설정 조회
+      const currencySettingsResult = await container.currencyService.getSettings(guildId);
+      const currencySettings = currencySettingsResult.success ? currencySettingsResult.data : null;
+
+      // 기존 패널 메시지 삭제
+      if (currencySettings?.bankPanelChannelId && currencySettings?.bankPanelMessageId) {
+        try {
+          const oldChannel = await guild.channels.fetch(currencySettings.bankPanelChannelId);
+          if (oldChannel && 'messages' in oldChannel) {
+            const oldMessage = await oldChannel.messages.fetch(currencySettings.bankPanelMessageId);
+            if (oldMessage) {
+              await oldMessage.delete();
+            }
+          }
+        } catch (err) {
+          console.log(`[BANK] Could not delete panel message: ${err}`);
+        }
+      }
+
+      // 설정에서 패널 정보 제거
+      if (currencySettings) {
+        currencySettings.bankPanelChannelId = null;
+        currencySettings.bankPanelMessageId = null;
+        currencySettings.updatedAt = new Date();
+        await container.currencyService.saveSettings(currencySettings);
+      }
+
+      console.log(`[BANK] Panel deleted in guild ${guildId}`);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('[BANK] Failed to delete panel:', error);
+      return res.status(500).json({ error: 'Failed to delete bank panel' });
+    }
+  });
+
+  // 디토뱅크 패널 새로고침
+  app.post('/api/bank/panel/refresh', async (req, res) => {
+    const { guildId } = req.body;
+
+    if (!guildId) {
+      return res.status(400).json({ error: 'guildId is required' });
+    }
+
+    try {
+      const guild = await client.guilds.fetch(guildId);
+
+      const currencySettingsResult = await container.currencyService.getSettings(guildId);
+      const currencySettings = currencySettingsResult.success ? currencySettingsResult.data : null;
+
+      if (!currencySettings?.bankPanelChannelId || !currencySettings?.bankPanelMessageId) {
+        return res.json({ success: true, message: 'No panel to refresh' });
+      }
+
+      const channel = await guild.channels.fetch(currencySettings.bankPanelChannelId);
+      if (!channel || !('messages' in channel)) {
+        return res.status(404).json({ error: 'Channel not found' });
+      }
+
+      const message = await channel.messages.fetch(currencySettings.bankPanelMessageId);
+      if (!message) {
+        return res.status(404).json({ error: 'Panel message not found' });
+      }
+
+      // 최신 정보로 패널 업데이트
+      const topyName = currencySettings.topyName || '토피';
+      const rubyName = currencySettings.rubyName || '루비';
+      const bankName = currencySettings.bankName || '디토뱅크';
+
+      const treasuryResult = await container.treasuryService.getTreasury(guildId);
+      const topyBalance = treasuryResult.success ? treasuryResult.data.topyBalance : BigInt(0);
+      const rubyBalance = treasuryResult.success ? treasuryResult.data.rubyBalance : BigInt(0);
+
+      const { createBankPanelContainer, createBankPanelButtons } = await import('./handlers/bank-panel.js');
+      const panelContainer = createBankPanelContainer(bankName, topyBalance, rubyBalance, topyName, rubyName);
+      const buttonRow = createBankPanelButtons();
+
+      await message.edit({
+        components: [panelContainer, buttonRow],
+        flags: MessageFlags.IsComponentsV2,
+      });
+
+      console.log(`[BANK] Panel refreshed in guild ${guildId}`);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('[BANK] Failed to refresh panel:', error);
+      return res.status(500).json({ error: 'Failed to refresh bank panel' });
+    }
+  });
+
   const BOT_API_PORT = parseInt(process.env['BOT_API_PORT'] || '3001');
   app.listen(BOT_API_PORT, () => {
     console.log(`📡 Bot API server running on port ${BOT_API_PORT}`);
