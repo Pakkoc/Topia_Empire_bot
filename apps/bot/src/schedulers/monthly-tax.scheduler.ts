@@ -102,6 +102,13 @@ async function processGuildTax(client: Client, container: Container, guildId: st
       refreshBankPanel(client, guildId, container).catch(() => {});
     }
 
+    // 화폐 이름 조회
+    const settingsResult = await container.currencyService.getSettings(guildId);
+    const topyName = settingsResult.success && settingsResult.data ? settingsResult.data.topyName : '토피';
+
+    // 개인별 DM 알림 전송
+    await sendPersonalTaxNotifications(client, guildId, summary.results, topyName);
+
     // 세금 처리 완료 알림 전송 (선택적)
     await sendTaxNotification(client, guildId, summary);
   } catch (err) {
@@ -171,5 +178,123 @@ async function sendTaxNotification(
   } catch (err) {
     // 알림 전송 실패는 무시
     console.error(`[MONTHLY TAX] Failed to send notification for guild ${guildId}:`, err);
+  }
+}
+
+/**
+ * 개인별 세금 DM 알림 전송
+ */
+async function sendPersonalTaxNotifications(
+  client: Client,
+  guildId: string,
+  results: Array<{
+    userId: string;
+    balanceBefore: bigint;
+    taxAmount: bigint;
+    balanceAfter: bigint;
+    exempted: boolean;
+    exemptionReason?: string;
+  }>,
+  topyName: string
+) {
+  const guild = await client.guilds.fetch(guildId).catch(() => null);
+  if (!guild) return;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+
+  for (const result of results) {
+    try {
+      const user = await client.users.fetch(result.userId).catch(() => null);
+      if (!user) continue;
+
+      let dmContainer: ContainerBuilder;
+
+      if (result.exempted && result.taxAmount === BigInt(0)) {
+        // 100% 면제된 경우
+        dmContainer = new ContainerBuilder()
+          .setAccentColor(0x4ade80)
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('# 🎫 월말 세금 면제')
+          )
+          .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+          )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              `**${guild.name}**에서 ${year}년 ${month}월 세금이 면제되었습니다.`
+            )
+          )
+          .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+          )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              `🎫 **면제 사유**: ${result.exemptionReason || '세금감면권 사용'}\n` +
+              `💰 **현재 잔액**: ${result.balanceAfter.toLocaleString()} ${topyName}`
+            )
+          );
+      } else if (result.exempted && result.taxAmount > BigInt(0)) {
+        // 부분 감면된 경우
+        dmContainer = new ContainerBuilder()
+          .setAccentColor(0xfbbf24)
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('# 💰 월말 세금 부분 감면')
+          )
+          .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+          )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              `**${guild.name}**에서 ${year}년 ${month}월 세금이 부분 감면되었습니다.`
+            )
+          )
+          .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+          )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              `🎫 **감면 사유**: ${result.exemptionReason || '세금감면권 사용'}\n` +
+              `💸 **차감 금액**: ${result.taxAmount.toLocaleString()} ${topyName}\n` +
+              `💰 **현재 잔액**: ${result.balanceAfter.toLocaleString()} ${topyName}`
+            )
+          );
+      } else {
+        // 일반 세금 차감
+        dmContainer = new ContainerBuilder()
+          .setAccentColor(0xf87171)
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('# 💸 월말 세금 차감')
+          )
+          .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+          )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              `**${guild.name}**에서 ${year}년 ${month}월 세금이 차감되었습니다.`
+            )
+          )
+          .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+          )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              `💵 **차감 전 잔액**: ${result.balanceBefore.toLocaleString()} ${topyName}\n` +
+              `💸 **세금**: -${result.taxAmount.toLocaleString()} ${topyName}\n` +
+              `💰 **현재 잔액**: ${result.balanceAfter.toLocaleString()} ${topyName}`
+            )
+          );
+      }
+
+      await user.send({
+        components: [dmContainer.toJSON()],
+        flags: MessageFlags.IsComponentsV2,
+      }).catch(() => {
+        // DM 전송 실패는 무시 (DM 비활성화 등)
+      });
+    } catch {
+      // 개별 유저 처리 실패는 무시
+    }
   }
 }
