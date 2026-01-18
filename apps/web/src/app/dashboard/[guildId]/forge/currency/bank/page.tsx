@@ -896,6 +896,62 @@ export default function BankPage() {
         </div>
       </div>
 
+      {/* 국고 관리 명령어 */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+            <Icon icon="solar:command-bold" className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">국고 관리 명령어</h3>
+            <p className="text-sm text-white/50">국고 관리자만 사용할 수 있는 명령어 목록</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/5">
+            <code className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-sm font-mono whitespace-nowrap">
+              /국고 조회
+            </code>
+            <p className="text-sm text-white/70">현재 국고 잔액(토피, 루비)을 확인합니다.</p>
+          </div>
+
+          <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/5">
+            <code className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-sm font-mono whitespace-nowrap">
+              /국고 지급
+            </code>
+            <div>
+              <p className="text-sm text-white/70">국고에서 특정 유저에게 화폐를 지급합니다.</p>
+              <p className="text-xs text-white/40 mt-1">옵션: 유저, 금액, 화폐, 사유(선택)</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/5">
+            <code className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-sm font-mono whitespace-nowrap">
+              /국고 대량지급
+            </code>
+            <div>
+              <p className="text-sm text-white/70">국고에서 특정 역할의 모든 유저에게 화폐를 지급합니다.</p>
+              <p className="text-xs text-white/40 mt-1">옵션: 역할, 1인당 금액, 화폐, 사유(선택)</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/5">
+            <code className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-sm font-mono whitespace-nowrap">
+              /국고 내역
+            </code>
+            <p className="text-sm text-white/70">국고 입출금 거래 내역을 확인합니다.</p>
+          </div>
+        </div>
+
+        <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+          <p className="text-xs text-amber-400 flex items-center gap-2">
+            <Icon icon="solar:shield-warning-bold" className="w-4 h-4" />
+            위 명령어들은 국고 관리자로 지정된 역할 또는 유저만 사용할 수 있습니다.
+          </p>
+        </div>
+      </div>
+
       {/* 삭제 확인 다이얼로그 */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
