@@ -30,6 +30,7 @@ import {
   handleGameCreateModal,
   handleGameJoin,
   handleGameLeave,
+  handleGameTeamSelf,
   handleGameTeamAssign,
   handleGameTeamSelect,
   handleGameTeamUsers,
@@ -486,6 +487,15 @@ async function main() {
         if (customId.startsWith('game_leave_')) {
           const gameId = BigInt(customId.replace('game_leave_', ''));
           await handleGameLeave(interaction, container, gameId);
+          return;
+        }
+
+        // 참가자 자기 팀 이동 버튼
+        if (customId.startsWith('game_team_self_')) {
+          const parts = customId.split('_');
+          const gameId = BigInt(parts[3]!);
+          const teamNumber = parseInt(parts[4]!, 10);
+          await handleGameTeamSelf(interaction, container, gameId, teamNumber);
           return;
         }
 

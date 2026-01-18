@@ -230,7 +230,7 @@ function createGameButtons(game: Game, isAdmin: boolean): ActionRowBuilder<Butto
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
   if (game.status === 'open') {
-    // 참가 버튼
+    // 1행: 참가 버튼
     rows.push(
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -246,7 +246,24 @@ function createGameButtons(game: Game, isAdmin: boolean): ActionRowBuilder<Butto
       )
     );
 
-    // 관리자 버튼
+    // 2행: 팀 선택 버튼 (참가자 자유 이동)
+    const teamButtons: ButtonBuilder[] = [];
+    for (let i = 1; i <= game.teamCount && i <= 5; i++) {
+      teamButtons.push(
+        new ButtonBuilder()
+          .setCustomId(`game_team_self_${game.id}_${i}`)
+          .setLabel(`${i}팀`)
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji(getTeamEmoji(i))
+      );
+    }
+    if (teamButtons.length > 0) {
+      rows.push(
+        new ActionRowBuilder<ButtonBuilder>().addComponents(...teamButtons)
+      );
+    }
+
+    // 3행: 관리자/방장 버튼
     if (isAdmin) {
       rows.push(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -264,7 +281,24 @@ function createGameButtons(game: Game, isAdmin: boolean): ActionRowBuilder<Butto
       );
     }
   } else if (game.status === 'team_assign') {
-    // 관리자: 팀 배정 계속
+    // 1행: 팀 선택 버튼 (참가자 자유 이동)
+    const teamButtons: ButtonBuilder[] = [];
+    for (let i = 1; i <= game.teamCount && i <= 5; i++) {
+      teamButtons.push(
+        new ButtonBuilder()
+          .setCustomId(`game_team_self_${game.id}_${i}`)
+          .setLabel(`${i}팀`)
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji(getTeamEmoji(i))
+      );
+    }
+    if (teamButtons.length > 0) {
+      rows.push(
+        new ActionRowBuilder<ButtonBuilder>().addComponents(...teamButtons)
+      );
+    }
+
+    // 2행: 관리자/방장 버튼
     if (isAdmin) {
       rows.push(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -292,7 +326,7 @@ function createGameButtons(game: Game, isAdmin: boolean): ActionRowBuilder<Butto
       );
     }
   } else if (game.status === 'in_progress') {
-    // 관리자: 결과 입력
+    // 관리자/방장: 결과 입력
     if (isAdmin) {
       rows.push(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -332,6 +366,27 @@ function isAdminUser(interaction: ButtonInteraction | UserSelectMenuInteraction 
   }
 
   return false;
+}
+
+/**
+ * 게임 생성자(방장) 확인
+ */
+function isGameCreator(
+  interaction: ButtonInteraction | UserSelectMenuInteraction | StringSelectMenuInteraction,
+  game: Game
+): boolean {
+  return interaction.user.id === game.createdBy;
+}
+
+/**
+ * 관리자 또는 방장 권한 확인
+ */
+function isAdminOrCreator(
+  interaction: ButtonInteraction | UserSelectMenuInteraction | StringSelectMenuInteraction,
+  managerRoleId: string | null,
+  game: Game
+): boolean {
+  return isAdminUser(interaction, managerRoleId) || isGameCreator(interaction, game);
 }
 
 // ============================================================
@@ -1091,6 +1146,140 @@ export async function handleGameLeave(
 }
 
 // ============================================================
+// 참가자 자기 팀 이동 핸들러
+// ============================================================
+
+/**
+ * 참가자 자기 팀 이동 버튼 핸들러
+ */
+export async function handleGameTeamSelf(
+  interaction: ButtonInteraction,
+  container: Container,
+  gameId: bigint,
+  teamNumber: number
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const userId = interaction.user.id;
+
+  // 게임 조회
+  const gameResult = await container.gameService.getGameById(gameId);
+  if (!gameResult.success) {
+    await interaction.reply({ content: '❌ 게임을 찾을 수 없습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const game = gameResult.data;
+
+  // 상태 체크 (open 또는 team_assign만 허용)
+  if (game.status !== 'open' && game.status !== 'team_assign') {
+    await interaction.reply({
+      content: '❌ 현재 팀 이동이 불가능한 상태입니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 참가자인지 확인
+  const participantsResult = await container.gameService.getParticipants(gameId);
+  const participants = participantsResult.success ? participantsResult.data : [];
+  const participant = participants.find(p => p.userId === userId);
+
+  if (!participant) {
+    await interaction.reply({
+      content: '❌ 먼저 내전에 참가해야 합니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 이미 해당 팀에 배정되어 있는지 확인
+  if (participant.teamNumber === teamNumber) {
+    await interaction.reply({
+      content: `✅ 이미 ${teamNumber}팀에 배정되어 있습니다.`,
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 팀 정원 체크
+  if (game.maxPlayersPerTeam !== null) {
+    const currentTeamCount = participants.filter(p => p.teamNumber === teamNumber).length;
+    if (currentTeamCount >= game.maxPlayersPerTeam) {
+      await interaction.reply({
+        content: `❌ ${teamNumber}팀 정원이 다 찼습니다. (${currentTeamCount}/${game.maxPlayersPerTeam}명)`,
+        ephemeral: true,
+      });
+      scheduleEphemeralDelete(interaction);
+      return;
+    }
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // 화폐 설정 조회
+  const currencySettingsResult = await container.currencyService.getSettings(guildId);
+  const topyName = (currencySettingsResult.success && currencySettingsResult.data?.topyName) || '토피';
+
+  // 팀 배정
+  const assignResult = await container.gameService.assignTeam(gameId, teamNumber, [userId]);
+
+  if (!assignResult.success) {
+    await interaction.editReply({ content: '❌ 팀 배정에 실패했습니다.' });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 상태가 open이면 team_assign으로 변경할 필요가 있음 (선택적)
+  // 현재 서비스에서는 assignTeam 호출 시 자동으로 처리될 수 있음
+
+  // 메시지 업데이트
+  try {
+    if (game.messageId) {
+      const channel = interaction.channel as TextChannel;
+      const message = await channel.messages.fetch(game.messageId);
+
+      const updatedGameResult = await container.gameService.getGameById(gameId);
+      const updatedGame = updatedGameResult.success ? updatedGameResult.data : game;
+      const updatedParticipantsResult = await container.gameService.getParticipants(gameId);
+      const updatedParticipants = updatedParticipantsResult.success ? updatedParticipantsResult.data : [];
+
+      const settingsResult = await container.gameService.getSettings(guildId);
+      const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+      const rankRewards = settingsResult.success ? settingsResult.data.rankRewards : undefined;
+
+      // 방장 또는 관리자 여부 확인
+      const isAdmin = isAdminOrCreator(interaction, managerRoleId, updatedGame);
+
+      const gameContainer = createGameContainer(updatedGame, topyName, updatedParticipants, rankRewards);
+      const buttons = createGameButtons(updatedGame, isAdmin);
+      await message.edit({
+        components: [gameContainer, ...buttons],
+        flags: MessageFlags.IsComponentsV2,
+        embeds: [],
+      });
+    }
+  } catch (err) {
+    console.error('[GAME] Failed to update game message:', err);
+  }
+
+  const prevTeamText = participant.teamNumber ? `${participant.teamNumber}팀` : '미배정';
+  await interaction.editReply({
+    content: `✅ ${prevTeamText} → **${teamNumber}팀**으로 이동했습니다!`,
+  });
+  scheduleEphemeralDelete(interaction);
+}
+
+// ============================================================
 // 팀 배정 핸들러
 // ============================================================
 
@@ -1109,19 +1298,6 @@ export async function handleGameTeamAssign(
     return;
   }
 
-  // 권한 확인
-  const settingsResult = await container.gameService.getSettings(guildId);
-  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
-
-  if (!isAdminUser(interaction, managerRoleId)) {
-    await interaction.reply({
-      content: '❌ 관리자만 팀을 배정할 수 있습니다.',
-      ephemeral: true,
-    });
-    scheduleEphemeralDelete(interaction);
-    return;
-  }
-
   // 게임 조회
   const gameResult = await container.gameService.getGameById(gameId);
   if (!gameResult.success) {
@@ -1132,6 +1308,19 @@ export async function handleGameTeamAssign(
 
   const game = gameResult.data;
   const userId = interaction.user.id;
+
+  // 권한 확인 (관리자 또는 방장)
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  if (!isAdminOrCreator(interaction, managerRoleId, game)) {
+    await interaction.reply({
+      content: '❌ 관리자 또는 방장만 팀을 배정할 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
 
   // 참가자 목록 조회하여 팀별 현황 파악
   const participantsResult = await container.gameService.getParticipants(gameId);
@@ -1414,19 +1603,6 @@ export async function handleGameTeamEdit(
     return;
   }
 
-  // 권한 확인
-  const settingsResult = await container.gameService.getSettings(guildId);
-  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
-
-  if (!isAdminUser(interaction, managerRoleId)) {
-    await interaction.reply({
-      content: '❌ 관리자만 팀을 편집할 수 있습니다.',
-      ephemeral: true,
-    });
-    scheduleEphemeralDelete(interaction);
-    return;
-  }
-
   // 게임 정보 조회
   const gameResult = await container.gameService.getGameById(gameId);
   if (!gameResult.success) {
@@ -1435,6 +1611,19 @@ export async function handleGameTeamEdit(
     return;
   }
   const game = gameResult.data;
+
+  // 권한 확인 (관리자 또는 방장)
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  if (!isAdminOrCreator(interaction, managerRoleId, game)) {
+    await interaction.reply({
+      content: '❌ 관리자 또는 방장만 팀을 편집할 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
 
   // 참가자 목록 조회
   const participantsResult = await container.gameService.getParticipants(gameId);
@@ -1579,19 +1768,6 @@ export async function handleGameTeamRemove(
     return;
   }
 
-  // 권한 확인
-  const settingsResult = await container.gameService.getSettings(guildId);
-  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
-
-  if (!isAdminUser(interaction, managerRoleId)) {
-    await interaction.reply({
-      content: '❌ 관리자만 팀 배정을 해제할 수 있습니다.',
-      ephemeral: true,
-    });
-    scheduleEphemeralDelete(interaction);
-    return;
-  }
-
   // 게임 정보 조회
   const gameResult = await container.gameService.getGameById(gameId);
   if (!gameResult.success) {
@@ -1600,6 +1776,19 @@ export async function handleGameTeamRemove(
     return;
   }
   const game = gameResult.data;
+
+  // 권한 확인 (관리자 또는 방장)
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  if (!isAdminOrCreator(interaction, managerRoleId, game)) {
+    await interaction.reply({
+      content: '❌ 관리자 또는 방장만 팀 배정을 해제할 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
 
   // 참가자 목록 조회
   const participantsResult = await container.gameService.getParticipants(gameId);
@@ -1912,13 +2101,21 @@ export async function handleGameStart(
     return;
   }
 
-  // 권한 확인
+  // 게임 조회 (권한 확인용)
+  const gameCheckResult = await container.gameService.getGameById(gameId);
+  if (!gameCheckResult.success) {
+    await interaction.reply({ content: '❌ 게임을 찾을 수 없습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 권한 확인 (관리자 또는 방장)
   const settingsResult = await container.gameService.getSettings(guildId);
   const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
 
-  if (!isAdminUser(interaction, managerRoleId)) {
+  if (!isAdminOrCreator(interaction, managerRoleId, gameCheckResult.data)) {
     await interaction.reply({
-      content: '❌ 관리자만 경기를 시작할 수 있습니다.',
+      content: '❌ 관리자 또는 방장만 경기를 시작할 수 있습니다.',
       ephemeral: true,
     });
     scheduleEphemeralDelete(interaction);
@@ -1992,19 +2189,6 @@ export async function handleGameKick(
     return;
   }
 
-  // 권한 확인
-  const settingsResult = await container.gameService.getSettings(guildId);
-  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
-
-  if (!isAdminUser(interaction, managerRoleId)) {
-    await interaction.reply({
-      content: '❌ 관리자만 참가자를 퇴장시킬 수 있습니다.',
-      ephemeral: true,
-    });
-    scheduleEphemeralDelete(interaction);
-    return;
-  }
-
   // 게임 조회
   const gameResult = await container.gameService.getGameById(gameId);
   if (!gameResult.success) {
@@ -2014,6 +2198,19 @@ export async function handleGameKick(
   }
 
   const game = gameResult.data;
+
+  // 권한 확인 (관리자 또는 방장)
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  if (!isAdminOrCreator(interaction, managerRoleId, game)) {
+    await interaction.reply({
+      content: '❌ 관리자 또는 방장만 참가자를 퇴장시킬 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
 
   // 참가자 목록 조회
   const participantsResult = await container.gameService.getParticipants(gameId);
@@ -2212,19 +2409,6 @@ export async function handleGameResult(
     return;
   }
 
-  // 권한 확인
-  const settingsResult = await container.gameService.getSettings(guildId);
-  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
-
-  if (!isAdminUser(interaction, managerRoleId)) {
-    await interaction.reply({
-      content: '❌ 관리자만 결과를 입력할 수 있습니다.',
-      ephemeral: true,
-    });
-    scheduleEphemeralDelete(interaction);
-    return;
-  }
-
   // 게임 조회
   const gameResult = await container.gameService.getGameById(gameId);
   if (!gameResult.success) {
@@ -2235,6 +2419,19 @@ export async function handleGameResult(
 
   const game = gameResult.data;
   const userId = interaction.user.id;
+
+  // 권한 확인 (관리자 또는 방장)
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  if (!isAdminOrCreator(interaction, managerRoleId, game)) {
+    await interaction.reply({
+      content: '❌ 관리자 또는 방장만 결과를 입력할 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
 
   // 팀별 순위 선택 (1등 선택)
   const teamOptions = [];
@@ -2457,13 +2654,21 @@ export async function handleGameCancel(
     return;
   }
 
-  // 권한 확인
+  // 게임 조회 (권한 확인용)
+  const gameCheckResult = await container.gameService.getGameById(gameId);
+  if (!gameCheckResult.success) {
+    await interaction.reply({ content: '❌ 게임을 찾을 수 없습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 권한 확인 (관리자 또는 방장)
   const settingsResult = await container.gameService.getSettings(guildId);
   const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
 
-  if (!isAdminUser(interaction, managerRoleId)) {
+  if (!isAdminOrCreator(interaction, managerRoleId, gameCheckResult.data)) {
     await interaction.reply({
-      content: '❌ 관리자만 게임을 취소할 수 있습니다.',
+      content: '❌ 관리자 또는 방장만 게임을 취소할 수 있습니다.',
       ephemeral: true,
     });
     scheduleEphemeralDelete(interaction);

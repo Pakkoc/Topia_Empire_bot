@@ -30,6 +30,7 @@ const ITEM_TYPE_LABELS: Record<ShopItemType, string> = {
   color_basic: '🎨 색상선택(기본)',
   color_premium: '🌈 색상선택(프리미엄)',
   role_ticket: '🎭 역할선택권',
+  vault_subscription: '🔐 금고이용권',
 };
 
 /** 인벤토리 Container 생성 (Components v2) - 모든 보유 아이템 */
