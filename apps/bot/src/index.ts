@@ -43,6 +43,11 @@ import {
   handleGameResult,
   handleGameResultRank,
   handleGameCancel,
+  handleGameApprove,
+  handleGameAdjust,
+  handleGameAdjustModal,
+  handleGameReject,
+  handleGameRejectModal,
 } from './handlers/game-panel';
 import { commands, type Command } from './commands';
 import { startExpiredItemsScheduler } from './schedulers/expired-items.scheduler';
@@ -540,6 +545,27 @@ async function main() {
           await handleGameCancel(interaction, container, gameId);
           return;
         }
+
+        // 내전 승인 버튼 (관리자)
+        if (customId.startsWith('game_approve_')) {
+          const gameId = BigInt(customId.replace('game_approve_', ''));
+          await handleGameApprove(interaction, container, gameId);
+          return;
+        }
+
+        // 내전 조정 버튼 (관리자)
+        if (customId.startsWith('game_adjust_') && !customId.includes('modal')) {
+          const gameId = BigInt(customId.replace('game_adjust_', ''));
+          await handleGameAdjust(interaction, container, gameId);
+          return;
+        }
+
+        // 내전 거절 버튼 (관리자)
+        if (customId.startsWith('game_reject_') && !customId.includes('modal')) {
+          const gameId = BigInt(customId.replace('game_reject_', ''));
+          await handleGameReject(interaction, container, gameId);
+          return;
+        }
       } catch (error) {
         console.error(`[BUTTON] Error handling ${customId}:`, error);
 
@@ -573,6 +599,20 @@ async function main() {
             }
           }
           await handleGameCreateModal(interaction, container, categoryId);
+          return;
+        }
+
+        // 게임 조정 모달
+        if (customId.startsWith('game_adjust_modal_')) {
+          const gameId = BigInt(customId.replace('game_adjust_modal_', ''));
+          await handleGameAdjustModal(interaction, container, gameId);
+          return;
+        }
+
+        // 게임 거절 모달
+        if (customId.startsWith('game_reject_modal_')) {
+          const gameId = BigInt(customId.replace('game_reject_modal_', ''));
+          await handleGameRejectModal(interaction, container, gameId);
           return;
         }
 

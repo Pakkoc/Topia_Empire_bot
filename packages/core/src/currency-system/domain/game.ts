@@ -3,7 +3,7 @@ import type { RankRewards } from './game-category';
 /**
  * 내전 게임 상태
  */
-export type GameStatus = 'open' | 'team_assign' | 'in_progress' | 'finished' | 'cancelled';
+export type GameStatus = 'pending_approval' | 'open' | 'team_assign' | 'in_progress' | 'finished' | 'cancelled';
 
 /**
  * 내전 게임 엔티티

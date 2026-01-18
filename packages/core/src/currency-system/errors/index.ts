@@ -50,6 +50,7 @@ export type CurrencyError =
   // 내전 시스템 관련 에러
   | { type: 'GAME_NOT_FOUND' }
   | { type: 'GAME_NOT_OPEN' }
+  | { type: 'GAME_NOT_PENDING' }
   | { type: 'GAME_ALREADY_FINISHED' }
   | { type: 'ALREADY_JOINED' }
   | { type: 'NOT_PARTICIPANT'; userId?: string }

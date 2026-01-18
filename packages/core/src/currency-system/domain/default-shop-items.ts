@@ -75,7 +75,7 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
     itemType: 'dito_silver',
     currencyType: 'ruby',
     durationDays: 30,
-    isRoleItem: true,
+    isRoleItem: false,  // 역할 없이 구독으로만 동작
   },
   {
     name: '색상선택권(기본)',

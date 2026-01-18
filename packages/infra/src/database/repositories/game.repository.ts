@@ -25,6 +25,7 @@ interface GameSettingsRow extends RowDataPacket {
   channel_id: string | null;
   message_id: string | null;
   manager_role_id: string | null;
+  approval_channel_id: string | null;
   entry_fee: string;
   rank_rewards: string | null; // JSON string
   created_at: Date;
@@ -111,6 +112,7 @@ function settingsRowToEntity(row: GameSettingsRow): GameSettings {
     channelId: row.channel_id,
     messageId: row.message_id,
     managerRoleId: row.manager_role_id,
+    approvalChannelId: row.approval_channel_id,
     entryFee: BigInt(row.entry_fee),
     rankRewards: parseRankRewards(row.rank_rewards),
     createdAt: row.created_at,
@@ -223,12 +225,13 @@ export class GameRepository implements GameRepositoryPort {
       : JSON.stringify(DEFAULT_RANK_REWARDS);
 
     await this.pool.query<ResultSetHeader>(
-      `INSERT INTO game_settings (guild_id, channel_id, message_id, manager_role_id, entry_fee, rank_rewards)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO game_settings (guild_id, channel_id, message_id, manager_role_id, approval_channel_id, entry_fee, rank_rewards)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          channel_id = COALESCE(VALUES(channel_id), channel_id),
          message_id = COALESCE(VALUES(message_id), message_id),
          manager_role_id = COALESCE(VALUES(manager_role_id), manager_role_id),
+         approval_channel_id = COALESCE(VALUES(approval_channel_id), approval_channel_id),
          entry_fee = COALESCE(VALUES(entry_fee), entry_fee),
          rank_rewards = COALESCE(VALUES(rank_rewards), rank_rewards),
          updated_at = CURRENT_TIMESTAMP`,
@@ -237,6 +240,7 @@ export class GameRepository implements GameRepositoryPort {
         dto.channelId ?? null,
         dto.messageId ?? null,
         dto.managerRoleId ?? null,
+        dto.approvalChannelId ?? null,
         dto.entryFee?.toString() ?? '100',
         rankRewardsJson,
       ]
@@ -264,6 +268,10 @@ export class GameRepository implements GameRepositoryPort {
     if (dto.managerRoleId !== undefined) {
       updates.push('manager_role_id = ?');
       values.push(dto.managerRoleId);
+    }
+    if (dto.approvalChannelId !== undefined) {
+      updates.push('approval_channel_id = ?');
+      values.push(dto.approvalChannelId);
     }
     if (dto.entryFee !== undefined) {
       updates.push('entry_fee = ?');
@@ -511,6 +519,28 @@ export class GameRepository implements GameRepositoryPort {
     await this.pool.query<ResultSetHeader>(
       `UPDATE games SET status = 'cancelled', finished_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [gameId.toString()]
+    );
+
+    return this.findGameById(gameId);
+  }
+
+  async deleteGame(gameId: bigint): Promise<void> {
+    await this.pool.query<ResultSetHeader>(
+      `DELETE FROM games WHERE id = ?`,
+      [gameId.toString()]
+    );
+  }
+
+  async updateGameEntryAndRewards(
+    gameId: bigint,
+    entryFee: bigint,
+    customRankRewards: Record<number, number> | null
+  ): Promise<Game | null> {
+    const rankRewardsJson = customRankRewards ? JSON.stringify(customRankRewards) : null;
+
+    await this.pool.query<ResultSetHeader>(
+      `UPDATE games SET entry_fee = ?, custom_rank_rewards = ?, custom_entry_fee = ? WHERE id = ?`,
+      [entryFee.toString(), rankRewardsJson, entryFee.toString(), gameId.toString()]
     );
 
     return this.findGameById(gameId);

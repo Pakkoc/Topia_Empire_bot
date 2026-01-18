@@ -354,11 +354,13 @@ export async function handleGamePanelCreate(
   // 설정 조회
   const settingsResult = await container.gameService.getSettings(guildId);
   const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+  const approvalChannelId = settingsResult.success ? settingsResult.data.approvalChannelId : null;
+  const isAdmin = isAdminUser(interaction, managerRoleId);
 
-  // 관리자 권한 확인
-  if (!isAdminUser(interaction, managerRoleId)) {
+  // 일반 유저인데 승인 채널이 없으면 생성 불가
+  if (!isAdmin && !approvalChannelId) {
     await interaction.reply({
-      content: '❌ 관리자만 내전을 생성할 수 있습니다.',
+      content: '❌ 내전 생성 권한이 없습니다.\n관리자가 승인 채널을 설정하면 일반 유저도 내전을 요청할 수 있습니다.',
       ephemeral: true,
     });
     scheduleEphemeralDelete(interaction);
@@ -442,11 +444,13 @@ export async function handleGamePanelCategory(
   // 설정 조회
   const settingsResult = await container.gameService.getSettings(guildId);
   const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+  const approvalChannelId = settingsResult.success ? settingsResult.data.approvalChannelId : null;
+  const isAdmin = isAdminUser(interaction, managerRoleId);
 
-  // 관리자 권한 확인
-  if (!isAdminUser(interaction, managerRoleId)) {
+  // 일반 유저인데 승인 채널이 없으면 생성 불가
+  if (!isAdmin && !approvalChannelId) {
     await interaction.reply({
-      content: '❌ 관리자만 내전을 생성할 수 있습니다.',
+      content: '❌ 내전 생성 권한이 없습니다.\n관리자가 승인 채널을 설정하면 일반 유저도 내전을 요청할 수 있습니다.',
       ephemeral: true,
     });
     scheduleEphemeralDelete(interaction);
@@ -579,6 +583,98 @@ function parseRewardsInput(rewardsRaw: string): {
 }
 
 /**
+ * 승인 요청 메시지 생성
+ */
+function createApprovalRequestContainer(
+  game: Game,
+  topyName: string,
+  rankRewards?: Record<number, number>
+): APIContainerComponent {
+  const container = new ContainerBuilder();
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('# 📋 내전 생성 요청')
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  let infoText = `**제목**: ${game.title}\n`;
+  infoText += `**요청자**: <@${game.createdBy}>\n`;
+  infoText += `**팀 수**: ${game.teamCount}팀\n`;
+  if (game.maxPlayersPerTeam) {
+    infoText += `**팀당 인원**: ${game.maxPlayersPerTeam}명\n`;
+  }
+  infoText += `**참가비**: ${game.entryFee.toLocaleString()} ${topyName}\n`;
+
+  // 순위 보상 표시
+  if (game.customWinnerTakesAll) {
+    infoText += `**순위 보상**: 🏆 승자 독식 (1등 100%)`;
+  } else if (game.customRankRewards) {
+    const total = Object.values(game.customRankRewards).reduce((a, b) => a + b, 0);
+    const rewardEntries = Object.entries(game.customRankRewards)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b))
+      .map(([rank, ratio]) => {
+        const percent = total > 0 ? Math.round((ratio / total) * 100) : 0;
+        return `${rank}등: ${percent}%`;
+      })
+      .join(' | ');
+    infoText += `**순위 보상**: ${rewardEntries}`;
+  } else if (rankRewards) {
+    const total = Object.values(rankRewards).reduce((a, b) => a + b, 0);
+    const rewardEntries = Object.entries(rankRewards)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b))
+      .filter(([, ratio]) => ratio > 0)
+      .map(([rank, ratio]) => {
+        const percent = total > 0 ? Math.round((ratio / total) * 100) : 0;
+        return `${rank}등: ${percent}%`;
+      })
+      .join(' | ');
+    infoText += `**순위 보상**: ${rewardEntries}`;
+  }
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(infoText)
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+  );
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent('⚠️ 관리자 판단하에 조정이 될 수 있습니다.')
+  );
+
+  return container.toJSON();
+}
+
+/**
+ * 승인 요청 메시지 버튼 생성
+ */
+function createApprovalButtons(gameId: bigint): ActionRowBuilder<ButtonBuilder>[] {
+  return [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`game_approve_${gameId}`)
+        .setLabel('승인')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('✅'),
+      new ButtonBuilder()
+        .setCustomId(`game_adjust_${gameId}`)
+        .setLabel('조정')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('✏️'),
+      new ButtonBuilder()
+        .setCustomId(`game_reject_${gameId}`)
+        .setLabel('거절')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('❌')
+    ),
+  ];
+}
+
+/**
  * 내전 생성 모달 제출 핸들러
  */
 export async function handleGameCreateModal(
@@ -675,6 +771,24 @@ export async function handleGameCreateModal(
   const defaultRankRewards = settingsResult.success
     ? settingsResult.data.rankRewards
     : { 1: 50, 2: 30, 3: 15, 4: 5 };
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+  const approvalChannelId = settingsResult.success ? settingsResult.data.approvalChannelId : null;
+
+  // 관리자 여부 확인 (멤버 정보에서)
+  let isAdmin = false;
+  if (interaction.member) {
+    const memberPermissions = interaction.memberPermissions;
+    if (memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+      isAdmin = true;
+    } else if (managerRoleId && interaction.member.roles) {
+      const memberRoles = interaction.member.roles;
+      if (Array.isArray(memberRoles)) {
+        isAdmin = memberRoles.includes(managerRoleId);
+      } else if ('cache' in memberRoles) {
+        isAdmin = memberRoles.cache.has(managerRoleId);
+      }
+    }
+  }
 
   // 실제 적용될 참가비
   const actualEntryFee = customEntryFee ?? defaultEntryFee;
@@ -714,35 +828,79 @@ export async function handleGameCreateModal(
     displayRankRewards = { 1: 100, 2: 0 };
   }
 
-  // 채널에 내전 메시지 전송
-  const channel = interaction.channel as TextChannel;
-  const gameContainer = createGameContainer(game, topyName, [], displayRankRewards);
-  const buttons = createGameButtons(game, true);
+  // 관리자인 경우: 바로 게임 패널 생성
+  if (isAdmin) {
+    // 채널에 내전 메시지 전송
+    const channel = interaction.channel as TextChannel;
+    const gameContainer = createGameContainer(game, topyName, [], displayRankRewards);
+    const buttons = createGameButtons(game, true);
 
-  const message = await channel.send({
-    components: [gameContainer, ...buttons],
-    flags: MessageFlags.IsComponentsV2,
-  });
+    const message = await channel.send({
+      components: [gameContainer, ...buttons],
+      flags: MessageFlags.IsComponentsV2,
+    });
 
-  // 메시지 ID 저장
-  await container.gameService.updateGameMessageId(game.id, message.id);
+    // 메시지 ID 저장
+    await container.gameService.updateGameMessageId(game.id, message.id);
 
-  // 응답 메시지 생성
-  let replyContent = `✅ 내전이 생성되었습니다!\n\n**${title}**\n팀 수: ${teamCount}팀\n참가비: ${actualEntryFee.toLocaleString()} ${topyName}`;
-  if (maxPlayersPerTeam) {
-    replyContent += `\n팀당 인원: ${maxPlayersPerTeam}명`;
+    // 응답 메시지 생성
+    let replyContent = `✅ 내전이 생성되었습니다!\n\n**${title}**\n팀 수: ${teamCount}팀\n참가비: ${actualEntryFee.toLocaleString()} ${topyName}`;
+    if (maxPlayersPerTeam) {
+      replyContent += `\n팀당 인원: ${maxPlayersPerTeam}명`;
+    }
+    if (customWinnerTakesAll) {
+      replyContent += `\n보상: 🏆 승자 독식`;
+    } else if (customRankRewards) {
+      const rewardText = Object.entries(customRankRewards)
+        .map(([rank, ratio]) => `${rank}등: ${ratio}`)
+        .join(', ');
+      replyContent += `\n보상 비율: ${rewardText}`;
+    }
+
+    await interaction.editReply({ content: replyContent });
+    scheduleEphemeralDelete(interaction);
+  } else {
+    // 일반 유저: 승인 대기 상태로 생성
+    if (!approvalChannelId) {
+      // 승인 채널이 없으면 게임 삭제 후 오류
+      await container.gameService.rejectGame(game.id);
+      await interaction.editReply({
+        content: '❌ 승인 채널이 설정되지 않아 내전을 요청할 수 없습니다.\n관리자에게 문의해주세요.',
+      });
+      scheduleEphemeralDelete(interaction);
+      return;
+    }
+
+    // 게임을 pending_approval 상태로 변경
+    await container.gameService.updateGameStatus(game.id, 'pending_approval');
+
+    // 승인 채널에 승인 요청 메시지 전송
+    try {
+      const approvalChannel = await interaction.client.channels.fetch(approvalChannelId) as TextChannel;
+      if (approvalChannel) {
+        const approvalContainer = createApprovalRequestContainer(game, topyName, displayRankRewards);
+        const approvalButtons = createApprovalButtons(game.id);
+
+        await approvalChannel.send({
+          components: [approvalContainer, ...approvalButtons],
+          flags: MessageFlags.IsComponentsV2,
+        });
+      }
+    } catch (err) {
+      console.error('[GAME] Failed to send approval request:', err);
+      // 승인 채널 전송 실패해도 게임은 생성됨
+    }
+
+    // 응답 메시지 생성
+    let replyContent = `📋 내전 생성 요청이 제출되었습니다!\n\n**${title}**\n팀 수: ${teamCount}팀\n참가비: ${actualEntryFee.toLocaleString()} ${topyName}`;
+    if (maxPlayersPerTeam) {
+      replyContent += `\n팀당 인원: ${maxPlayersPerTeam}명`;
+    }
+    replyContent += `\n\n⏳ 관리자 승인을 기다리고 있습니다.\n승인되면 내전 패널이 생성됩니다.`;
+
+    await interaction.editReply({ content: replyContent });
+    scheduleEphemeralDelete(interaction);
   }
-  if (customWinnerTakesAll) {
-    replyContent += `\n보상: 🏆 승자 독식`;
-  } else if (customRankRewards) {
-    const rewardText = Object.entries(customRankRewards)
-      .map(([rank, ratio]) => `${rank}등: ${ratio}`)
-      .join(', ');
-    replyContent += `\n보상 비율: ${rewardText}`;
-  }
-
-  await interaction.editReply({ content: replyContent });
-  scheduleEphemeralDelete(interaction);
 }
 
 // ============================================================
@@ -2371,4 +2529,399 @@ export async function handleGameCancel(
     content: `✅ 게임이 취소되었습니다.\n\n환불: ${refundedCount}명\n총 환불액: ${game.totalPool.toLocaleString()} ${topyName}`,
   });
   scheduleEphemeralDelete(interaction, LONG_DELETE_DELAY);
+}
+
+// ============================================================
+// 승인 시스템 핸들러
+// ============================================================
+
+/**
+ * 내전 승인 버튼 핸들러
+ */
+export async function handleGameApprove(
+  interaction: ButtonInteraction,
+  container: Container,
+  gameId: bigint
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 권한 확인
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  if (!isAdminUser(interaction, managerRoleId)) {
+    await interaction.reply({
+      content: '❌ 관리자만 내전을 승인할 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // 게임 조회
+  const gameResult = await container.gameService.getGameById(gameId);
+  if (!gameResult.success) {
+    await interaction.editReply({ content: '❌ 게임을 찾을 수 없습니다.' });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const game = gameResult.data;
+
+  // 이미 승인된 상태인지 확인
+  if (game.status !== 'pending_approval') {
+    await interaction.editReply({ content: '❌ 이미 처리된 요청입니다.' });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 게임 승인
+  const approveResult = await container.gameService.approveGame(gameId);
+  if (!approveResult.success) {
+    await interaction.editReply({ content: '❌ 승인 처리에 실패했습니다.' });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const approvedGame = approveResult.data;
+
+  // 화폐 설정 조회
+  const currencySettingsResult = await container.currencyService.getSettings(guildId);
+  const topyName = (currencySettingsResult.success && currencySettingsResult.data?.topyName) || '토피';
+
+  // 원래 채널에 게임 패널 생성
+  try {
+    const originalChannel = await interaction.client.channels.fetch(approvedGame.channelId) as TextChannel;
+    if (originalChannel) {
+      const gameContainer = createGameContainer(approvedGame, topyName, []);
+      const buttons = createGameButtons(approvedGame, true);
+
+      const message = await originalChannel.send({
+        content: `✅ <@${approvedGame.createdBy}>님의 내전이 승인되었습니다!`,
+        components: [gameContainer, ...buttons],
+        flags: MessageFlags.IsComponentsV2,
+      });
+
+      // 메시지 ID 저장
+      await container.gameService.updateGameMessageId(approvedGame.id, message.id);
+    }
+  } catch (err) {
+    console.error('[GAME] Failed to create game panel:', err);
+  }
+
+  // 승인 요청 메시지 업데이트
+  try {
+    const approvalMessage = interaction.message;
+    await approvalMessage.edit({
+      content: `✅ **승인됨** - <@${interaction.user.id}>님이 승인`,
+      components: [],
+    });
+  } catch {
+    // 메시지 업데이트 실패 무시
+  }
+
+  await interaction.editReply({
+    content: `✅ **${approvedGame.title}** 내전이 승인되었습니다.`,
+  });
+  scheduleEphemeralDelete(interaction);
+}
+
+/**
+ * 내전 조정 버튼 핸들러 (모달 표시)
+ */
+export async function handleGameAdjust(
+  interaction: ButtonInteraction,
+  container: Container,
+  gameId: bigint
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 권한 확인
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  if (!isAdminUser(interaction, managerRoleId)) {
+    await interaction.reply({
+      content: '❌ 관리자만 내전을 조정할 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 게임 조회
+  const gameResult = await container.gameService.getGameById(gameId);
+  if (!gameResult.success) {
+    await interaction.reply({ content: '❌ 게임을 찾을 수 없습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const game = gameResult.data;
+
+  // 조정 모달 표시
+  const modal = new ModalBuilder()
+    .setCustomId(`game_adjust_modal_${gameId}`)
+    .setTitle('✏️ 내전 조정');
+
+  const entryFeeInput = new TextInputBuilder()
+    .setCustomId('entry_fee')
+    .setLabel('참가비')
+    .setStyle(TextInputStyle.Short)
+    .setValue(game.entryFee.toString())
+    .setPlaceholder('예: 1000')
+    .setRequired(true);
+
+  const rewardsInput = new TextInputBuilder()
+    .setCustomId('rewards')
+    .setLabel('순위 보상 비율 (쉼표로 구분)')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('예: 50,30,20 또는 승자독식')
+    .setRequired(false);
+
+  const reasonInput = new TextInputBuilder()
+    .setCustomId('reason')
+    .setLabel('조정 사유')
+    .setStyle(TextInputStyle.Paragraph)
+    .setPlaceholder('조정 사유를 입력하세요')
+    .setRequired(true);
+
+  modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(entryFeeInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(rewardsInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(reasonInput)
+  );
+
+  await interaction.showModal(modal);
+}
+
+/**
+ * 내전 조정 모달 제출 핸들러
+ */
+export async function handleGameAdjustModal(
+  interaction: ModalSubmitInteraction,
+  container: Container,
+  gameId: bigint
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // 게임 조회
+  const gameResult = await container.gameService.getGameById(gameId);
+  if (!gameResult.success) {
+    await interaction.editReply({ content: '❌ 게임을 찾을 수 없습니다.' });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const originalGame = gameResult.data;
+
+  // 입력값 파싱
+  const entryFeeRaw = interaction.fields.getTextInputValue('entry_fee');
+  const rewardsRaw = interaction.fields.getTextInputValue('rewards');
+  const reason = interaction.fields.getTextInputValue('reason');
+
+  const newEntryFee = BigInt(parseInt(entryFeeRaw) || 100);
+
+  // 순위보상 파싱
+  let newRankRewards: RankRewards | null = null;
+  if (rewardsRaw.trim()) {
+    const parsed = parseRewardsInput(rewardsRaw);
+    if (parsed.error) {
+      await interaction.editReply({ content: `❌ ${parsed.error}` });
+      scheduleEphemeralDelete(interaction);
+      return;
+    }
+    newRankRewards = parsed.customRankRewards;
+  }
+
+  // 게임 조정 (참가비/보상배율 수정 후 승인)
+  const adjustResult = await container.gameService.adjustGame(gameId, newEntryFee, newRankRewards);
+  if (!adjustResult.success) {
+    await interaction.editReply({ content: '❌ 조정 처리에 실패했습니다.' });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const adjustedGame = adjustResult.data;
+
+  // 화폐 설정 조회
+  const currencySettingsResult = await container.currencyService.getSettings(guildId);
+  const topyName = (currencySettingsResult.success && currencySettingsResult.data?.topyName) || '토피';
+
+  // 조정 내용 메시지 생성
+  let adjustmentText = `📝 **조정 내용**\n`;
+  if (originalGame.entryFee !== newEntryFee) {
+    adjustmentText += `- 참가비: ${originalGame.entryFee.toLocaleString()} → ${newEntryFee.toLocaleString()} ${topyName}\n`;
+  }
+  if (newRankRewards) {
+    const rewardText = Object.entries(newRankRewards)
+      .map(([rank, ratio]) => `${rank}등: ${ratio}`)
+      .join(', ');
+    adjustmentText += `- 순위 보상: ${rewardText}\n`;
+  }
+  adjustmentText += `\n💬 **사유**: ${reason}`;
+
+  // 원래 채널에 게임 패널 생성
+  try {
+    const originalChannel = await interaction.client.channels.fetch(adjustedGame.channelId) as TextChannel;
+    if (originalChannel) {
+      const gameContainer = createGameContainer(adjustedGame, topyName, []);
+      const buttons = createGameButtons(adjustedGame, true);
+
+      await originalChannel.send({
+        content: `✅ <@${adjustedGame.createdBy}>님의 내전이 조정 후 승인되었습니다!\n\n${adjustmentText}`,
+        components: [gameContainer, ...buttons],
+        flags: MessageFlags.IsComponentsV2,
+      });
+
+      // 메시지 ID 저장
+      await container.gameService.updateGameMessageId(adjustedGame.id, originalChannel.lastMessageId!);
+    }
+  } catch (err) {
+    console.error('[GAME] Failed to create game panel:', err);
+  }
+
+  // 승인 요청 메시지 업데이트
+  try {
+    // 모달 제출 시에는 interaction.message가 없으므로 별도 처리 불가
+    // 대신 채널에서 메시지를 찾아야 함
+  } catch {
+    // 메시지 업데이트 실패 무시
+  }
+
+  await interaction.editReply({
+    content: `✅ **${adjustedGame.title}** 내전이 조정 후 승인되었습니다.\n\n${adjustmentText}`,
+  });
+  scheduleEphemeralDelete(interaction);
+}
+
+/**
+ * 내전 거절 버튼 핸들러 (모달 표시)
+ */
+export async function handleGameReject(
+  interaction: ButtonInteraction,
+  container: Container,
+  gameId: bigint
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 권한 확인
+  const settingsResult = await container.gameService.getSettings(guildId);
+  const managerRoleId = settingsResult.success ? settingsResult.data.managerRoleId : null;
+
+  if (!isAdminUser(interaction, managerRoleId)) {
+    await interaction.reply({
+      content: '❌ 관리자만 내전을 거절할 수 있습니다.',
+      ephemeral: true,
+    });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 거절 사유 모달 표시
+  const modal = new ModalBuilder()
+    .setCustomId(`game_reject_modal_${gameId}`)
+    .setTitle('❌ 내전 거절');
+
+  const reasonInput = new TextInputBuilder()
+    .setCustomId('reason')
+    .setLabel('거절 사유')
+    .setStyle(TextInputStyle.Paragraph)
+    .setPlaceholder('거절 사유를 입력하세요')
+    .setRequired(true);
+
+  modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(reasonInput)
+  );
+
+  await interaction.showModal(modal);
+}
+
+/**
+ * 내전 거절 모달 제출 핸들러
+ */
+export async function handleGameRejectModal(
+  interaction: ModalSubmitInteraction,
+  container: Container,
+  gameId: bigint
+) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: '서버에서만 사용할 수 있습니다.', ephemeral: true });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // 게임 조회
+  const gameResult = await container.gameService.getGameById(gameId);
+  if (!gameResult.success) {
+    await interaction.editReply({ content: '❌ 게임을 찾을 수 없습니다.' });
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  const game = gameResult.data;
+  const reason = interaction.fields.getTextInputValue('reason');
+
+  // 게임 거절 (삭제)
+  const rejectResult = await container.gameService.rejectGame(gameId);
+  if (!rejectResult.success) {
+    if (rejectResult.error.type === 'GAME_NOT_PENDING') {
+      await interaction.editReply({ content: '❌ 이미 처리된 요청입니다.' });
+    } else {
+      await interaction.editReply({ content: '❌ 거절 처리에 실패했습니다.' });
+    }
+    scheduleEphemeralDelete(interaction);
+    return;
+  }
+
+  // 요청자에게 DM 또는 원래 채널에 알림
+  try {
+    const originalChannel = await interaction.client.channels.fetch(game.channelId) as TextChannel;
+    if (originalChannel) {
+      await originalChannel.send({
+        content: `❌ <@${game.createdBy}>님의 내전 생성 요청이 거절되었습니다.\n\n**제목**: ${game.title}\n💬 **사유**: ${reason}`,
+      });
+    }
+  } catch (err) {
+    console.error('[GAME] Failed to send rejection message:', err);
+  }
+
+  // 승인 요청 메시지 업데이트
+  try {
+    // 모달 제출 시에는 별도 처리 필요
+  } catch {
+    // 메시지 업데이트 실패 무시
+  }
+
+  await interaction.editReply({
+    content: `❌ **${game.title}** 내전 요청이 거절되었습니다.\n\n💬 **사유**: ${reason}`,
+  });
+  scheduleEphemeralDelete(interaction);
 }

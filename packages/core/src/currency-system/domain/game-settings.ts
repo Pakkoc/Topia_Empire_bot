@@ -8,6 +8,7 @@ export interface GameSettings {
   channelId: string | null;
   messageId: string | null;
   managerRoleId: string | null;
+  approvalChannelId: string | null; // 승인 요청 채널
   entryFee: bigint;
   rankRewards: RankRewards; // 순위별 보상 비율
   createdAt: Date;
@@ -22,6 +23,7 @@ export interface CreateGameSettingsDto {
   channelId?: string;
   messageId?: string;
   managerRoleId?: string;
+  approvalChannelId?: string;
   entryFee?: bigint;
   rankRewards?: RankRewards;
 }
@@ -33,6 +35,7 @@ export interface UpdateGameSettingsDto {
   channelId?: string | null;
   messageId?: string | null;
   managerRoleId?: string | null;
+  approvalChannelId?: string | null;
   entryFee?: bigint;
   rankRewards?: RankRewards;
 }
@@ -58,6 +61,7 @@ export function createDefaultGameSettings(guildId: string): GameSettings {
     channelId: null,
     messageId: null,
     managerRoleId: null,
+    approvalChannelId: null,
     entryFee: DEFAULT_ENTRY_FEE,
     rankRewards: { ...DEFAULT_RANK_REWARDS },
     createdAt: now,

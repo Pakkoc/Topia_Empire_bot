@@ -898,6 +898,120 @@ export class GameService {
     }
   }
 
+  // ========== 승인 시스템 ==========
+
+  /**
+   * 게임 상태 변경
+   */
+  async updateGameStatus(
+    gameId: bigint,
+    status: 'pending_approval' | 'open' | 'team_assign' | 'in_progress' | 'finished' | 'cancelled'
+  ): Promise<Result<Game, CurrencyError>> {
+    try {
+      await this.gameRepo.updateGameStatus(gameId, status);
+      const game = await this.gameRepo.findGameById(gameId);
+      if (!game) {
+        return Result.err({ type: 'GAME_NOT_FOUND' });
+      }
+      return Result.ok(game);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
+   * 내전 승인
+   */
+  async approveGame(gameId: bigint): Promise<Result<Game, CurrencyError>> {
+    try {
+      const game = await this.gameRepo.findGameById(gameId);
+      if (!game) {
+        return Result.err({ type: 'GAME_NOT_FOUND' });
+      }
+
+      if (game.status !== 'pending_approval') {
+        return Result.err({ type: 'GAME_NOT_PENDING' });
+      }
+
+      await this.gameRepo.updateGameStatus(gameId, 'open');
+
+      const updatedGame = await this.gameRepo.findGameById(gameId);
+      return Result.ok(updatedGame!);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
+   * 내전 조정 (참가비/보상배율 수정 후 승인)
+   */
+  async adjustGame(
+    gameId: bigint,
+    newEntryFee: bigint,
+    newRankRewards: RankRewards | null
+  ): Promise<Result<Game, CurrencyError>> {
+    try {
+      const game = await this.gameRepo.findGameById(gameId);
+      if (!game) {
+        return Result.err({ type: 'GAME_NOT_FOUND' });
+      }
+
+      if (game.status !== 'pending_approval') {
+        return Result.err({ type: 'GAME_NOT_PENDING' });
+      }
+
+      // 참가비 및 순위보상 업데이트
+      await this.gameRepo.updateGameEntryAndRewards(gameId, newEntryFee, newRankRewards);
+
+      // 상태를 open으로 변경
+      await this.gameRepo.updateGameStatus(gameId, 'open');
+
+      const updatedGame = await this.gameRepo.findGameById(gameId);
+      return Result.ok(updatedGame!);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
+  /**
+   * 내전 거절 (삭제)
+   */
+  async rejectGame(gameId: bigint): Promise<Result<void, CurrencyError>> {
+    try {
+      const game = await this.gameRepo.findGameById(gameId);
+      if (!game) {
+        return Result.err({ type: 'GAME_NOT_FOUND' });
+      }
+
+      if (game.status !== 'pending_approval') {
+        return Result.err({ type: 'GAME_NOT_PENDING' });
+      }
+
+      // 게임 삭제
+      await this.gameRepo.deleteGame(gameId);
+
+      return Result.ok(undefined);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return Result.err({
+        type: 'REPOSITORY_ERROR',
+        cause: { type: 'QUERY_ERROR', message },
+      });
+    }
+  }
+
   // ========== 헬퍼 메서드 ==========
 
   /**

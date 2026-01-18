@@ -124,6 +124,20 @@ export interface GameRepositoryPort {
    */
   cancelGame(gameId: bigint): Promise<Game | null>;
 
+  /**
+   * 게임 삭제
+   */
+  deleteGame(gameId: bigint): Promise<void>;
+
+  /**
+   * 게임 참가비 및 순위보상 업데이트
+   */
+  updateGameEntryAndRewards(
+    gameId: bigint,
+    entryFee: bigint,
+    customRankRewards: Record<number, number> | null
+  ): Promise<Game | null>;
+
   // ========== 참가자 ==========
 
   /**
