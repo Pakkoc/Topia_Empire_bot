@@ -221,7 +221,7 @@ export default function BankPage() {
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
-            <Icon icon="solar:bank-bold" className="w-7 h-7 text-white" />
+            <Icon icon="solar:safe-square-bold" className="w-7 h-7 text-white" />
           </div>
           <div className="flex-1">
             {isEditingName ? (
@@ -308,7 +308,7 @@ export default function BankPage() {
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
-            <Icon icon="solar:vault-bold" className="w-6 h-6 text-white" />
+            <Icon icon="solar:money-bag-bold" className="w-6 h-6 text-white" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-white">국고 현황</h2>
