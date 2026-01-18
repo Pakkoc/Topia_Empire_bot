@@ -46,6 +46,7 @@ interface CurrencySettingsRow extends RowDataPacket {
   bank_name: string | null;
   bank_panel_channel_id: string | null;
   bank_panel_message_id: string | null;
+  treasury_manager_role_id: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -126,6 +127,7 @@ function toCurrencySettings(row: CurrencySettingsRow): CurrencySettings {
     bankName: row.bank_name ?? '디토뱅크',
     bankPanelChannelId: row.bank_panel_channel_id ?? null,
     bankPanelMessageId: row.bank_panel_message_id ?? null,
+    treasuryManagerRoleId: row.treasury_manager_role_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -168,8 +170,10 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           shop_fee_topy_percent, shop_fee_ruby_percent,
           monthly_tax_enabled, monthly_tax_percent,
           shop_channel_id, shop_message_id, currency_log_channel_id,
-          item_manager_role_id, item_log_channel_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          item_manager_role_id, item_log_channel_id,
+          bank_name, bank_panel_channel_id, bank_panel_message_id, treasury_manager_role_id,
+          created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          enabled = VALUES(enabled),
          topy_name = VALUES(topy_name),
@@ -201,6 +205,10 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
          currency_log_channel_id = VALUES(currency_log_channel_id),
          item_manager_role_id = VALUES(item_manager_role_id),
          item_log_channel_id = VALUES(item_log_channel_id),
+         bank_name = VALUES(bank_name),
+         bank_panel_channel_id = VALUES(bank_panel_channel_id),
+         bank_panel_message_id = VALUES(bank_panel_message_id),
+         treasury_manager_role_id = VALUES(treasury_manager_role_id),
          updated_at = VALUES(updated_at)`,
         [
           settings.guildId,
@@ -234,6 +242,10 @@ export class CurrencySettingsRepository implements CurrencySettingsRepositoryPor
           settings.currencyLogChannelId,
           settings.itemManagerRoleId,
           settings.itemLogChannelId,
+          settings.bankName,
+          settings.bankPanelChannelId,
+          settings.bankPanelMessageId,
+          settings.treasuryManagerRoleId,
           settings.createdAt,
           settings.updatedAt,
         ]

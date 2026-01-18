@@ -6,6 +6,7 @@ import {
   SeparatorBuilder,
   SeparatorSpacingSize,
   MessageFlags,
+  GuildMember,
 } from 'discord.js';
 import type { TreasuryTransaction } from '@topia/core';
 import type { Command } from './types';
@@ -90,7 +91,7 @@ export const treasuryCommand: Command = {
     .addSubcommand(sub =>
       sub
         .setName('내역')
-        .setDescription('국고 거래 내역을 조회합니다 (관리자 전용)')
+        .setDescription('국고 거래 내역을 조회합니다')
         .addIntegerOption(option =>
           option
             .setName('페이지')
@@ -98,8 +99,7 @@ export const treasuryCommand: Command = {
             .setRequired(false)
             .setMinValue(1)
         )
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    ),
 
   async execute(interaction, container) {
     const guildId = interaction.guildId;
@@ -111,14 +111,45 @@ export const treasuryCommand: Command = {
       return;
     }
 
-    const subcommand = interaction.options.getSubcommand();
-
     // 화폐 설정 조회
     const settingsResult = await container.currencyService.getSettings(guildId);
     const settings = settingsResult.success ? settingsResult.data : null;
     const topyName = settings?.topyName || '토피';
     const rubyName = settings?.rubyName || '루비';
     const logChannelId = settings?.currencyLogChannelId;
+    const treasuryManagerRoleId = settings?.treasuryManagerRoleId;
+
+    // 권한 체크: 관리자 권한 또는 국고 관리자 역할
+    const member = interaction.member as GuildMember;
+    const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
+    const hasTreasuryRole = treasuryManagerRoleId && member.roles.cache.has(treasuryManagerRoleId);
+
+    if (!isAdmin && !hasTreasuryRole) {
+      const errorPanel = new ContainerBuilder()
+        .setAccentColor(0xff0000)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent('# ⛔ 권한 없음')
+        )
+        .addSeparatorComponents(
+          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        )
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            '이 명령어를 사용할 권한이 없습니다.\n\n' +
+            '**필요 조건:**\n' +
+            '• 서버 관리자 권한\n' +
+            (treasuryManagerRoleId ? `• 또는 <@&${treasuryManagerRoleId}> 역할` : '• 또는 국고 관리자 역할 (설정 필요)')
+          )
+        );
+
+      await interaction.reply({
+        components: [errorPanel.toJSON()],
+        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const subcommand = interaction.options.getSubcommand();
 
     if (subcommand === '조회') {
       await handleView(interaction, container, topyName, rubyName);

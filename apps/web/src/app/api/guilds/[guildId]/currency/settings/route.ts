@@ -39,6 +39,9 @@ interface CurrencySettingsRow extends RowDataPacket {
   item_manager_role_id: string | null;
   item_log_channel_id: string | null;
   bank_name: string | null;
+  bank_panel_channel_id: string | null;
+  bank_panel_message_id: string | null;
+  treasury_manager_role_id: string | null;
 }
 
 function rowToSettings(row: CurrencySettingsRow) {
@@ -75,6 +78,9 @@ function rowToSettings(row: CurrencySettingsRow) {
     itemManagerRoleId: row.item_manager_role_id ?? null,
     itemLogChannelId: row.item_log_channel_id ?? null,
     bankName: row.bank_name ?? '디토뱅크',
+    bankPanelChannelId: row.bank_panel_channel_id ?? null,
+    bankPanelMessageId: row.bank_panel_message_id ?? null,
+    treasuryManagerRoleId: row.treasury_manager_role_id ?? null,
   };
 }
 
@@ -159,6 +165,7 @@ export async function PATCH(
       itemManagerRoleId: "item_manager_role_id",
       itemLogChannelId: "item_log_channel_id",
       bankName: "bank_name",
+      treasuryManagerRoleId: "treasury_manager_role_id",
     };
 
     const updates: string[] = [];

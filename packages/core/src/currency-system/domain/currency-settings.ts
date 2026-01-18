@@ -61,6 +61,9 @@ export interface CurrencySettings {
   bankPanelChannelId: string | null;
   bankPanelMessageId: string | null;
 
+  // 국고 관리자 역할
+  treasuryManagerRoleId: string | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -113,6 +116,8 @@ export function createDefaultCurrencySettings(guildId: string): CurrencySettings
     bankName: '디토뱅크',
     bankPanelChannelId: null,
     bankPanelMessageId: null,
+
+    treasuryManagerRoleId: null,
 
     createdAt: now,
     updatedAt: now,

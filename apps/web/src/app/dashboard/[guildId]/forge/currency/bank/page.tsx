@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useTreasury, useCurrencySettings, useTextChannels } from "@/hooks/queries";
+import { useTreasury, useCurrencySettings, useTextChannels, useRoles, useUpdateCurrencySettings } from "@/hooks/queries";
 import { useToast } from "@/hooks/use-toast";
 import { Icon } from "@iconify/react";
 import { apiClient } from "@/lib/remote/api-client";
@@ -102,9 +102,11 @@ export default function BankPage() {
   const { data: settings } = useCurrencySettings(guildId);
   const { data: panelSettings, isLoading: panelLoading } = useBankPanelSettings(guildId);
   const { data: channels = [] } = useTextChannels(guildId);
+  const { data: roles = [] } = useRoles(guildId);
 
   const createPanel = useCreateBankPanel(guildId);
   const deletePanel = useDeleteBankPanel(guildId);
+  const updateSettings = useUpdateCurrencySettings(guildId);
 
   const topyName = settings?.topyName ?? "토피";
   const rubyName = settings?.rubyName ?? "루비";
@@ -399,6 +401,94 @@ export default function BankPage() {
               </>
             )}
           </Button>
+        </div>
+      </div>
+
+      {/* 국고 관리자 역할 설정 */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+            <Icon icon="solar:shield-user-bold" className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-white">국고 관리자 설정</h2>
+            <p className="text-sm text-white/50">
+              국고 명령어(/국고)를 사용할 수 있는 역할을 지정합니다
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              관리자 역할
+            </label>
+            <Select
+              value={settings?.treasuryManagerRoleId ?? "none"}
+              onValueChange={async (value) => {
+                const roleId = value === "none" ? null : value;
+                try {
+                  await updateSettings.mutateAsync({ treasuryManagerRoleId: roleId });
+                  toast({
+                    title: "설정이 저장되었습니다",
+                    description: roleId
+                      ? `${roles.find((r) => r.id === roleId)?.name} 역할이 국고 관리자로 설정되었습니다.`
+                      : "관리자만 국고 명령어를 사용할 수 있습니다.",
+                  });
+                } catch (error) {
+                  toast({
+                    title: "설정 저장 실패",
+                    description: "다시 시도해주세요.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                <SelectValue placeholder="역할을 선택하세요">
+                  {settings?.treasuryManagerRoleId
+                    ? `@${roles.find((r) => r.id === settings.treasuryManagerRoleId)?.name ?? "로딩 중..."}`
+                    : "관리자만 사용 가능"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">
+                  <span className="text-white/60">관리자만 사용 가능</span>
+                </SelectItem>
+                <SelectGroup>
+                  <SelectLabel className="text-xs text-slate-400">역할 목록</SelectLabel>
+                  {roles
+                    .filter((role) => role.name !== "@everyone")
+                    .map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        <span style={{ color: role.color ? `#${role.color.toString(16).padStart(6, "0")}` : undefined }}>
+                          @{role.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-white/40 mt-2">
+              선택한 역할을 가진 멤버는 /국고 명령어로 국고를 관리할 수 있습니다.
+              역할을 선택하지 않으면 서버 관리자만 사용할 수 있습니다.
+            </p>
+          </div>
+
+          {/* 현재 설정 표시 */}
+          {settings?.treasuryManagerRoleId && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <Icon icon="solar:info-circle-bold" className="w-5 h-5 text-amber-400" />
+                <div>
+                  <span className="text-white font-medium">현재 설정</span>
+                  <p className="text-sm text-white/60">
+                    @{roles.find((r) => r.id === settings.treasuryManagerRoleId)?.name ?? settings.treasuryManagerRoleId} 역할이 국고를 관리할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
