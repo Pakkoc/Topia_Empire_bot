@@ -15,8 +15,9 @@ export type ShopItemCurrencyType = 'topy' | 'ruby' | 'both';
  * - activity_boost: 활동부스트권
  * - premium_afk: 프리미엄잠수방
  * - vip_lounge: VIP라운지입장권
- * - dito_silver: 디토실버
- * - dito_gold: 디토골드
+ * - vault_subscription: 금고 구독 (동적 등급)
+ * - dito_silver: 디토실버 (레거시, vault_subscription 사용 권장)
+ * - dito_gold: 디토골드 (레거시, vault_subscription 사용 권장)
  * - color_basic: 색상선택권(기본)
  * - color_premium: 색상선택권(프리미엄)
  * - role_ticket: 역할선택권(즉시구매)
@@ -29,6 +30,7 @@ export type ShopItemType =
   | 'activity_boost'
   | 'premium_afk'
   | 'vip_lounge'
+  | 'vault_subscription'
   | 'dito_silver'
   | 'dito_gold'
   | 'color_basic'
@@ -36,7 +38,7 @@ export type ShopItemType =
   | 'role_ticket';
 
 /**
- * 디토뱅크 효과 설정 (dito_silver, dito_gold 등)
+ * 디토뱅크 효과 설정 (레거시, VaultSubscriptionEffectConfig 사용 권장)
  */
 export interface DitoEffectConfig {
   vaultLimit: number;           // 금고 한도
@@ -44,10 +46,24 @@ export interface DitoEffectConfig {
 }
 
 /**
+ * 금고 구독 효과 설정 (vault_subscription)
+ * - 모든 혜택을 effectConfig에서 정의
+ */
+export interface VaultSubscriptionEffectConfig {
+  tierName: string;                   // 표시용 (실버, 골드, 플래티넘 등)
+  vaultLimit: number;                 // 금고 한도
+  monthlyInterestRate: number;        // 월 이자율 (%)
+  minDepositDays?: number;            // 최소 예치 기간 (일)
+  transferFeeExempt?: boolean;        // 이체 수수료 면제 여부
+  purchaseFeePercent?: number;        // 구매 수수료율 (%)
+  marketFeePercent?: number;          // 장터 수수료율 (%)
+}
+
+/**
  * 아이템 효과 설정 (JSON)
  * - 아이템 타입별로 다른 스키마 사용
  */
-export type ShopItemEffectConfig = DitoEffectConfig | null;
+export type ShopItemEffectConfig = DitoEffectConfig | VaultSubscriptionEffectConfig | null;
 
 /**
  * 상점 아이템 - 티켓 판매

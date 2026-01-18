@@ -17,13 +17,23 @@ export interface BankSubscriptionRepositoryPort {
   ): Promise<Result<BankSubscription | null, RepositoryError>>;
 
   /**
-   * 유저의 특정 티어 구독 조회
+   * 유저의 특정 티어 구독 조회 (레거시)
    * (활성 또는 미래 예약된 구독)
    */
   findByUserAndTier(
     guildId: string,
     userId: string,
     tier: BankTier
+  ): Promise<Result<BankSubscription | null, RepositoryError>>;
+
+  /**
+   * 유저의 특정 상점 아이템 구독 조회
+   * (활성 또는 미래 예약된 구독)
+   */
+  findByUserAndShopItem(
+    guildId: string,
+    userId: string,
+    shopItemId: number
   ): Promise<Result<BankSubscription | null, RepositoryError>>;
 
   /**
@@ -47,6 +57,14 @@ export interface BankSubscriptionRepositoryPort {
   extendExpiration(
     id: bigint,
     newExpiresAt: Date
+  ): Promise<Result<void, RepositoryError>>;
+
+  /**
+   * 기존 구독 종료 (만료일을 현재로 설정)
+   */
+  terminateSubscription(
+    id: bigint,
+    terminateAt: Date
   ): Promise<Result<void, RepositoryError>>;
 
   /**

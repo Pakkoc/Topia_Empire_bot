@@ -71,8 +71,8 @@ export const DEFAULT_SHOP_ITEMS: DefaultShopItemDefinition[] = [
   },
   {
     name: '금고 등급',
-    description: '금고 기능을 이용할 수 있습니다. (금고 한도, 월 이자율 설정 가능)',
-    itemType: 'dito_silver',
+    description: '금고 기능을 이용할 수 있습니다. (금고 한도, 월 이자율, 수수료 설정 가능)',
+    itemType: 'vault_subscription',
     currencyType: 'ruby',
     durationDays: 30,
     isRoleItem: false,  // 역할 없이 구독으로만 동작
@@ -123,8 +123,9 @@ export const ITEM_TYPE_LABELS: Record<ShopItemType, string> = {
   activity_boost: '활동부스트권',
   premium_afk: '프리미엄잠수방',
   vip_lounge: 'VIP라운지입장권',
-  dito_silver: '금고 등급',
-  dito_gold: '금고 등급',  // 기존 데이터 호환용
+  vault_subscription: '금고 등급',
+  dito_silver: '금고 등급(레거시)',  // 기존 데이터 호환용
+  dito_gold: '금고 등급(레거시)',    // 기존 데이터 호환용
   color_basic: '색상선택권(기본)',
   color_premium: '색상선택권(프리미엄)',
   role_ticket: '역할선택권',

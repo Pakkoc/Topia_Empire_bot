@@ -69,8 +69,9 @@ const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   activity_boost: "활동부스트권",
   premium_afk: "프리미엄잠수방",
   vip_lounge: "VIP라운지",
-  dito_silver: "디토실버",
-  dito_gold: "디토골드",
+  vault_subscription: "금고 등급",
+  dito_silver: "금고 등급(레거시)",
+  dito_gold: "금고 등급(레거시)",
   color_basic: "색상선택권(기본)",
   color_premium: "색상선택권(프리미엄)",
 };
@@ -89,14 +90,14 @@ interface PendingRoleOption {
 }
 
 // 선택 가능한 아이템 타입
-const SELECTABLE_ITEM_TYPES = ["custom", "tax_exemption", "transfer_fee_reduction", "dito_silver"] as const;
+const SELECTABLE_ITEM_TYPES = ["custom", "tax_exemption", "transfer_fee_reduction", "vault_subscription"] as const;
 type SelectableItemType = (typeof SELECTABLE_ITEM_TYPES)[number];
 
 const SELECTABLE_ITEM_TYPE_LABELS: Record<SelectableItemType, string> = {
   custom: "일반",
   tax_exemption: "세금감면권",
   transfer_fee_reduction: "이체수수료감면권",
-  dito_silver: "금고 등급",
+  vault_subscription: "금고 등급",
 };
 
 // 역할선택권 프리셋 타입
@@ -122,9 +123,14 @@ const shopItemFormSchema = z.object({
   rubyPrice: z.coerce.number().min(0, "가격은 0 이상이어야 합니다").optional(),
   currencyType: z.enum(["topy", "ruby", "both"]),
   effectPercent: z.coerce.number().min(1).max(100).optional(), // 효과 비율 (세금면제권, 이체감면권)
-  // 디토뱅크 설정
+  // 금고 등급 설정 (vault_subscription)
+  tierName: z.string().max(50).optional(), // 표시용 등급명
   vaultLimit: z.coerce.number().min(0).optional(), // 금고 한도
   monthlyInterestRate: z.coerce.number().min(0).max(100).optional(), // 월 이자율 (%)
+  minDepositDays: z.coerce.number().min(0).optional(), // 최소 예치 기간
+  transferFeeExempt: z.boolean().optional(), // 이체 수수료 면제
+  purchaseFeePercent: z.coerce.number().min(0).max(100).optional(), // 구매 수수료율
+  marketFeePercent: z.coerce.number().min(0).max(100).optional(), // 장터 수수료율
   durationDays: z.coerce.number().min(0).optional(),
   stock: z.coerce.number().min(0).optional(),
   maxPerUser: z.coerce.number().min(1).optional(),
@@ -221,9 +227,14 @@ export default function ShopV2Page() {
       rubyPrice: 0,
       currencyType: "topy",
       effectPercent: 100,
+      tierName: "실버",
       vaultLimit: 100000,
       monthlyInterestRate: 1,
-      durationDays: 0,
+      minDepositDays: 7,
+      transferFeeExempt: true,
+      purchaseFeePercent: 1.2,
+      marketFeePercent: 5,
+      durationDays: 30,
       stock: undefined,
       maxPerUser: undefined,
       enabled: true,
@@ -317,12 +328,22 @@ export default function ShopV2Page() {
       const effectPercent = data.effectPercent && data.effectPercent !== 100 ? data.effectPercent : null;
 
       // 효과 설정 (금고 등급일 때만 적용)
-      const effectConfig = (data.itemType === "dito_silver")
+      const effectConfig = (data.itemType === "vault_subscription")
         ? {
+            tierName: data.tierName || "실버",
             vaultLimit: data.vaultLimit ?? 100000,
             monthlyInterestRate: data.monthlyInterestRate ?? 1,
+            minDepositDays: data.minDepositDays ?? 7,
+            transferFeeExempt: data.transferFeeExempt ?? true,
+            purchaseFeePercent: data.purchaseFeePercent ?? 1.2,
+            marketFeePercent: data.marketFeePercent ?? 5,
           }
         : null;
+
+      // 기간 설정: 금고 등급 또는 역할선택권(기간권)일 때 durationDays 사용
+      const isVaultSubscription = data.itemType === "vault_subscription";
+      const isPeriodRoleTicket = data.hasRoleTicket && data.roleTicketPreset === "period";
+      const durationDays = (isVaultSubscription || isPeriodRoleTicket) ? (data.durationDays ?? 30) : 0;
 
       if (editingItem) {
         await updateItem.mutateAsync({
@@ -336,7 +357,7 @@ export default function ShopV2Page() {
             currencyType: data.currencyType,
             effectPercent,
             effectConfig,
-            durationDays: (data.hasRoleTicket && data.roleTicketPreset === "period") ? (data.durationDays ?? 30) : 0,
+            durationDays,
             stock: data.stock || null,
             maxPerUser: data.maxPerUser || null,
             enabled: data.enabled ?? true,
@@ -355,7 +376,7 @@ export default function ShopV2Page() {
           currencyType: data.currencyType,
           effectPercent,
           effectConfig,
-          durationDays: (data.hasRoleTicket && data.roleTicketPreset === "period") ? (data.durationDays ?? 30) : 0,
+          durationDays,
           stock: data.stock,
           maxPerUser: data.maxPerUser,
           enabled: data.enabled ?? true,
@@ -397,13 +418,27 @@ export default function ShopV2Page() {
       roleTicketPreset = item.roleTicket.consumeQuantity === 0 ? "period" : "once";
     }
 
-    // itemType이 선택 가능한 타입인지 확인 (아니면 custom으로 설정)
-    const selectableItemType = SELECTABLE_ITEM_TYPES.includes(item.itemType as SelectableItemType)
-      ? (item.itemType as SelectableItemType)
-      : "custom";
+    // itemType이 선택 가능한 타입인지 확인
+    // dito_silver, dito_gold는 vault_subscription으로 변환 (레거시 호환)
+    let selectableItemType: SelectableItemType = "custom";
+    if (item.itemType === "vault_subscription") {
+      selectableItemType = "vault_subscription";
+    } else if (item.itemType === "dito_silver" || item.itemType === "dito_gold") {
+      selectableItemType = "vault_subscription"; // 레거시를 새 타입으로 변환
+    } else if (SELECTABLE_ITEM_TYPES.includes(item.itemType as SelectableItemType)) {
+      selectableItemType = item.itemType as SelectableItemType;
+    }
 
-    // effectConfig에서 디토뱅크 설정 추출
-    const effectConfig = item.effectConfig as { vaultLimit?: number; monthlyInterestRate?: number } | null;
+    // effectConfig에서 금고 설정 추출
+    const effectConfig = item.effectConfig as {
+      tierName?: string;
+      vaultLimit?: number;
+      monthlyInterestRate?: number;
+      minDepositDays?: number;
+      transferFeeExempt?: boolean;
+      purchaseFeePercent?: number;
+      marketFeePercent?: number;
+    } | null;
 
     form.reset({
       name: item.name,
@@ -413,9 +448,14 @@ export default function ShopV2Page() {
       rubyPrice: item.rubyPrice ?? 0,
       currencyType: item.currencyType,
       effectPercent: item.effectPercent ?? 100,
+      tierName: effectConfig?.tierName ?? "실버",
       vaultLimit: effectConfig?.vaultLimit ?? 100000,
       monthlyInterestRate: effectConfig?.monthlyInterestRate ?? 1,
-      durationDays: item.durationDays || 0,
+      minDepositDays: effectConfig?.minDepositDays ?? 7,
+      transferFeeExempt: effectConfig?.transferFeeExempt ?? true,
+      purchaseFeePercent: effectConfig?.purchaseFeePercent ?? 1.2,
+      marketFeePercent: effectConfig?.marketFeePercent ?? 5,
+      durationDays: item.durationDays || 30,
       stock: item.stock || undefined,
       maxPerUser: item.maxPerUser || undefined,
       enabled: item.enabled,
@@ -726,13 +766,38 @@ export default function ShopV2Page() {
           />
         )}
 
-        {/* 금고 등급 설정 - 금고 등급일 때만 표시 */}
-        {itemType === "dito_silver" && (
+        {/* 금고 등급 설정 - vault_subscription일 때만 표시 */}
+        {itemType === "vault_subscription" && (
           <div className="space-y-4 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20">
             <h4 className="text-sm font-medium text-white/70 flex items-center gap-2">
               <Icon icon="solar:safe-square-bold" className="h-4 w-4 text-amber-400" />
               금고 등급 설정
             </h4>
+
+            {/* 등급명 */}
+            <FormField
+              control={form.control}
+              name="tierName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white/70">등급명</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="실버, 골드, 플래티넘 등"
+                      {...field}
+                      value={field.value || ""}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs text-white/40">
+                    유저에게 표시되는 등급 이름
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* 기본 설정 */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -779,6 +844,122 @@ export default function ShopV2Page() {
                     <FormDescription className="text-xs text-white/40">
                       매월 지급되는 이자율
                     </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="minDepositDays"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/70">최소 예치 기간 (일)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="7"
+                        {...field}
+                        value={field.value ?? ""}
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs text-white/40">
+                      이자를 받기 위한 최소 예치 기간
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="durationDays"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/70">구독 기간 (일)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="30"
+                        {...field}
+                        value={field.value || ""}
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs text-white/40">
+                      구매 시 적용되는 구독 기간
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* 수수료 설정 */}
+            <h5 className="text-xs font-medium text-white/50 mt-4">수수료 혜택</h5>
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="transferFeeExempt"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2">
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <FormLabel className="text-white/70 text-sm">이체수수료 면제</FormLabel>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="purchaseFeePercent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/70">구매수수료 (%)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        placeholder="1.2"
+                        {...field}
+                        value={field.value ?? ""}
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs text-white/40">
+                      0 = 면제
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="marketFeePercent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/70">장터수수료 (%)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        placeholder="5"
+                        {...field}
+                        value={field.value ?? ""}
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

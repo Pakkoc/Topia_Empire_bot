@@ -6,41 +6,29 @@ import type { CurrencyTransactionRepositoryPort } from '../port/currency-transac
 import type { BankSubscriptionRepositoryPort } from '../port/bank-subscription-repository.port';
 import type { UserVault, VaultDepositResult, VaultWithdrawResult, VaultInterestResult } from '../domain/user-vault';
 import { calculateInterest } from '../domain/user-vault';
-import { getBankBenefits, type BankSubscription } from '../domain/bank-subscription';
+import { getBankBenefitsFromSubscription, type BankSubscription } from '../domain/bank-subscription';
 import { Result } from '../../shared/types/result';
 import { createTransaction } from '../domain/currency-transaction';
 
 /**
- * 구독에서 실제 적용될 금고 한도 계산
- * (커스텀 값이 있으면 사용, 없으면 기본값)
+ * 구독에서 실제 적용될 금고 한도 계산 (동적 등급 지원)
  */
 function getEffectiveStorageLimit(subscription: BankSubscription): bigint {
-  if (subscription.vaultLimit != null) {
-    return subscription.vaultLimit;
-  }
-  return getBankBenefits(subscription.tier).storageLimit;
+  return getBankBenefitsFromSubscription(subscription).storageLimit;
 }
 
 /**
- * 구독에서 실제 적용될 이자율 계산
- * (커스텀 값이 있으면 사용, 없으면 기본값)
+ * 구독에서 실제 적용될 이자율 계산 (동적 등급 지원)
  */
 function getEffectiveInterestRate(subscription: BankSubscription): number {
-  if (subscription.interestRate != null) {
-    return subscription.interestRate;
-  }
-  return getBankBenefits(subscription.tier).interestRate;
+  return getBankBenefitsFromSubscription(subscription).interestRate;
 }
 
 /**
- * 구독에서 실제 적용될 최소 예치 기간 계산
- * (커스텀 값이 있으면 사용, 없으면 기본값)
+ * 구독에서 실제 적용될 최소 예치 기간 계산 (동적 등급 지원)
  */
 function getEffectiveMinDepositDays(subscription: BankSubscription): number {
-  if (subscription.minDepositDays != null) {
-    return subscription.minDepositDays;
-  }
-  return getBankBenefits(subscription.tier).minDepositDays;
+  return getBankBenefitsFromSubscription(subscription).minDepositDays;
 }
 
 /**
@@ -115,7 +103,9 @@ export class VaultService {
       return { success: false, error: { type: 'REPOSITORY_ERROR', cause: vaultResult.error } };
     }
 
-    const tierName = subscription.tier === 'gold' ? '골드' : '실버';
+    // 동적 등급에서 tierName 가져오기, 레거시는 tier에서 변환
+    const tierName = subscription.tierName ??
+      (subscription.tier === 'gold' ? '골드' : subscription.tier === 'silver' ? '실버' : '없음');
 
     return {
       success: true,

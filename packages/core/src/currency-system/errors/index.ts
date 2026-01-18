@@ -64,4 +64,7 @@ export type CurrencyError =
   // 금고 관련 에러
   | { type: 'NO_SUBSCRIPTION' }
   | { type: 'VAULT_LIMIT_EXCEEDED'; limit: bigint; current: bigint; requested: bigint }
-  | { type: 'INSUFFICIENT_VAULT_BALANCE'; required: bigint; available: bigint };
+  | { type: 'INSUFFICIENT_VAULT_BALANCE'; required: bigint; available: bigint }
+  // 금고 구독 관련 에러
+  | { type: 'INVALID_ITEM_CONFIG' }
+  | { type: 'CANNOT_DOWNGRADE_SUBSCRIPTION'; currentTier: string; newTier: string };
