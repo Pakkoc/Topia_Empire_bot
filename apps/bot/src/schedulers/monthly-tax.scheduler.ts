@@ -9,6 +9,7 @@ import {
   MessageFlags,
 } from 'discord.js';
 import { getPool } from '@topia/infra';
+import { refreshBankPanel } from '../handlers/bank-panel.js';
 
 interface GuildRow extends RowDataPacket {
   id: string;
@@ -95,6 +96,11 @@ async function processGuildTax(client: Client, container: Container, guildId: st
       `[MONTHLY TAX] Guild ${guildId}: Processed ${summary.taxedUsers} users, ` +
         `exempted ${summary.exemptedUsers}, total tax: ${summary.totalTaxAmount}`
     );
+
+    // 세금이 국고에 적립되었으면 은행 패널 새로고침
+    if (summary.totalTaxAmount > BigInt(0)) {
+      refreshBankPanel(client, guildId, container).catch(() => {});
+    }
 
     // 세금 처리 완료 알림 전송 (선택적)
     await sendTaxNotification(client, guildId, summary);
