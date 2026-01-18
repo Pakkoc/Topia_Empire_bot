@@ -7,6 +7,7 @@ export interface GameSettings {
   channelId: string | null;
   messageId: string | null;
   managerRoleId: string | null;
+  approvalChannelId: string | null;
   entryFee: string;
   rankRewards: RankRewards;
 }
@@ -81,6 +82,7 @@ export function useUpdateGameSettings(guildId: string) {
 
   return useMutation<GameSettings, Error, {
     managerRoleId?: string | null;
+    approvalChannelId?: string | null;
     entryFee?: string;
     rankRewards?: RankRewards;
   }>({

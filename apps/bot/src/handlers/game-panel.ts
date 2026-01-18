@@ -61,6 +61,7 @@ function createGameContainer(
 
   // 상태별 이모지
   const statusText = {
+    'pending_approval': '⏳ 승인 대기',
     'open': '🟢 모집중',
     'team_assign': '🟡 팀 배정중',
     'in_progress': '🔵 경기중',

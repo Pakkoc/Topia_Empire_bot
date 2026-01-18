@@ -9,6 +9,7 @@ import { z } from "zod";
 
 const updateSettingsSchema = z.object({
   managerRoleId: z.string().nullable().optional(),
+  approvalChannelId: z.string().nullable().optional(),
   entryFee: z.string().optional(),
   rankRewards: z.record(z.string(), z.number().min(0).max(100)).optional(),
 });
@@ -44,6 +45,7 @@ export async function GET(
       channelId: settings.channelId,
       messageId: settings.messageId,
       managerRoleId: settings.managerRoleId,
+      approvalChannelId: settings.approvalChannelId,
       entryFee: settings.entryFee.toString(),
       rankRewards: settings.rankRewards,
     });
@@ -104,6 +106,7 @@ export async function PATCH(
 
     const result = await container.gameService.saveSettings(guildId, {
       managerRoleId: data.managerRoleId,
+      approvalChannelId: data.approvalChannelId,
       entryFee: data.entryFee ? BigInt(data.entryFee) : undefined,
       rankRewards: parsedRankRewards,
     });
@@ -121,6 +124,7 @@ export async function PATCH(
       channelId: settings.channelId,
       messageId: settings.messageId,
       managerRoleId: settings.managerRoleId,
+      approvalChannelId: settings.approvalChannelId,
       entryFee: settings.entryFee.toString(),
       rankRewards: settings.rankRewards,
     });

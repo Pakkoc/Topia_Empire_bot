@@ -37,6 +37,7 @@ export default function GameCenterPage() {
 
   // 게임 설정
   const [managerRoleId, setManagerRoleId] = useState<string | null>(null);
+  const [approvalChannelId, setApprovalChannelId] = useState<string | null>(null);
   const [entryFee, setEntryFee] = useState("100");
   const [rank1Percent, setRank1Percent] = useState("50");
   const [rank2Percent, setRank2Percent] = useState("30");
@@ -76,6 +77,7 @@ export default function GameCenterPage() {
         setSelectedChannelId(settings.channelId);
       }
       setManagerRoleId(settings.managerRoleId);
+      setApprovalChannelId(settings.approvalChannelId || null);
       setEntryFee(settings.entryFee);
       // rankRewards 객체에서 1-4등 비율 추출
       const rewards = settings.rankRewards || { 1: 50, 2: 30, 3: 15, 4: 5 };
@@ -118,6 +120,7 @@ export default function GameCenterPage() {
     try {
       await updateSettingsMutation.mutateAsync({
         managerRoleId,
+        approvalChannelId,
         entryFee,
         rankRewards: { 1: r1, 2: r2, 3: r3, 4: r4 },
       });
@@ -251,6 +254,7 @@ export default function GameCenterPage() {
             <h3 className="font-semibold text-white">내전 시스템 안내</h3>
             <ul className="text-sm text-white/60 space-y-1">
               <li>• <strong className="text-white/80">관리자</strong>가 패널에서 내전을 생성합니다</li>
+              <li>• 승인 채널 설정 시 <strong className="text-white/80">일반 유저</strong>도 내전 생성 요청 가능 (관리자 승인 필요)</li>
               <li>• 유저들이 <strong className="text-white/80">참가비</strong>를 내고 참가합니다</li>
               <li>• 관리자가 참가자들을 <strong className="text-white/80">팀별로 배정</strong>합니다</li>
               <li>• 경기 종료 후 관리자가 <strong className="text-white/80">순위를 입력</strong>하면 자동 보상</li>
@@ -367,6 +371,49 @@ export default function GameCenterPage() {
           {managerRoleId
             ? "선택한 역할 또는 서버 관리 권한을 가진 유저가 내전을 관리할 수 있습니다."
             : "서버 관리 권한을 가진 유저만 내전을 관리할 수 있습니다."}
+        </p>
+      </div>
+
+      {/* 승인 채널 설정 */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+            <Icon icon="solar:check-circle-bold" className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">승인 채널 설정</h3>
+            <p className="text-white/50 text-sm">일반 유저의 내전 생성 요청을 받을 채널을 지정합니다</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Select
+            value={approvalChannelId || "__none__"}
+            onValueChange={(value) => setApprovalChannelId(value === "__none__" ? null : value)}
+          >
+            <SelectTrigger className="bg-white/5 border-white/10 text-white sm:w-64">
+              <SelectValue placeholder="채널 선택...">
+                {approvalChannelId && channels?.find(c => c.id === approvalChannelId)
+                  ? `# ${channels.find(c => c.id === approvalChannelId)?.name}`
+                  : approvalChannelId
+                    ? "로딩 중..."
+                    : "없음 (관리자만 생성 가능)"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">없음 (관리자만 생성 가능)</SelectItem>
+              {channels?.map((channel) => (
+                <SelectItem key={channel.id} value={channel.id}>
+                  # {channel.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <p className="text-white/40 text-xs mt-2">
+          {approvalChannelId
+            ? "일반 유저도 내전 생성을 요청할 수 있습니다. 요청은 승인 채널에서 관리자가 승인/거절합니다."
+            : "승인 채널이 없으면 관리자만 내전을 생성할 수 있습니다."}
         </p>
       </div>
 
