@@ -297,12 +297,10 @@ export default function BankPage() {
             )}
           </div>
         </div>
+        <p className="text-sm text-white/50 mt-4 pt-4 border-t border-white/10">
+          국고 현황을 확인하고 {bankName} 패널을 설치하여 멤버들이 금융 서비스를 이용할 수 있게 하세요.
+        </p>
       </div>
-
-      {/* 페이지 설명 */}
-      <p className="text-white/60 -mt-4">
-        국고 현황을 확인하고 {bankName} 패널을 설치하여 멤버들이 금융 서비스를 이용할 수 있게 하세요.
-      </p>
 
       {/* 국고 현황 카드 */}
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
