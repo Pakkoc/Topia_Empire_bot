@@ -699,13 +699,11 @@ export class CurrencyService {
 
       // 국고에 이체 수수료 적립
       if (this.treasuryRepo) {
-        console.log('[Transfer] 국고에 이체 수수료 적립 시작:', { guildId, fee: fee.toString() });
-        const addResult = await this.treasuryRepo.addBalance(guildId, 'topy', fee);
-        console.log('[Transfer] addBalance 결과:', addResult.success, addResult.success ? addResult.data.topyBalance.toString() : addResult.error);
+        await this.treasuryRepo.addBalance(guildId, 'topy', fee);
 
         const treasuryResult = await this.treasuryRepo.findOrCreate(guildId);
         if (treasuryResult.success) {
-          const txResult = await this.treasuryRepo.saveTransaction({
+          await this.treasuryRepo.saveTransaction({
             guildId,
             currencyType: 'topy',
             transactionType: 'transfer_fee',
@@ -714,12 +712,7 @@ export class CurrencyService {
             relatedUserId: fromUserId,
             description: '이체 수수료',
           });
-          console.log('[Transfer] 국고 거래 기록 저장 결과:', txResult.success);
-        } else {
-          console.error('[Transfer] 국고 조회 실패:', treasuryResult.error);
         }
-      } else {
-        console.warn('[Transfer] treasuryRepo가 주입되지 않음');
       }
     }
 

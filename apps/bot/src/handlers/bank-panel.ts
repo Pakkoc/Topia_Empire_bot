@@ -9,6 +9,7 @@ import {
   type ButtonInteraction,
   type APIContainerComponent,
   MessageFlags,
+  type Client,
 } from 'discord.js';
 import type {
   CurrencyService,
@@ -334,5 +335,54 @@ export async function handleBankPanelInteraction(
       return true;
     default:
       return false;
+  }
+}
+
+/** 은행 패널 새로고침 (국고 잔액 업데이트) */
+export async function refreshBankPanel(
+  client: Client,
+  guildId: string,
+  container: Container
+): Promise<void> {
+  try {
+    const settingsResult = await container.currencyService.getSettings(guildId);
+    const settings = settingsResult.success ? settingsResult.data : null;
+
+    if (!settings?.bankPanelChannelId || !settings?.bankPanelMessageId) {
+      return; // 패널이 설치되어 있지 않음
+    }
+
+    const guild = await client.guilds.fetch(guildId);
+    const channel = await guild.channels.fetch(settings.bankPanelChannelId);
+
+    if (!channel || !('messages' in channel)) {
+      return;
+    }
+
+    const message = await channel.messages.fetch(settings.bankPanelMessageId).catch(() => null);
+    if (!message) {
+      return;
+    }
+
+    // 최신 국고 잔액 조회
+    const topyName = settings.topyName || '토피';
+    const rubyName = settings.rubyName || '루비';
+    const bankName = settings.bankName || '디토뱅크';
+
+    const treasuryResult = await container.treasuryService.getTreasury(guildId);
+    const topyBalance = treasuryResult.success ? treasuryResult.data.topyBalance : BigInt(0);
+    const rubyBalance = treasuryResult.success ? treasuryResult.data.rubyBalance : BigInt(0);
+
+    const panelContainer = createBankPanelContainer(bankName, topyBalance, rubyBalance, topyName, rubyName);
+    const buttonRow = createBankPanelButtons();
+
+    await message.edit({
+      components: [panelContainer, buttonRow],
+      flags: MessageFlags.IsComponentsV2,
+    });
+
+    console.log(`[BANK] Panel refreshed in guild ${guildId}`);
+  } catch (error) {
+    console.error('[BANK] Failed to refresh panel:', error);
   }
 }

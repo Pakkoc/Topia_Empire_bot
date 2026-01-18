@@ -12,6 +12,7 @@ import {
   MessageFlags,
 } from 'discord.js';
 import type { Command } from './types';
+import { refreshBankPanel } from '../handlers/bank-panel.js';
 
 export const transferCommand: Command = {
   data: new SlashCommandBuilder()
@@ -394,6 +395,11 @@ export const transferCommand: Command = {
             flags: MessageFlags.IsComponentsV2,
           });
         }
+      }
+
+      // 수수료가 발생했으면 은행 패널 새로고침 (국고 잔액 업데이트)
+      if (hasFee && !usedReductionItem) {
+        refreshBankPanel(interaction.client, guildId, container).catch(() => {});
       }
 
       // 명령어 실행 채널에는 ephemeral로 응답
