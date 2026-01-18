@@ -22,7 +22,7 @@ import { createPool, createRedisClient, createContainer, getPool, type Container
 import { createXpHandler } from './handlers/xp.handler';
 import { createCurrencyHandler } from './handlers/currency.handler';
 import { handleShopPanelButton } from './handlers/shop-panel';
-import { handleBankPanelInteraction } from './handlers/bank-panel';
+import { handleBankPanelInteraction, handleBankPanelModalSubmit } from './handlers/bank-panel';
 import {
   handleGamePanelCreate,
   handleGamePanelCategory,
@@ -574,6 +574,12 @@ async function main() {
           }
           await handleGameCreateModal(interaction, container, categoryId);
           return;
+        }
+
+        // 은행 패널 모달 (예금/출금)
+        if (customId.startsWith('bank_panel_')) {
+          const handled = await handleBankPanelModalSubmit(interaction, container);
+          if (handled) return;
         }
       } catch (error) {
         console.error(`[MODAL] Error handling ${customId}:`, error);
