@@ -328,7 +328,7 @@ export class ShopService {
         const activeResult = await this.bankSubscriptionRepo.findActiveByUser(guildId, userId, now);
         const activeSubscription = activeResult.success ? activeResult.data : null;
 
-        // 기존 구독이 있으면 업그레이드 여부 확인
+        // 기존 구독이 있으면 업그레이드/동일등급 여부 확인
         if (activeSubscription) {
           const currentLimit = activeSubscription.vaultLimit ?? BigInt(0);
           const currentRate = activeSubscription.interestRate ?? 0;
@@ -347,29 +347,51 @@ export class ShopService {
             };
           }
 
-          // 더 높은 등급이면 기존 구독 즉시 종료
-          if (newLimit > currentLimit || newRate > currentRate) {
+          // 동일 등급이면 기존 구독 연장 (shop_item_id가 달라도 같은 혜택이면 연장)
+          if (newLimit === currentLimit && newRate === currentRate) {
+            const newExpiresAt = new Date(activeSubscription.expiresAt.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+            await this.bankSubscriptionRepo.extendExpiration(activeSubscription.id, newExpiresAt);
+            // 구독 처리 완료, 새 구독 생성하지 않음
+          } else {
+            // 더 높은 등급이면 기존 구독 즉시 종료하고 새 구독 생성
             await this.bankSubscriptionRepo.terminateSubscription(activeSubscription.id, now);
-          }
-        }
 
-        // 새 구독 생성
-        const newSubscription = createDynamicBankSubscription(
-          guildId,
-          userId,
-          {
-            tierName: effectConfig.tierName,
-            shopItemId: item.id,
-            vaultLimit: BigInt(effectConfig.vaultLimit),
-            interestRate: effectConfig.monthlyInterestRate,
-            minDepositDays: effectConfig.minDepositDays,
-            transferFeeExempt: effectConfig.transferFeeExempt,
-            purchaseFeePercent: effectConfig.purchaseFeePercent,
-          },
-          now,
-          daysToAdd
-        );
-        await this.bankSubscriptionRepo.save(newSubscription);
+            const newSubscription = createDynamicBankSubscription(
+              guildId,
+              userId,
+              {
+                tierName: effectConfig.tierName,
+                shopItemId: item.id,
+                vaultLimit: BigInt(effectConfig.vaultLimit),
+                interestRate: effectConfig.monthlyInterestRate,
+                minDepositDays: effectConfig.minDepositDays,
+                transferFeeExempt: effectConfig.transferFeeExempt,
+                purchaseFeePercent: effectConfig.purchaseFeePercent,
+              },
+              now,
+              daysToAdd
+            );
+            await this.bankSubscriptionRepo.save(newSubscription);
+          }
+        } else {
+          // 기존 구독 없음 - 새 구독 생성
+          const newSubscription = createDynamicBankSubscription(
+            guildId,
+            userId,
+            {
+              tierName: effectConfig.tierName,
+              shopItemId: item.id,
+              vaultLimit: BigInt(effectConfig.vaultLimit),
+              interestRate: effectConfig.monthlyInterestRate,
+              minDepositDays: effectConfig.minDepositDays,
+              transferFeeExempt: effectConfig.transferFeeExempt,
+              purchaseFeePercent: effectConfig.purchaseFeePercent,
+            },
+            now,
+            daysToAdd
+          );
+          await this.bankSubscriptionRepo.save(newSubscription);
+        }
       }
     }
 
