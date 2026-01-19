@@ -70,8 +70,6 @@ const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   premium_afk: "프리미엄잠수방",
   vip_lounge: "VIP라운지",
   vault_subscription: "금고 등급",
-  dito_silver: "금고 등급(레거시)",
-  dito_gold: "금고 등급(레거시)",
   color_basic: "색상선택권(기본)",
   color_premium: "색상선택권(프리미엄)",
 };
@@ -416,13 +414,8 @@ export default function ShopV2Page() {
     }
 
     // itemType이 선택 가능한 타입인지 확인
-    // dito_silver, dito_gold는 vault_subscription으로 변환 (레거시 호환)
     let selectableItemType: SelectableItemType = "custom";
-    if (item.itemType === "vault_subscription") {
-      selectableItemType = "vault_subscription";
-    } else if (item.itemType === "dito_silver" || item.itemType === "dito_gold") {
-      selectableItemType = "vault_subscription"; // 레거시를 새 타입으로 변환
-    } else if (SELECTABLE_ITEM_TYPES.includes(item.itemType as SelectableItemType)) {
+    if (SELECTABLE_ITEM_TYPES.includes(item.itemType as SelectableItemType)) {
       selectableItemType = item.itemType as SelectableItemType;
     }
 

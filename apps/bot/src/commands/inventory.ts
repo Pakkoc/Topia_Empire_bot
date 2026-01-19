@@ -25,8 +25,6 @@ const ITEM_TYPE_LABELS: Record<ShopItemType, string> = {
   activity_boost: '🚀 활동부스트',
   premium_afk: '💤 프리미엄잠수',
   vip_lounge: '👑 VIP라운지',
-  dito_silver: '🥈 디토실버',
-  dito_gold: '🥇 디토골드',
   color_basic: '🎨 색상선택(기본)',
   color_premium: '🌈 색상선택(프리미엄)',
   role_ticket: '🎭 역할선택권',

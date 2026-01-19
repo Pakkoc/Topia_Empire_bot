@@ -2,7 +2,6 @@ import type { Pool, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type {
   BankSubscriptionRepositoryPort,
   BankSubscription,
-  BankTier,
   RepositoryError,
 } from '@topia/core';
 import type { Result } from '@topia/core';
@@ -11,7 +10,7 @@ interface BankSubscriptionRow extends RowDataPacket {
   id: bigint;
   guild_id: string;
   user_id: string;
-  tier: BankTier | null;
+  tier: string | null;
   tier_name: string | null;
   shop_item_id: number | null;
   vault_limit: bigint | null;
@@ -59,31 +58,6 @@ export class BankSubscriptionRepository implements BankSubscriptionRepositoryPor
          ORDER BY starts_at DESC
          LIMIT 1`,
         [guildId, userId, now, now]
-      );
-
-      if (rows.length === 0) {
-        return { success: true, data: null };
-      }
-
-      return { success: true, data: rowToEntity(rows[0]!) };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return { success: false, error: { type: 'QUERY_ERROR', message } };
-    }
-  }
-
-  async findByUserAndTier(
-    guildId: string,
-    userId: string,
-    tier: BankTier
-  ): Promise<Result<BankSubscription | null, RepositoryError>> {
-    try {
-      const [rows] = await this.pool.query<BankSubscriptionRow[]>(
-        `SELECT * FROM bank_subscriptions
-         WHERE guild_id = ? AND user_id = ? AND tier = ? AND expires_at > NOW()
-         ORDER BY starts_at ASC
-         LIMIT 1`,
-        [guildId, userId, tier]
       );
 
       if (rows.length === 0) {

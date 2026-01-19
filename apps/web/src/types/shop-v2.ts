@@ -35,23 +35,13 @@ export const itemTypeEnum = z.enum([
   "premium_afk",
   "vip_lounge",
   "vault_subscription",
-  "dito_silver",
-  "dito_gold",
   "color_basic",
   "color_premium",
 ]);
 
 export type ItemType = z.infer<typeof itemTypeEnum>;
 
-// 디토뱅크 효과 설정 스키마 (레거시)
-export const ditoEffectConfigSchema = z.object({
-  vaultLimit: z.number().min(0),           // 금고 한도
-  monthlyInterestRate: z.number().min(0),  // 월 이자율 (%)
-});
-
-export type DitoEffectConfig = z.infer<typeof ditoEffectConfigSchema>;
-
-// 금고 구독 효과 설정 스키마 (동적 등급)
+// 금고 구독 효과 설정 스키마
 export const vaultSubscriptionEffectConfigSchema = z.object({
   tierName: z.string().min(1),                       // 표시용 등급명
   vaultLimit: z.number().min(0),                     // 금고 한도
@@ -63,11 +53,8 @@ export const vaultSubscriptionEffectConfigSchema = z.object({
 
 export type VaultSubscriptionEffectConfig = z.infer<typeof vaultSubscriptionEffectConfigSchema>;
 
-// 효과 설정 (타입별로 다른 스키마)
-export const effectConfigSchema = z.union([
-  ditoEffectConfigSchema,
-  vaultSubscriptionEffectConfigSchema,
-]).nullable();
+// 효과 설정
+export const effectConfigSchema = vaultSubscriptionEffectConfigSchema.nullable();
 
 export type EffectConfig = z.infer<typeof effectConfigSchema>;
 

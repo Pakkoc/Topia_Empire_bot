@@ -15,12 +15,11 @@ import type {
   UpdateShopItemInput,
 } from '../domain/shop-item';
 import type { UserItemV2 } from '../domain/user-item-v2';
-import type { BankTier } from '../domain/bank-subscription';
 import type { TicketRoleOption } from '../domain/ticket-role-option';
 import type { VaultSubscriptionEffectConfig } from '../domain/shop-item';
 import { Result } from '../../shared/types/result';
 import { isPeriodItem, getItemPrice } from '../domain/shop-item';
-import { createDynamicBankSubscription, getBankBenefits } from '../domain/bank-subscription';
+import { createDynamicBankSubscription } from '../domain/bank-subscription';
 import { createTransaction, type CurrencyType } from '../domain/currency-transaction';
 import { CURRENCY_DEFAULTS } from '@topia/shared';
 
@@ -307,115 +306,70 @@ export class ShopService {
       }
     }
 
-    // 9. 금고 구독 처리 (vault_subscription, dito_silver, dito_gold)
-    const isVaultItem = item.itemType === 'vault_subscription' ||
-                        item.itemType === 'dito_silver' ||
-                        item.itemType === 'dito_gold';
-
-    if (this.bankSubscriptionRepo && isVaultItem) {
+    // 9. 금고 구독 처리 (vault_subscription)
+    if (this.bankSubscriptionRepo && item.itemType === 'vault_subscription') {
       const daysToAdd = (item.durationDays || 30) * quantity;
+      const effectConfig = item.effectConfig as VaultSubscriptionEffectConfig | null;
 
-      if (item.itemType === 'vault_subscription') {
-        // 동적 등급 시스템 (vault_subscription)
-        const effectConfig = item.effectConfig as VaultSubscriptionEffectConfig | null;
-        if (!effectConfig) {
-          return { success: false, error: { type: 'INVALID_ITEM_CONFIG' as const } };
-        }
+      if (!effectConfig) {
+        return { success: false, error: { type: 'INVALID_ITEM_CONFIG' as const } };
+      }
 
-        // 기존 구독 확인 (동일 아이템)
-        const existingResult = await this.bankSubscriptionRepo.findByUserAndShopItem(guildId, userId, item.id);
-        const existing = existingResult.success ? existingResult.data : null;
+      // 기존 구독 확인 (동일 아이템)
+      const existingResult = await this.bankSubscriptionRepo.findByUserAndShopItem(guildId, userId, item.id);
+      const existing = existingResult.success ? existingResult.data : null;
 
-        if (existing) {
-          // 동일 아이템 구독: 기간 연장
-          const newExpiresAt = new Date(existing.expiresAt.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-          await this.bankSubscriptionRepo.extendExpiration(existing.id, newExpiresAt);
-        } else {
-          // 기존 활성 구독 확인 (업그레이드 체크)
-          const activeResult = await this.bankSubscriptionRepo.findActiveByUser(guildId, userId, now);
-          const activeSubscription = activeResult.success ? activeResult.data : null;
+      if (existing) {
+        // 동일 아이템 구독: 기간 연장
+        const newExpiresAt = new Date(existing.expiresAt.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+        await this.bankSubscriptionRepo.extendExpiration(existing.id, newExpiresAt);
+      } else {
+        // 기존 활성 구독 확인 (업그레이드 체크)
+        const activeResult = await this.bankSubscriptionRepo.findActiveByUser(guildId, userId, now);
+        const activeSubscription = activeResult.success ? activeResult.data : null;
 
-          // 기존 구독이 있으면 업그레이드 여부 확인
-          if (activeSubscription) {
-            const currentLimit = activeSubscription.vaultLimit ?? BigInt(0);
-            const currentRate = activeSubscription.interestRate ?? 0;
-            const newLimit = BigInt(effectConfig.vaultLimit);
-            const newRate = effectConfig.monthlyInterestRate;
+        // 기존 구독이 있으면 업그레이드 여부 확인
+        if (activeSubscription) {
+          const currentLimit = activeSubscription.vaultLimit ?? BigInt(0);
+          const currentRate = activeSubscription.interestRate ?? 0;
+          const newLimit = BigInt(effectConfig.vaultLimit);
+          const newRate = effectConfig.monthlyInterestRate;
 
-            // 더 낮은 한도/이자율 아이템 구매 시 차단
-            if (newLimit < currentLimit || newRate < currentRate) {
-              return {
-                success: false,
-                error: {
-                  type: 'CANNOT_DOWNGRADE_SUBSCRIPTION' as const,
-                  currentTier: activeSubscription.tierName ?? '현재 등급',
-                  newTier: effectConfig.tierName,
-                },
-              };
-            }
-
-            // 더 높은 등급이면 기존 구독 즉시 종료
-            if (newLimit > currentLimit || newRate > currentRate) {
-              await this.bankSubscriptionRepo.terminateSubscription(activeSubscription.id, now);
-            }
+          // 더 낮은 한도/이자율 아이템 구매 시 차단
+          if (newLimit < currentLimit || newRate < currentRate) {
+            return {
+              success: false,
+              error: {
+                type: 'CANNOT_DOWNGRADE_SUBSCRIPTION' as const,
+                currentTier: activeSubscription.tierName ?? '현재 등급',
+                newTier: effectConfig.tierName,
+              },
+            };
           }
 
-          // 새 구독 생성
-          const newSubscription = createDynamicBankSubscription(
-            guildId,
-            userId,
-            {
-              tierName: effectConfig.tierName,
-              shopItemId: item.id,
-              vaultLimit: BigInt(effectConfig.vaultLimit),
-              interestRate: effectConfig.monthlyInterestRate,
-              minDepositDays: effectConfig.minDepositDays,
-              transferFeeExempt: effectConfig.transferFeeExempt,
-              purchaseFeePercent: effectConfig.purchaseFeePercent,
-            },
-            now,
-            daysToAdd
-          );
-          await this.bankSubscriptionRepo.save(newSubscription);
+          // 더 높은 등급이면 기존 구독 즉시 종료
+          if (newLimit > currentLimit || newRate > currentRate) {
+            await this.bankSubscriptionRepo.terminateSubscription(activeSubscription.id, now);
+          }
         }
-      } else {
-        // 레거시 티어 시스템 (dito_silver, dito_gold)
-        const tier: BankTier = item.itemType === 'dito_silver' ? 'silver' : 'gold';
-        const benefits = getBankBenefits(tier);
 
-        // effectConfig에서 금고 한도, 이자율, 최소 예치 기간 가져오기
-        const effectConfig = item.effectConfig as { vaultLimit?: number; monthlyInterestRate?: number; minDepositDays?: number } | null;
-        const vaultLimit = effectConfig?.vaultLimit != null ? BigInt(effectConfig.vaultLimit) : null;
-        const interestRate = effectConfig?.monthlyInterestRate ?? null;
-        const minDepositDays = effectConfig?.minDepositDays ?? null;
-
-        // 기존 구독 확인
-        const existingResult = await this.bankSubscriptionRepo.findByUserAndTier(guildId, userId, tier);
-        const existing = existingResult.success ? existingResult.data : null;
-
-        if (existing) {
-          // 기존 구독 연장
-          const newExpiresAt = new Date(existing.expiresAt.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-          await this.bankSubscriptionRepo.extendExpiration(existing.id, newExpiresAt);
-        } else {
-          // 새 구독 생성 (effectConfig 값 포함)
-          const startsAt = now;
-          const expiresAt = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-          await this.bankSubscriptionRepo.save({
-            guildId,
-            userId,
-            tier,
-            tierName: benefits.tierName,
-            shopItemId: null,
-            vaultLimit,
-            interestRate,
-            minDepositDays,
-            transferFeeExempt: benefits.transferFeeExempt,
-            purchaseFeePercent: benefits.purchaseFeePercent,
-            startsAt,
-            expiresAt,
-          });
-        }
+        // 새 구독 생성
+        const newSubscription = createDynamicBankSubscription(
+          guildId,
+          userId,
+          {
+            tierName: effectConfig.tierName,
+            shopItemId: item.id,
+            vaultLimit: BigInt(effectConfig.vaultLimit),
+            interestRate: effectConfig.monthlyInterestRate,
+            minDepositDays: effectConfig.minDepositDays,
+            transferFeeExempt: effectConfig.transferFeeExempt,
+            purchaseFeePercent: effectConfig.purchaseFeePercent,
+          },
+          now,
+          daysToAdd
+        );
+        await this.bankSubscriptionRepo.save(newSubscription);
       }
     }
 

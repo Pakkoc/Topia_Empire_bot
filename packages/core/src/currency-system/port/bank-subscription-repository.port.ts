@@ -1,9 +1,9 @@
 import type { Result } from '../../shared/types/result';
-import type { BankSubscription, BankTier } from '../domain/bank-subscription';
+import type { BankSubscription } from '../domain/bank-subscription';
 import type { RepositoryError } from '../errors';
 
 /**
- * 디토뱅크 구독 레포지토리 포트
+ * 금고 구독 레포지토리 포트
  */
 export interface BankSubscriptionRepositoryPort {
   /**
@@ -14,16 +14,6 @@ export interface BankSubscriptionRepositoryPort {
     guildId: string,
     userId: string,
     now: Date
-  ): Promise<Result<BankSubscription | null, RepositoryError>>;
-
-  /**
-   * 유저의 특정 티어 구독 조회 (레거시)
-   * (활성 또는 미래 예약된 구독)
-   */
-  findByUserAndTier(
-    guildId: string,
-    userId: string,
-    tier: BankTier
   ): Promise<Result<BankSubscription | null, RepositoryError>>;
 
   /**

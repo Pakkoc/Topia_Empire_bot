@@ -124,8 +124,6 @@ export const ITEM_TYPE_LABELS: Record<ShopItemType, string> = {
   premium_afk: '프리미엄잠수방',
   vip_lounge: 'VIP라운지입장권',
   vault_subscription: '금고 등급',
-  dito_silver: '금고 등급(레거시)',  // 기존 데이터 호환용
-  dito_gold: '금고 등급(레거시)',    // 기존 데이터 호환용
   color_basic: '색상선택권(기본)',
   color_premium: '색상선택권(프리미엄)',
   role_ticket: '역할선택권',
