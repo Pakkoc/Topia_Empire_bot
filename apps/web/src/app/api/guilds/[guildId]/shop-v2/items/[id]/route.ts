@@ -12,6 +12,7 @@ interface ShopItemV2Row extends RowDataPacket {
   description: string | null;
   item_type: string | null;
   effect_percent: number | null;
+  effect_config: string | null;
   topy_price: string | null;
   ruby_price: string | null;
   currency_type: "topy" | "ruby" | "both";
@@ -30,6 +31,7 @@ function rowToShopItemV2(row: ShopItemV2Row) {
     description: row.description,
     itemType: row.item_type ?? "custom",
     effectPercent: row.effect_percent,
+    effectConfig: row.effect_config ? JSON.parse(row.effect_config) : null,
     topyPrice: row.topy_price ? Number(row.topy_price) : null,
     rubyPrice: row.ruby_price ? Number(row.ruby_price) : null,
     currencyType: row.currency_type,
@@ -154,6 +156,10 @@ export async function PATCH(
       if (validatedData.effectPercent !== undefined) {
         updates.push("effect_percent = ?");
         values.push(validatedData.effectPercent);
+      }
+      if (validatedData.effectConfig !== undefined) {
+        updates.push("effect_config = ?");
+        values.push(validatedData.effectConfig ? JSON.stringify(validatedData.effectConfig) : null);
       }
 
       // Update shop item if there are changes
