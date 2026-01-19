@@ -846,6 +846,7 @@ async function handleItemSelection(
         );
 
         if (!purchaseResult.success) {
+          console.error('[Shop] 구매 실패:', purchaseResult.error);
           let errorMessage = '구매 처리 중 오류가 발생했습니다.';
 
           switch (purchaseResult.error.type) {
@@ -876,6 +877,9 @@ async function handleItemSelection(
               break;
             case 'INVALID_QUANTITY':
               errorMessage = '잘못된 수량입니다. (1~99개)';
+              break;
+            case 'REPOSITORY_ERROR':
+              errorMessage = '데이터베이스 오류가 발생했습니다.';
               break;
           }
 
