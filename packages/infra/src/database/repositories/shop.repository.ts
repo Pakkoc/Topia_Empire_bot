@@ -23,7 +23,7 @@ interface ShopItemRow extends RowDataPacket {
   currency_type: 'topy' | 'ruby' | 'both';
   item_type: ShopItemType | null;
   effect_percent: number | null;
-  effect_config: string | null;  // JSON string
+  effect_config: string | object | null;  // JSON - MySQL may return as object
   duration_days: number;
   stock: number | null;
   max_per_user: number | null;
@@ -48,10 +48,12 @@ interface UserItemV2Row extends RowDataPacket {
 
 // ========== Mappers ==========
 
-function parseEffectConfig(json: string | null): ShopItemEffectConfig {
-  if (!json) return null;
+function parseEffectConfig(value: string | object | null): ShopItemEffectConfig {
+  if (!value) return null;
+  // MySQL JSON 컬럼은 이미 객체로 반환될 수 있음
+  if (typeof value === 'object') return value as ShopItemEffectConfig;
   try {
-    return JSON.parse(json) as ShopItemEffectConfig;
+    return JSON.parse(value) as ShopItemEffectConfig;
   } catch {
     return null;
   }
