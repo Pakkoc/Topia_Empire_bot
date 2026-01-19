@@ -31,7 +31,7 @@ function rowToEntity(row: BankSubscriptionRow): BankSubscription {
     tier: row.tier,
     tierName: row.tier_name,
     shopItemId: row.shop_item_id,
-    vaultLimit: row.vault_limit,
+    vaultLimit: row.vault_limit != null ? BigInt(row.vault_limit) : null,
     interestRate: row.interest_rate ? parseFloat(row.interest_rate) : null,
     minDepositDays: row.min_deposit_days,
     transferFeeExempt: row.transfer_fee_exempt === 1,
