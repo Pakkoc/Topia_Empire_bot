@@ -19,6 +19,10 @@ export interface TreasuryData {
     topy: string;
     ruby: string;
   };
+  totalSupply: {
+    topy: string;
+    ruby: string;
+  };
 }
 
 export interface TreasuryTransaction {

@@ -21,6 +21,11 @@ interface MonthlyCollectedRow extends RowDataPacket {
   ruby_sum: bigint | null;
 }
 
+interface TotalSupplyRow extends RowDataPacket {
+  total_topy: bigint | null;
+  total_ruby: bigint | null;
+}
+
 function rowToTreasury(row: TreasuryRow) {
   return {
     guildId: row.guild_id,
@@ -90,9 +95,25 @@ export async function GET(
       ruby: (monthlyRows[0]?.ruby_sum ?? BigInt(0)).toString(),
     };
 
+    // 총 발행량 조회 (모든 유저 지갑 잔액 합계)
+    const [topySupplyRows] = await pool.query<TotalSupplyRow[]>(
+      `SELECT COALESCE(SUM(balance), 0) as total_topy, NULL as total_ruby FROM topy_wallets WHERE guild_id = ?`,
+      [guildId]
+    );
+    const [rubySupplyRows] = await pool.query<TotalSupplyRow[]>(
+      `SELECT NULL as total_topy, COALESCE(SUM(balance), 0) as total_ruby FROM ruby_wallets WHERE guild_id = ?`,
+      [guildId]
+    );
+
+    const totalSupply = {
+      topy: (topySupplyRows[0]?.total_topy ?? BigInt(0)).toString(),
+      ruby: (rubySupplyRows[0]?.total_ruby ?? BigInt(0)).toString(),
+    };
+
     return NextResponse.json({
       treasury,
       monthlyCollected,
+      totalSupply,
     });
   } catch (error) {
     console.error("Error fetching treasury:", error);

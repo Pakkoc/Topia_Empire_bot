@@ -3,15 +3,16 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
-import { useGuildStats, useCurrencySettings } from "@/hooks/queries";
+import { useGuildStats, useCurrencySettings, useTreasury } from "@/hooks/queries";
 
 export default function ForgePage() {
   const params = useParams();
   const guildId = params["guildId"] as string;
   const { data: stats, isLoading: statsLoading } = useGuildStats(guildId);
   const { data: currencySettings, isLoading: currencyLoading } = useCurrencySettings(guildId);
+  const { data: treasuryData, isLoading: treasuryLoading } = useTreasury(guildId);
 
-  const isLoading = statsLoading || currencyLoading;
+  const isLoading = statsLoading || currencyLoading || treasuryLoading;
 
   if (isLoading) {
     return (
@@ -56,8 +57,8 @@ export default function ForgePage() {
       color: "from-emerald-500 to-green-500",
       enabled: currencySettings?.enabled ?? false,
       stats: [
-        { label: "화폐명", value: currencySettings?.topyName ?? "토피" },
-        { label: "유상 화폐", value: currencySettings?.rubyName ?? "루비" },
+        { label: "총 발행량", value: `${Number(treasuryData?.totalSupply?.topy ?? 0).toLocaleString()} ${currencySettings?.topyName ?? "토피"}` },
+        { label: "국고", value: `${Number(treasuryData?.treasury?.topyBalance ?? 0).toLocaleString()} ${currencySettings?.topyName ?? "토피"}` },
       ],
     },
   ];
