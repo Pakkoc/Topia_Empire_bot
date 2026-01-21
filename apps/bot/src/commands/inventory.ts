@@ -428,25 +428,39 @@ export const inventoryCommand: Command = {
             ownedItem.userItem.id
           );
 
+          console.log(`[Inventory] activateResult:`, JSON.stringify(activateResult));
+
           if (activateResult.success && activateResult.data) {
             // Discord 역할 부여
             try {
+              console.log(`[Inventory] Fetching member ${userId}...`);
               const member = await interaction.guild?.members.fetch(userId);
+              console.log(`[Inventory] Member fetched: ${!!member}`);
+
               if (member) {
                 // cache.get 대신 fetch 사용 (캐시에 없을 수 있음)
+                console.log(`[Inventory] Fetching role ${activateResult.data.fixedRoleId}...`);
                 const role = await interaction.guild?.roles.fetch(activateResult.data.fixedRoleId);
-                if (role && !member.roles.cache.has(activateResult.data.fixedRoleId)) {
+                console.log(`[Inventory] Role fetched: ${!!role}, role name: ${role?.name}`);
+
+                const alreadyHasRole = member.roles.cache.has(activateResult.data.fixedRoleId);
+                console.log(`[Inventory] Already has role: ${alreadyHasRole}`);
+
+                if (role && !alreadyHasRole) {
+                  console.log(`[Inventory] Adding role to member...`);
                   await member.roles.add(role);
                   autoAppliedRoles.push({
                     itemName: ownedItem.shopItem.name,
                     roleId: activateResult.data.fixedRoleId,
                   });
-                  console.log(`[Inventory] Auto-applied fixed role ${activateResult.data.fixedRoleId} for item ${ownedItem.shopItem.name}`);
+                  console.log(`[Inventory] SUCCESS: Auto-applied fixed role ${activateResult.data.fixedRoleId} for item ${ownedItem.shopItem.name}`);
                 }
               }
             } catch (roleError) {
               console.error('[Inventory] Auto role grant failed:', roleError);
             }
+          } else {
+            console.log(`[Inventory] activateResult failed or no data`);
           }
         }
       }
