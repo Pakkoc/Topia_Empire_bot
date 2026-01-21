@@ -1,18 +1,20 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useGuilds, useGuildStats } from "@/hooks/queries";
+import { useGuilds, useGuildStats, useMemberActivityTrend } from "@/hooks/queries";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { DiscordIcon } from "@/components/icons/discord-icon";
 import { getBotInviteUrl } from "@/lib/discord";
+import { MemberActivityTrendChart } from "@/components/charts/member-activity-trend-chart";
 
 export default function GuildDashboardPage() {
   const params = useParams();
   const guildId = params["guildId"] as string;
   const { data: guilds, isLoading: guildsLoading } = useGuilds();
   const { data: stats, isLoading: statsLoading } = useGuildStats(guildId);
+  const { data: activityTrend, isLoading: activityLoading } = useMemberActivityTrend(guildId);
 
   const guild = guilds?.find((g) => g.id === guildId);
   const isLoading = guildsLoading || statsLoading;
@@ -173,8 +175,34 @@ export default function GuildDashboardPage() {
         </div>
       )}
 
-      {/* Bot Selection */}
+      {/* Member Activity Trend Chart */}
       <div className="animate-fade-up" style={{ animationDelay: "250ms" }}>
+        <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center">
+              <Icon icon="solar:graph-up-bold" className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white">회원 활동 추이</h3>
+              <p className="text-xs text-white/40">최근 7일 일별 활동 유저 수 (텍스트 또는 음성)</p>
+            </div>
+            {activityTrend && (
+              <div className="ml-auto text-right">
+                <p className="text-xs text-white/40">일 평균</p>
+                <p className="text-lg font-bold text-emerald-400">{activityTrend.avgDailyActive}명</p>
+              </div>
+            )}
+          </div>
+          <MemberActivityTrendChart
+            data={activityTrend?.dailyTrend ?? []}
+            totalMembers={stats?.totalMembers ?? 0}
+            isLoading={activityLoading}
+          />
+        </div>
+      </div>
+
+      {/* Bot Selection */}
+      <div className="animate-fade-up" style={{ animationDelay: "300ms" }}>
         <h2 className="text-lg font-semibold text-white mb-4">봇 설정</h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {bots.map((bot) => (
@@ -225,7 +253,7 @@ export default function GuildDashboardPage() {
 
       {/* Bot Status Warning */}
       {!guild?.botJoined && (
-        <div className="relative overflow-hidden bg-gradient-to-br from-amber-600/20 to-orange-600/20 backdrop-blur-sm rounded-2xl border border-amber-500/30 p-6 animate-fade-up" style={{ animationDelay: "300ms" }}>
+        <div className="relative overflow-hidden bg-gradient-to-br from-amber-600/20 to-orange-600/20 backdrop-blur-sm rounded-2xl border border-amber-500/30 p-6 animate-fade-up" style={{ animationDelay: "350ms" }}>
           {/* Background Glow */}
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/20 rounded-full blur-3xl" />
 
