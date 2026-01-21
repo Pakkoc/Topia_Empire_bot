@@ -3,7 +3,17 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
-import { useGuildStats, useCurrencySettings, useTreasury } from "@/hooks/queries";
+import {
+  useGuildStats,
+  useCurrencySettings,
+  useTreasury,
+  useCurrencyStats,
+  useLevelDistribution,
+  useTreasuryStats,
+} from "@/hooks/queries";
+import { TransactionDistributionChart } from "@/components/charts/transaction-distribution-chart";
+import { LevelDistributionChart } from "@/components/charts/level-distribution-chart";
+import { TreasuryTrendChart } from "@/components/charts/treasury-trend-chart";
 
 export default function ForgePage() {
   const params = useParams();
@@ -11,8 +21,12 @@ export default function ForgePage() {
   const { data: stats, isLoading: statsLoading } = useGuildStats(guildId);
   const { data: currencySettings, isLoading: currencyLoading } = useCurrencySettings(guildId);
   const { data: treasuryData, isLoading: treasuryLoading } = useTreasury(guildId);
+  const { data: currencyStats, isLoading: currencyStatsLoading } = useCurrencyStats(guildId);
+  const { data: levelDistribution, isLoading: levelLoading } = useLevelDistribution(guildId);
+  const { data: treasuryStats, isLoading: treasuryStatsLoading } = useTreasuryStats(guildId);
 
   const isLoading = statsLoading || currencyLoading || treasuryLoading;
+  const topyName = currencySettings?.topyName ?? "토피";
 
   if (isLoading) {
     return (
@@ -132,6 +146,67 @@ export default function ForgePage() {
             </div>
           </Link>
         ))}
+      </div>
+
+      {/* Analytics Charts Section */}
+      <div className="animate-fade-up" style={{ animationDelay: "200ms" }}>
+        <h2 className="text-lg font-semibold text-white mb-4">통계</h2>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {/* 거래 유형 분포 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center">
+                <Icon icon="solar:chart-2-bold" className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">거래 유형 분포</h3>
+                <p className="text-xs text-white/40">최근 30일</p>
+              </div>
+            </div>
+            <TransactionDistributionChart
+              data={currencyStats?.distribution ?? []}
+              isLoading={currencyStatsLoading}
+            />
+          </div>
+
+          {/* XP 레벨 분포 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center">
+                <Icon icon="solar:chart-bold" className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">XP 레벨 분포</h3>
+                <p className="text-xs text-white/40">전체 멤버</p>
+              </div>
+            </div>
+            <LevelDistributionChart
+              textData={levelDistribution?.textDistribution ?? []}
+              voiceData={levelDistribution?.voiceDistribution ?? []}
+              isLoading={levelLoading}
+            />
+          </div>
+
+          {/* 국고 수입/지출 추이 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                <Icon icon="solar:wallet-money-bold" className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">국고 추이</h3>
+                <p className="text-xs text-white/40">최근 7일</p>
+              </div>
+            </div>
+            <TreasuryTrendChart
+              data={treasuryStats?.dailyTrend ?? []}
+              totalIncome={treasuryStats?.totalIncome ?? 0}
+              totalExpense={treasuryStats?.totalExpense ?? 0}
+              isLoading={treasuryStatsLoading}
+              currencyName={topyName}
+            />
+          </div>
+        </div>
       </div>
 
     </div>
