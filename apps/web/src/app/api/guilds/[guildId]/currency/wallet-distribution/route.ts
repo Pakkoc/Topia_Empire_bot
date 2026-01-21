@@ -14,6 +14,25 @@ interface WalletStatsRow extends RowDataPacket {
   total_balance: string;
 }
 
+interface WalletBalanceRow extends RowDataPacket {
+  balance: string;
+}
+
+// 지니 계수 계산 (오름차순 정렬된 잔액 배열)
+function calculateGiniCoefficient(balances: number[]): number {
+  if (balances.length === 0) return 0;
+  const n = balances.length;
+  const sum = balances.reduce((a, b) => a + b, 0);
+  if (sum === 0) return 0;
+
+  const sorted = [...balances].sort((a, b) => a - b);
+  let weightedSum = 0;
+  for (let i = 0; i < n; i++) {
+    weightedSum += (i + 1) * sorted[i];
+  }
+  return (2 * weightedSum) / (n * sum) - (n + 1) / n;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ guildId: string }> }
@@ -80,6 +99,17 @@ export async function GET(
       top10Percent = totalBalance > 0 ? Math.round((top10Balance / totalBalance) * 100) : 0;
     }
 
+    // 지니 계수 계산
+    let giniCoefficient = 0;
+    if (totalWallets > 0) {
+      const [allBalances] = await pool.query<WalletBalanceRow[]>(
+        `SELECT balance FROM topy_wallets WHERE guild_id = ?`,
+        [guildId]
+      );
+      const balances = allBalances.map(row => Number(row.balance));
+      giniCoefficient = Math.round(calculateGiniCoefficient(balances) * 100) / 100;
+    }
+
     const ranges = ['0', '1-1K', '1K-5K', '5K-10K', '10K-50K', '50K-100K', '100K+'];
     const distMap = new Map(distributionStats.map(r => [r.balance_range, Number(r.count)]));
 
@@ -93,6 +123,7 @@ export async function GET(
       totalWallets,
       totalBalance,
       top10Percent,
+      giniCoefficient,
     });
   } catch (error) {
     console.error("Error fetching wallet distribution:", error);

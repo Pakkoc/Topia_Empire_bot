@@ -100,11 +100,18 @@ export async function GET(
     const totalIncome = dailyTrend.reduce((sum, d) => sum + d.income, 0);
     const totalExpense = dailyTrend.reduce((sum, d) => sum + d.expense, 0);
 
+    // 복지 지수: 관리자 지급(admin_distribute)이 총 지출에서 차지하는 비율
+    const adminDistributeTotal = typeStats.get('admin_distribute') ?? 0;
+    const welfareIndex = totalExpense > 0
+      ? Math.round((adminDistributeTotal / totalExpense) * 100)
+      : 0;
+
     return NextResponse.json({
       dailyTrend,
       byType,
       totalIncome,
       totalExpense,
+      welfareIndex,
       period: '7days',
     });
   } catch (error) {

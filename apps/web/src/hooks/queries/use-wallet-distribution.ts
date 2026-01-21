@@ -13,6 +13,7 @@ export interface WalletDistributionData {
   totalWallets: number;
   totalBalance: number;
   top10Percent: number;
+  giniCoefficient: number;
 }
 
 export function useWalletDistribution(guildId: string) {

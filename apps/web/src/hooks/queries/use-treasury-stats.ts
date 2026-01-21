@@ -21,6 +21,7 @@ export interface TreasuryStatsData {
   byType: TreasuryTypeStats[];
   totalIncome: number;
   totalExpense: number;
+  welfareIndex: number;
   period: string;
 }
 

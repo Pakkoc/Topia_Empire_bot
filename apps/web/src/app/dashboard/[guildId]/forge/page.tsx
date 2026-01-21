@@ -158,8 +158,100 @@ export default function ForgePage() {
         ))}
       </div>
 
-      {/* Analytics Charts Section */}
+      {/* 경제 지표 섹션 */}
       <div className="animate-fade-up" style={{ animationDelay: "200ms" }}>
+        <h2 className="text-lg font-semibold text-white mb-4">경제 지표</h2>
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+          {/* 복지 지수 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center">
+                <Icon icon="solar:hand-money-bold" className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">복지 지수</h3>
+                <p className="text-xs text-white/40">관리자 지급 비율</p>
+              </div>
+            </div>
+            {treasuryStatsLoading ? (
+              <div className="animate-pulse">
+                <div className="h-10 w-24 rounded bg-white/10 mb-2" />
+                <div className="h-4 w-full rounded bg-white/10" />
+              </div>
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-white mb-2">
+                  {treasuryStats?.welfareIndex ?? 0}%
+                </div>
+                <div className="w-full bg-white/10 rounded-full h-2 mb-2">
+                  <div
+                    className="bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full transition-all"
+                    style={{ width: `${Math.min(treasuryStats?.welfareIndex ?? 0, 100)}%` }}
+                  />
+                </div>
+                <p className="text-sm text-white/60">
+                  {(treasuryStats?.welfareIndex ?? 0) >= 50 ? "적극적" : (treasuryStats?.welfareIndex ?? 0) >= 20 ? "보통" : "소극적"}
+                  <span className="text-white/40 ml-2">
+                    (높을수록 관리자가 적극적으로 보상 지급)
+                  </span>
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* 지니 계수 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                <Icon icon="solar:scale-bold" className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">지니 계수</h3>
+                <p className="text-xs text-white/40">재화 분배 불평등도</p>
+              </div>
+            </div>
+            {walletLoading ? (
+              <div className="animate-pulse">
+                <div className="h-10 w-24 rounded bg-white/10 mb-2" />
+                <div className="h-4 w-full rounded bg-white/10" />
+              </div>
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-white mb-2">
+                  {walletDistribution?.giniCoefficient?.toFixed(2) ?? "0.00"}
+                </div>
+                <div className="w-full bg-white/10 rounded-full h-2 mb-2">
+                  <div
+                    className={`h-2 rounded-full transition-all ${
+                      (walletDistribution?.giniCoefficient ?? 0) < 0.3
+                        ? "bg-gradient-to-r from-green-500 to-emerald-500"
+                        : (walletDistribution?.giniCoefficient ?? 0) < 0.5
+                        ? "bg-gradient-to-r from-yellow-500 to-amber-500"
+                        : "bg-gradient-to-r from-red-500 to-rose-500"
+                    }`}
+                    style={{ width: `${Math.min((walletDistribution?.giniCoefficient ?? 0) * 100, 100)}%` }}
+                  />
+                </div>
+                <p className="text-sm text-white/60">
+                  {(walletDistribution?.giniCoefficient ?? 0) < 0.3 ? (
+                    <span className="text-green-400">평등</span>
+                  ) : (walletDistribution?.giniCoefficient ?? 0) < 0.5 ? (
+                    <span className="text-yellow-400">보통</span>
+                  ) : (
+                    <span className="text-red-400">집중</span>
+                  )}
+                  <span className="text-white/40 ml-2">
+                    (0=완전평등, 1=완전불평등)
+                  </span>
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics Charts Section */}
+      <div className="animate-fade-up" style={{ animationDelay: "300ms" }}>
         <h2 className="text-lg font-semibold text-white mb-4">통계</h2>
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
           {/* 활성 유저 비율 */}
