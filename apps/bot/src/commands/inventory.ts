@@ -410,11 +410,17 @@ export const inventoryCommand: Command = {
       // fixedRoleId가 설정되어 있지만 아직 적용되지 않은 아이템 자동 적용
       const autoAppliedRoles: { itemName: string; roleId: string }[] = [];
       for (const ownedItem of ownedItems) {
+        console.log(`[Inventory] Checking item: ${ownedItem.shopItem.name}, isTicket: ${ownedItem.isTicket}, ticket: ${JSON.stringify(ownedItem.ticket)}, userItem.fixedRoleId: ${ownedItem.userItem.fixedRoleId}`);
+
         // 이미 fixed_role_id가 적용되어 있으면 스킵
-        if (ownedItem.userItem.fixedRoleId) continue;
+        if (ownedItem.userItem.fixedRoleId) {
+          console.log(`[Inventory] Skipping ${ownedItem.shopItem.name}: already has fixedRoleId`);
+          continue;
+        }
 
         // 선택권 아이템이고 fixedRoleId가 있는지 확인
         if (ownedItem.isTicket && ownedItem.ticket?.fixedRoleId) {
+          console.log(`[Inventory] Auto-applying fixedRoleId for ${ownedItem.shopItem.name}`);
           const activateResult = await container.shopV2Service.activateFixedRole(
             guildId,
             userId,
