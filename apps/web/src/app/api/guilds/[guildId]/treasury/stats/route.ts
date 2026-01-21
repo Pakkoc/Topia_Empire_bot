@@ -100,10 +100,20 @@ export async function GET(
     const totalIncome = dailyTrend.reduce((sum, d) => sum + d.income, 0);
     const totalExpense = dailyTrend.reduce((sum, d) => sum + d.expense, 0);
 
-    // 복지 지수: 관리자 지급(admin_distribute)이 총 지출에서 차지하는 비율
-    const adminDistributeTotal = typeStats.get('admin_distribute') ?? 0;
-    const welfareIndex = totalExpense > 0
-      ? Math.round((adminDistributeTotal / totalExpense) * 100)
+    // 복지 지수: 전체 기간 기준 (관리자 지급 / 총 수입) * 100
+    const [welfareStats] = await pool.query<RowDataPacket[]>(
+      `SELECT
+        COALESCE(SUM(CASE WHEN transaction_type = 'admin_distribute' THEN amount ELSE 0 END), 0) as total_distribute,
+        COALESCE(SUM(CASE WHEN transaction_type IN ('transfer_fee', 'shop_fee', 'tax') THEN amount ELSE 0 END), 0) as total_income
+       FROM treasury_transactions
+       WHERE guild_id = ? AND currency_type = 'topy'`,
+      [guildId]
+    );
+
+    const allTimeDistribute = Number(welfareStats[0]?.total_distribute ?? 0);
+    const allTimeIncome = Number(welfareStats[0]?.total_income ?? 0);
+    const welfareIndex = allTimeIncome > 0
+      ? Math.round((allTimeDistribute / allTimeIncome) * 100)
       : 0;
 
     return NextResponse.json({
