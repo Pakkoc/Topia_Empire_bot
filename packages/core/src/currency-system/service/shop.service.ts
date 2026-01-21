@@ -20,6 +20,7 @@ import type { VaultSubscriptionEffectConfig } from '../domain/shop-item';
 import { Result } from '../../shared/types/result';
 import { isPeriodItem, getItemPrice } from '../domain/shop-item';
 import { createDynamicBankSubscription } from '../domain/bank-subscription';
+import { calculateRoleExpiresAt } from '../domain/role-ticket';
 import { createTransaction, type CurrencyType } from '../domain/currency-transaction';
 import { CURRENCY_DEFAULTS } from '@topia/shared';
 
@@ -662,6 +663,65 @@ export class ShopService {
       return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
     }
     return { success: true, data: undefined };
+  }
+
+  // ========== 고정 역할 자동 활성화 ==========
+
+  /**
+   * 구매한 아이템에 연결된 역할 자동 활성화
+   * - role_ticket의 fixedRoleId가 설정된 경우 자동으로 역할 부여
+   * - user_items_v2의 current_role_id, fixed_role_id, role_applied_at, role_expires_at 업데이트
+   */
+  async activateFixedRole(
+    guildId: string,
+    userId: string,
+    shopItemId: number,
+    userItemId: bigint
+  ): Promise<Result<{
+    fixedRoleId: string;
+    roleExpiresAt: Date | null;
+  } | null, CurrencyError>> {
+    if (!this.roleTicketRepo) {
+      return { success: true, data: null };
+    }
+
+    const now = this.clock.now();
+
+    // 1. shop_item에 연결된 role_ticket 조회
+    const ticketResult = await this.roleTicketRepo.findByShopItemId(shopItemId);
+    if (!ticketResult.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: ticketResult.error } };
+    }
+
+    const ticket = ticketResult.data;
+    if (!ticket || !ticket.fixedRoleId) {
+      // fixedRoleId가 없으면 자동 활성화 대상이 아님
+      return { success: true, data: null };
+    }
+
+    // 2. 역할 효과 만료 시각 계산
+    const roleExpiresAt = calculateRoleExpiresAt(ticket, now);
+
+    // 3. user_items_v2 업데이트 (current_role_id = fixedRoleId로 설정)
+    const updateResult = await this.shopRepo.updateCurrentRole(
+      userItemId,
+      ticket.fixedRoleId, // current_role_id = fixedRoleId (고정 역할을 현재 역할로)
+      now,
+      roleExpiresAt,
+      ticket.fixedRoleId
+    );
+
+    if (!updateResult.success) {
+      return { success: false, error: { type: 'REPOSITORY_ERROR', cause: updateResult.error } };
+    }
+
+    return {
+      success: true,
+      data: {
+        fixedRoleId: ticket.fixedRoleId,
+        roleExpiresAt,
+      },
+    };
   }
 
   // ========== 역할선택권 즉시구매 ==========

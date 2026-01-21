@@ -898,6 +898,38 @@ async function handleItemSelection(
           refreshBankPanel(interaction.client, guildId, container).catch(() => {});
         }
 
+        // 고정 역할 자동 활성화 (fixedRoleId가 설정된 role_ticket이 있으면)
+        let roleGranted = false;
+        let grantedRoleId: string | null = null;
+        let roleExpiresAt: Date | null = null;
+
+        const activateResult = await container.shopV2Service.activateFixedRole(
+          guildId,
+          userId,
+          item.id,
+          userItem.id
+        );
+
+        if (activateResult.success && activateResult.data) {
+          grantedRoleId = activateResult.data.fixedRoleId;
+          roleExpiresAt = activateResult.data.roleExpiresAt;
+
+          // Discord 역할 부여
+          try {
+            const member = await interaction.guild?.members.fetch(userId);
+            if (member) {
+              const role = interaction.guild?.roles.cache.get(grantedRoleId);
+              if (role) {
+                await member.roles.add(role);
+                roleGranted = true;
+                console.log(`[Shop] Auto-granted role ${grantedRoleId} to user ${userId}`);
+              }
+            }
+          } catch (roleError) {
+            console.error('[Shop] Auto role grant failed:', roleError);
+          }
+        }
+
         // 성공 메시지 Container 생성
         const successContainer = new ContainerBuilder();
 
@@ -926,17 +958,29 @@ async function handleItemSelection(
           infoText += `\n⏰ **유효기간**: ${daysLeft}일 남음`;
         }
 
+        // 역할 부여된 경우 표시
+        if (roleGranted && grantedRoleId) {
+          infoText += `\n🎭 **부여된 역할**: <@&${grantedRoleId}>`;
+          if (roleExpiresAt) {
+            const roleExpireTimestamp = Math.floor(roleExpiresAt.getTime() / 1000);
+            infoText += `\n⏰ **역할 만료**: <t:${roleExpireTimestamp}:R>`;
+          }
+        }
+
         successContainer.addTextDisplayComponents(
           new TextDisplayBuilder().setContent(infoText)
         );
 
-        successContainer.addSeparatorComponents(
-          new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-        );
+        // 역할이 부여되지 않은 경우에만 인벤토리 안내 표시
+        if (!roleGranted) {
+          successContainer.addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+          );
 
-        successContainer.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent('💡 **사용 방법**: `/인벤토리` 명령어에서 역할로 교환할 수 있습니다.')
-        );
+          successContainer.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('💡 **사용 방법**: `/인벤토리` 명령어에서 역할로 교환할 수 있습니다.')
+          );
+        }
 
         await componentInteraction.editReply({
           components: [successContainer.toJSON()],
