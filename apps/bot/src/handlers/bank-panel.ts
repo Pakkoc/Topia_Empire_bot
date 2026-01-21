@@ -20,6 +20,8 @@ import type {
   BankService,
   VaultService,
   TreasuryService,
+  ShopService,
+  VaultSubscriptionEffectConfig,
 } from '@topia/core';
 
 // Components v2 플래그 (1 << 15)
@@ -44,6 +46,50 @@ interface Container {
   bankService: BankService;
   vaultService: VaultService;
   treasuryService: TreasuryService;
+  shopV2Service: ShopService;
+}
+
+/** 구독 등급 정보 */
+export interface SubscriptionTierInfo {
+  tierName: string;
+  vaultLimit: number;
+  monthlyInterestRate: number;
+  transferFeeExempt?: boolean;
+  purchaseFeePercent?: number;
+}
+
+/** 구독 등급 혜택 텍스트 생성 */
+function formatSubscriptionTiers(tiers: SubscriptionTierInfo[]): string {
+  if (tiers.length === 0) {
+    return '**💳 구독 혜택 안내**\n   등록된 구독 등급이 없습니다.';
+  }
+
+  // 금고 한도 기준으로 정렬 (낮은 순)
+  const sorted = [...tiers].sort((a, b) => a.vaultLimit - b.vaultLimit);
+
+  const lines = sorted.map((tier) => {
+    const benefits: string[] = [];
+
+    if (tier.transferFeeExempt) {
+      benefits.push('이체수수료 면제');
+    }
+    if (tier.purchaseFeePercent === 0) {
+      benefits.push('구매수수료 면제');
+    }
+    if (tier.vaultLimit > 0) {
+      const limitText = tier.vaultLimit >= 10000
+        ? `${(tier.vaultLimit / 10000).toLocaleString()}만`
+        : tier.vaultLimit.toLocaleString();
+      benefits.push(`금고 ${limitText}`);
+    }
+    if (tier.monthlyInterestRate > 0) {
+      benefits.push(`월 ${tier.monthlyInterestRate}% 이자`);
+    }
+
+    return `   • **${tier.tierName}**: ${benefits.join(', ')}`;
+  });
+
+  return `**💳 구독 혜택 안내**\n${lines.join('\n')}`;
 }
 
 /** 은행 패널 메인 컨테이너 생성 */
@@ -52,7 +98,8 @@ export function createBankPanelContainer(
   topyBalance: bigint,
   rubyBalance: bigint,
   topyName: string,
-  rubyName: string
+  rubyName: string,
+  subscriptionTiers: SubscriptionTierInfo[] = []
 ): APIContainerComponent {
   const container = new ContainerBuilder()
     .setAccentColor(0x2ecc71)
@@ -73,11 +120,7 @@ export function createBankPanelContainer(
       new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
     )
     .addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(
-        `**💳 구독 혜택 안내**\n` +
-        `   • **Silver**: 이체수수료 면제, 금고 10만, 월 1% 이자\n` +
-        `   • **Gold**: 구매수수료 면제, 금고 20만, 월 2% 이자`
-      )
+      new TextDisplayBuilder().setContent(formatSubscriptionTiers(subscriptionTiers))
     )
     .addSeparatorComponents(
       new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
@@ -714,6 +757,32 @@ export async function handleBankPanelModalSubmit(
   }
 }
 
+/** vault_subscription 상품에서 구독 등급 정보 추출 */
+export async function getSubscriptionTiers(
+  guildId: string,
+  container: Container
+): Promise<SubscriptionTierInfo[]> {
+  const shopItemsResult = await container.shopV2Service.getShopItems(guildId);
+  if (!shopItemsResult.success) {
+    return [];
+  }
+
+  const vaultItems = shopItemsResult.data.filter(
+    (item) => item.itemType === 'vault_subscription' && item.enabled && item.effectConfig
+  );
+
+  return vaultItems.map((item) => {
+    const config = item.effectConfig as VaultSubscriptionEffectConfig;
+    return {
+      tierName: config.tierName,
+      vaultLimit: config.vaultLimit,
+      monthlyInterestRate: config.monthlyInterestRate,
+      transferFeeExempt: config.transferFeeExempt,
+      purchaseFeePercent: config.purchaseFeePercent,
+    };
+  });
+}
+
 /** 은행 패널 새로고침 (국고 잔액 업데이트) */
 export async function refreshBankPanel(
   client: Client,
@@ -749,7 +818,10 @@ export async function refreshBankPanel(
     const topyBalance = treasuryResult.success ? treasuryResult.data.topyBalance : BigInt(0);
     const rubyBalance = treasuryResult.success ? treasuryResult.data.rubyBalance : BigInt(0);
 
-    const panelContainer = createBankPanelContainer(bankName, topyBalance, rubyBalance, topyName, rubyName);
+    // 구독 등급 정보 조회
+    const subscriptionTiers = await getSubscriptionTiers(guildId, container);
+
+    const panelContainer = createBankPanelContainer(bankName, topyBalance, rubyBalance, topyName, rubyName, subscriptionTiers);
     const buttonRow = createBankPanelButtons();
 
     await message.edit({

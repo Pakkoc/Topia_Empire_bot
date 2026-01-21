@@ -1253,8 +1253,9 @@ async function main() {
       const rubyBalance = treasuryResult.success ? treasuryResult.data.rubyBalance : BigInt(0);
 
       // 패널 컨테이너 생성
-      const { createBankPanelContainer, createBankPanelButtons } = await import('./handlers/bank-panel.js');
-      const panelContainer = createBankPanelContainer(bankName, topyBalance, rubyBalance, topyName, rubyName);
+      const { createBankPanelContainer, createBankPanelButtons, getSubscriptionTiers } = await import('./handlers/bank-panel.js');
+      const subscriptionTiers = await getSubscriptionTiers(guildId, container);
+      const panelContainer = createBankPanelContainer(bankName, topyBalance, rubyBalance, topyName, rubyName, subscriptionTiers);
       const buttonRow = createBankPanelButtons();
 
       // 채널에 패널 메시지 전송
@@ -1368,8 +1369,9 @@ async function main() {
       const topyBalance = treasuryResult.success ? treasuryResult.data.topyBalance : BigInt(0);
       const rubyBalance = treasuryResult.success ? treasuryResult.data.rubyBalance : BigInt(0);
 
-      const { createBankPanelContainer, createBankPanelButtons } = await import('./handlers/bank-panel.js');
-      const panelContainer = createBankPanelContainer(bankName, topyBalance, rubyBalance, topyName, rubyName);
+      const { createBankPanelContainer, createBankPanelButtons, getSubscriptionTiers } = await import('./handlers/bank-panel.js');
+      const subscriptionTiers = await getSubscriptionTiers(guildId, container);
+      const panelContainer = createBankPanelContainer(bankName, topyBalance, rubyBalance, topyName, rubyName, subscriptionTiers);
       const buttonRow = createBankPanelButtons();
 
       await message.edit({
