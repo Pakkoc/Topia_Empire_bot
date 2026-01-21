@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { updateShopItemV2Schema } from "@/types/shop-v2";
+import { refreshBankPanel } from "@/lib/bot-notify";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
 interface ShopItemV2Row extends RowDataPacket {
@@ -283,6 +284,15 @@ export async function PATCH(
         return NextResponse.json({ error: "Item not found" }, { status: 404 });
       }
 
+      // vault_subscription 타입 상품 수정 시 디토뱅크 패널 새로고침
+      // (기존이 vault_subscription이거나, 새로 vault_subscription으로 변경된 경우)
+      const existingItem = existingRows[0]!;
+      const wasVaultSubscription = existingItem.item_type === "vault_subscription";
+      const isVaultSubscription = rows[0]!.item_type === "vault_subscription";
+      if (wasVaultSubscription || isVaultSubscription) {
+        refreshBankPanel(guildId).catch(() => {});
+      }
+
       return NextResponse.json(rowToShopItemV2(rows[0]!));
     } catch (error) {
       await connection.rollback();
@@ -330,6 +340,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
+    const deletedItem = rows[0]!;
+
     // Delete associated role tickets first
     await pool.execute(
       "DELETE FROM ticket_role_options WHERE ticket_id IN (SELECT id FROM role_tickets WHERE shop_item_id = ?)",
@@ -342,6 +354,11 @@ export async function DELETE(
       "DELETE FROM shop_items_v2 WHERE id = ? AND guild_id = ?",
       [itemId, guildId]
     );
+
+    // vault_subscription 타입 상품 삭제 시 디토뱅크 패널 새로고침
+    if (deletedItem.item_type === "vault_subscription") {
+      refreshBankPanel(guildId).catch(() => {});
+    }
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createShopItemV2Schema } from "@/types/shop-v2";
+import { refreshBankPanel } from "@/lib/bot-notify";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
 interface ShopItemV2Row extends RowDataPacket {
@@ -255,6 +256,11 @@ export async function POST(
           { error: "Failed to create item" },
           { status: 500 }
         );
+      }
+
+      // vault_subscription 타입 상품 생성 시 디토뱅크 패널 새로고침
+      if (validatedData.itemType === "vault_subscription") {
+        refreshBankPanel(guildId).catch(() => {});
       }
 
       return NextResponse.json(rowToShopItemV2(rows[0]!), { status: 201 });

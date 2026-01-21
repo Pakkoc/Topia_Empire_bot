@@ -123,3 +123,28 @@ export async function unlockChannelForUsers(
     return { success: false };
   }
 }
+
+/**
+ * 봇에 디토뱅크 패널 새로고침 요청을 보냅니다.
+ * 구독 등급 상품 변경 시 패널을 업데이트합니다.
+ */
+export async function refreshBankPanel(guildId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${BOT_API_URL}/api/bank/panel/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ guildId }),
+    });
+
+    if (!response.ok) {
+      console.error(`[BOT] Failed to refresh bank panel: ${response.status}`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('[BOT] Failed to connect to bot for bank panel refresh:', error);
+    return false;
+  }
+}
