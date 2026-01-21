@@ -740,7 +740,10 @@ export class ShopService {
     fixedRoleId: string;
     roleExpiresAt: Date | null;
   } | null, CurrencyError>> {
+    console.log(`[activateFixedRole] shopItemId=${shopItemId}, hasRoleTicketRepo=${!!this.roleTicketRepo}`);
+
     if (!this.roleTicketRepo) {
+      console.log(`[activateFixedRole] No roleTicketRepo, returning null`);
       return { success: true, data: null };
     }
 
@@ -748,13 +751,18 @@ export class ShopService {
 
     // 1. shop_item에 연결된 role_ticket 조회
     const ticketResult = await this.roleTicketRepo.findByShopItemId(shopItemId);
+    console.log(`[activateFixedRole] ticketResult: success=${ticketResult.success}`);
+
     if (!ticketResult.success) {
       return { success: false, error: { type: 'REPOSITORY_ERROR', cause: ticketResult.error } };
     }
 
     const ticket = ticketResult.data;
+    console.log(`[activateFixedRole] ticket=${ticket ? `id=${ticket.id}, fixedRoleId=${ticket.fixedRoleId}` : 'null'}`);
+
     if (!ticket || !ticket.fixedRoleId) {
       // fixedRoleId가 없으면 자동 활성화 대상이 아님
+      console.log(`[activateFixedRole] No ticket or no fixedRoleId, returning null`);
       return { success: true, data: null };
     }
 
