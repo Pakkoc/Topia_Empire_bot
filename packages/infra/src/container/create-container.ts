@@ -123,7 +123,7 @@ export function createContainer(): Container {
     currencySettingsRepo,
     clock,
     bankSubscriptionRepo,
-    undefined, // roleTicketRepo
+    roleTicketRepo, // fixedRoleId 자동 적용용
     treasuryRepo
   );
   const roleTicketService = new RoleTicketService(roleTicketRepo, shopV2Repo);
