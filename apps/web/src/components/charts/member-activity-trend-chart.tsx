@@ -33,7 +33,10 @@ export function MemberActivityTrendChart({
 
   const hasData = data.some((d) => d.activeUsers > 0);
   const maxActive = Math.max(...data.map((d) => d.activeUsers), 1);
-  const yAxisMax = Math.max(maxActive * 1.2, totalMembers * 0.3);
+  // Y축 범위를 총 멤버 수까지 확장하여 참조선이 보이도록 함
+  const yAxisMax = totalMembers > 0
+    ? Math.max(totalMembers * 1.1, maxActive * 1.2)
+    : maxActive * 1.2;
 
   if (!hasData && totalMembers === 0) {
     return (
@@ -47,7 +50,7 @@ export function MemberActivityTrendChart({
     <div className="space-y-3">
       <div className="h-[160px]">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 20, right: 60, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="activeGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
@@ -90,16 +93,17 @@ export function MemberActivityTrendChart({
               }}
             />
             {/* 총 멤버 수 참조선 */}
-            {totalMembers > 0 && totalMembers <= yAxisMax && (
+            {totalMembers > 0 && (
               <ReferenceLine
                 y={totalMembers}
-                stroke="rgba(59, 130, 246, 0.5)"
+                stroke="rgba(59, 130, 246, 0.6)"
                 strokeDasharray="5 5"
                 label={{
                   value: `총 ${totalMembers.toLocaleString()}명`,
-                  position: "right",
-                  fill: "rgba(59, 130, 246, 0.7)",
-                  fontSize: 10,
+                  position: "insideTopRight",
+                  fill: "rgba(59, 130, 246, 0.8)",
+                  fontSize: 11,
+                  fontWeight: 500,
                 }}
               />
             )}
