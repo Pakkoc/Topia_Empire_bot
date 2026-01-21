@@ -30,6 +30,12 @@ function createNavigation() {
       iconActive: "solar:home-2-bold",
     },
     {
+      name: "통계",
+      href: "/stats",
+      icon: "solar:chart-2-linear",
+      iconActive: "solar:chart-2-bold",
+    },
+    {
       name: "멤버 관리",
       href: "/members",
       icon: "solar:users-group-rounded-linear",

@@ -1,21 +1,18 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useGuilds, useGuildStats, useMemberTrend } from "@/hooks/queries";
+import { useGuilds, useGuildStats } from "@/hooks/queries";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { DiscordIcon } from "@/components/icons/discord-icon";
 import { getBotInviteUrl } from "@/lib/discord";
-import { MemberTrendChart } from "@/components/charts/member-trend-chart";
 
 export default function GuildDashboardPage() {
   const params = useParams();
   const guildId = params["guildId"] as string;
   const { data: guilds, isLoading: guildsLoading } = useGuilds();
   const { data: stats, isLoading: statsLoading } = useGuildStats(guildId);
-  const { data: monthlyTrend, isLoading: monthlyLoading } = useMemberTrend(guildId, "monthly");
-  const { data: yearlyTrend, isLoading: yearlyLoading } = useMemberTrend(guildId, "yearly");
 
   const guild = guilds?.find((g) => g.id === guildId);
   const isLoading = guildsLoading || statsLoading;
@@ -72,12 +69,6 @@ export default function GuildDashboardPage() {
       icon: "solar:bolt-linear",
       color: stats?.xpEnabled ? "from-yellow-500 to-amber-500" : "from-slate-500 to-slate-600",
     },
-  ];
-
-  const additionalStats = [
-    { label: "총 XP", value: stats?.totalXp.toLocaleString() ?? "0", color: "text-indigo-400" },
-    { label: "평균 텍스트 레벨", value: `Lv. ${stats?.avgTextLevelExcludeZero ?? 0}`, color: "text-green-400" },
-    { label: "최고 텍스트 레벨", value: `Lv. ${stats?.maxTextLevel ?? 0}`, color: "text-amber-400" },
   ];
 
   const bots = [
@@ -164,41 +155,28 @@ export default function GuildDashboardPage() {
         ))}
       </div>
 
-      {/* Additional Stats */}
-      {stats && stats.totalMembers > 0 && (
-        <div className="grid gap-4 sm:grid-cols-3 animate-fade-up" style={{ animationDelay: "200ms" }}>
-          {additionalStats.map((stat) => (
-            <div key={stat.label} className="bg-white/5 rounded-2xl p-5 border border-white/10">
-              <p className="text-white/50 text-sm mb-1">{stat.label}</p>
-              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Member Trend Chart */}
-      <div className="animate-fade-up" style={{ animationDelay: "250ms" }}>
-        <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-              <Icon icon="solar:users-group-rounded-bold" className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-white">회원수 추이</h3>
-              <p className="text-xs text-white/40">총 회원수 및 신규 가입 추이</p>
+      {/* Stats Link */}
+      <div className="animate-fade-up" style={{ animationDelay: "200ms" }}>
+        <Link href={`/dashboard/${guildId}/stats`}>
+          <div className="group bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 rounded-2xl p-5 border border-indigo-500/20 hover:border-indigo-500/30 transition-all">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                  <Icon icon="solar:chart-2-bold" className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">상세 통계 보기</h3>
+                  <p className="text-xs text-white/50">회원수 추이, XP 분포, 경제 지표 등</p>
+                </div>
+              </div>
+              <Icon icon="solar:arrow-right-linear" className="w-5 h-5 text-white/40 group-hover:text-white/60 group-hover:translate-x-1 transition-all" />
             </div>
           </div>
-          <MemberTrendChart
-            monthlyData={monthlyTrend?.dailyTrend ?? []}
-            yearlyData={yearlyTrend?.dailyTrend ?? []}
-            isMonthlyLoading={monthlyLoading}
-            isYearlyLoading={yearlyLoading}
-          />
-        </div>
+        </Link>
       </div>
 
       {/* Bot Selection */}
-      <div className="animate-fade-up" style={{ animationDelay: "300ms" }}>
+      <div className="animate-fade-up" style={{ animationDelay: "250ms" }}>
         <h2 className="text-lg font-semibold text-white mb-4">봇 설정</h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {bots.map((bot) => (
@@ -249,7 +227,7 @@ export default function GuildDashboardPage() {
 
       {/* Bot Status Warning */}
       {!guild?.botJoined && (
-        <div className="relative overflow-hidden bg-gradient-to-br from-amber-600/20 to-orange-600/20 backdrop-blur-sm rounded-2xl border border-amber-500/30 p-6 animate-fade-up" style={{ animationDelay: "350ms" }}>
+        <div className="relative overflow-hidden bg-gradient-to-br from-amber-600/20 to-orange-600/20 backdrop-blur-sm rounded-2xl border border-amber-500/30 p-6 animate-fade-up" style={{ animationDelay: "300ms" }}>
           {/* Background Glow */}
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/20 rounded-full blur-3xl" />
 
