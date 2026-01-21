@@ -12,7 +12,6 @@ interface WalletDistributionRow extends RowDataPacket {
 interface WalletStatsRow extends RowDataPacket {
   total_wallets: number;
   total_balance: string;
-  top10_balance: string;
 }
 
 export async function GET(
@@ -49,23 +48,37 @@ export async function GET(
       [guildId]
     );
 
-    // 전체 통계 및 상위 10% 보유량
+    // 전체 통계
     const [walletStats] = await pool.query<WalletStatsRow[]>(
       `SELECT
         COUNT(*) as total_wallets,
-        COALESCE(SUM(balance), 0) as total_balance,
-        COALESCE((
-          SELECT SUM(balance) FROM (
-            SELECT balance FROM topy_wallets
-            WHERE guild_id = ?
-            ORDER BY balance DESC
-            LIMIT CEIL((SELECT COUNT(*) FROM topy_wallets WHERE guild_id = ?) * 0.1)
-          ) as top10
-        ), 0) as top10_balance
+        COALESCE(SUM(balance), 0) as total_balance
        FROM topy_wallets
        WHERE guild_id = ?`,
-      [guildId, guildId, guildId]
+      [guildId]
     );
+
+    const stats = walletStats[0];
+    const totalWallets = Number(stats?.total_wallets ?? 0);
+    const totalBalance = Number(stats?.total_balance ?? 0);
+
+    // 상위 10% 보유량 계산 (별도 쿼리)
+    let top10Percent = 0;
+    if (totalWallets > 0) {
+      const top10Count = Math.max(1, Math.ceil(totalWallets * 0.1));
+      const [top10Stats] = await pool.query<RowDataPacket[]>(
+        `SELECT COALESCE(SUM(balance), 0) as top10_balance
+         FROM (
+           SELECT balance FROM topy_wallets
+           WHERE guild_id = ?
+           ORDER BY balance DESC
+           LIMIT ?
+         ) as top10`,
+        [guildId, top10Count]
+      );
+      const top10Balance = Number(top10Stats[0]?.top10_balance ?? 0);
+      top10Percent = totalBalance > 0 ? Math.round((top10Balance / totalBalance) * 100) : 0;
+    }
 
     const ranges = ['0', '1-1K', '1K-5K', '5K-10K', '10K-50K', '50K-100K', '100K+'];
     const distMap = new Map(distributionStats.map(r => [r.balance_range, Number(r.count)]));
@@ -75,14 +88,9 @@ export async function GET(
       count: distMap.get(range) ?? 0,
     }));
 
-    const stats = walletStats[0];
-    const totalBalance = Number(stats?.total_balance ?? 0);
-    const top10Balance = Number(stats?.top10_balance ?? 0);
-    const top10Percent = totalBalance > 0 ? Math.round((top10Balance / totalBalance) * 100) : 0;
-
     return NextResponse.json({
       distribution,
-      totalWallets: Number(stats?.total_wallets ?? 0),
+      totalWallets,
       totalBalance,
       top10Percent,
     });
