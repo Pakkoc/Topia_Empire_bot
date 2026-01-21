@@ -8,8 +8,8 @@ interface PopularItemRow extends RowDataPacket {
   item_id: number;
   item_name: string;
   item_type: string;
-  purchase_count: number;
-  total_revenue: string;
+  total_sold: number;
+  price: string;
 }
 
 export async function GET(
@@ -26,23 +26,20 @@ export async function GET(
   try {
     const pool = db();
 
-    // 인기 아이템 TOP 5 (구매 횟수 기준, 최근 30일)
+    // 인기 아이템 TOP 5 (user_items_v2 보유량 합계 기준)
     const [popularItems] = await pool.query<PopularItemRow[]>(
       `SELECT
         si.id as item_id,
         si.name as item_name,
-        si.type as item_type,
-        COUNT(ct.id) as purchase_count,
-        COALESCE(SUM(ABS(ct.amount)), 0) as total_revenue
-       FROM shop_items si
-       LEFT JOIN currency_transactions ct ON ct.guild_id = si.guild_id
-         AND ct.transaction_type = 'shop_purchase'
-         AND ct.description LIKE CONCAT('%', si.name, '%')
-         AND ct.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        si.item_type as item_type,
+        COALESCE(SUM(ui.quantity), 0) as total_sold,
+        si.price
+       FROM shop_items_v2 si
+       LEFT JOIN user_items_v2 ui ON ui.shop_item_id = si.id AND ui.guild_id = si.guild_id
        WHERE si.guild_id = ? AND si.enabled = 1
-       GROUP BY si.id, si.name, si.type
-       HAVING purchase_count > 0
-       ORDER BY purchase_count DESC
+       GROUP BY si.id, si.name, si.item_type, si.price
+       HAVING total_sold > 0
+       ORDER BY total_sold DESC
        LIMIT 5`,
       [guildId]
     );
@@ -52,13 +49,13 @@ export async function GET(
       id: row.item_id,
       name: row.item_name,
       type: row.item_type,
-      purchaseCount: Number(row.purchase_count),
-      totalRevenue: Number(row.total_revenue),
+      purchaseCount: Number(row.total_sold),
+      totalRevenue: Number(row.total_sold) * Number(row.price),
     }));
 
     return NextResponse.json({
       popularItems: items,
-      period: '30days',
+      period: 'all',
     });
   } catch (error) {
     console.error("Error fetching shop stats:", error);

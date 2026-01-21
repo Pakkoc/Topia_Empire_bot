@@ -281,7 +281,7 @@ export default function ForgePage() {
               </div>
               <div>
                 <h3 className="font-semibold text-white">인기 상품 TOP 5</h3>
-                <p className="text-xs text-white/40">최근 30일 판매량</p>
+                <p className="text-xs text-white/40">보유량 기준</p>
               </div>
             </div>
             <PopularItemsChart
