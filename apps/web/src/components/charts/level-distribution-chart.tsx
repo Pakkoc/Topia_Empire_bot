@@ -68,7 +68,7 @@ export function LevelDistributionChart({
     <div className="space-y-2">
       <div className="h-[120px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} barGap={2}>
+          <BarChart data={chartData} barGap={0}>
             <XAxis
               dataKey="range"
               axisLine={false}
