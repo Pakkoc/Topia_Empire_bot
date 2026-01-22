@@ -126,6 +126,7 @@ export function MemberTrendChart({
                 tickLine={false}
                 tick={{ fill: "rgba(96, 165, 250, 0.7)", fontSize: 10 }}
                 tickFormatter={(value) => value.toLocaleString()}
+                tickCount={5}
                 width={35}
               />
               {/* 오른쪽 Y축: 신규 가입 */}
@@ -136,6 +137,7 @@ export function MemberTrendChart({
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "rgba(52, 211, 153, 0.7)", fontSize: 10 }}
+                tickCount={5}
                 width={30}
               />
               <Tooltip
