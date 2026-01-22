@@ -35,6 +35,22 @@ export function WelfareHealthChart({
     );
   }
 
+  // 복지 지출이 없는 경우
+  if (totalWelfareAmount === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+          <span className="text-3xl">📊</span>
+        </div>
+        <p className="text-white/70 font-medium mb-1">복지 지출 내역이 없습니다</p>
+        <p className="text-sm text-white/40">
+          관리자 지급 기능을 통해 유저에게 화폐를 지급하면<br />
+          복지 건전성 지수가 계산됩니다.
+        </p>
+      </div>
+    );
+  }
+
   // 등급별 색상
   const getGradeColor = (grade: string) => {
     switch (grade) {
