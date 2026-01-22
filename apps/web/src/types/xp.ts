@@ -17,9 +17,12 @@ export const xpSettingsSchema = z.object({
   voiceXpMax: z.number().min(0).max(1000),
   voiceCooldownSeconds: z.number().min(0).max(3600),
   voiceMaxPerCooldown: z.number().min(1).max(100),
-  levelUpNotificationEnabled: z.boolean(),
-  levelUpChannelId: z.string().nullable(),
-  levelUpMessage: z.string().nullable(),
+  textLevelUpNotificationEnabled: z.boolean(),
+  textLevelUpChannelId: z.string().nullable(),
+  textLevelUpMessage: z.string().nullable(),
+  voiceLevelUpNotificationEnabled: z.boolean(),
+  voiceLevelUpChannelId: z.string().nullable(),
+  voiceLevelUpMessage: z.string().nullable(),
 });
 
 export type XpSettings = z.infer<typeof xpSettingsSchema>;
@@ -118,7 +121,10 @@ export const DEFAULT_XP_SETTINGS: Omit<XpSettings, "guildId"> = {
   voiceXpMax: 20,
   voiceCooldownSeconds: 60,
   voiceMaxPerCooldown: 1,
-  levelUpNotificationEnabled: true,
-  levelUpChannelId: null,
-  levelUpMessage: null,
+  textLevelUpNotificationEnabled: true,
+  textLevelUpChannelId: null,
+  textLevelUpMessage: null,
+  voiceLevelUpNotificationEnabled: true,
+  voiceLevelUpChannelId: null,
+  voiceLevelUpMessage: null,
 };

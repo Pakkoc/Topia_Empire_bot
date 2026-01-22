@@ -15,9 +15,12 @@ interface XpSettingsRow extends RowDataPacket {
   voice_xp_max: number;
   voice_cooldown_seconds: number;
   voice_max_per_cooldown: number;
-  level_up_notification_enabled: number;
-  level_up_channel_id: string | null;
-  level_up_message: string | null;
+  text_level_up_notification_enabled: number;
+  text_level_up_channel_id: string | null;
+  text_level_up_message: string | null;
+  voice_level_up_notification_enabled: number;
+  voice_level_up_channel_id: string | null;
+  voice_level_up_message: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -89,9 +92,12 @@ function toXpSettings(row: XpSettingsRow): XpSettings {
     voiceXpMax: row.voice_xp_max,
     voiceCooldownSeconds: row.voice_cooldown_seconds,
     voiceMaxPerCooldown: row.voice_max_per_cooldown,
-    levelUpNotificationEnabled: row.level_up_notification_enabled !== undefined ? Boolean(row.level_up_notification_enabled) : true,
-    levelUpChannelId: row.level_up_channel_id,
-    levelUpMessage: row.level_up_message,
+    textLevelUpNotificationEnabled: row.text_level_up_notification_enabled !== undefined ? Boolean(row.text_level_up_notification_enabled) : true,
+    textLevelUpChannelId: row.text_level_up_channel_id,
+    textLevelUpMessage: row.text_level_up_message,
+    voiceLevelUpNotificationEnabled: row.voice_level_up_notification_enabled !== undefined ? Boolean(row.voice_level_up_notification_enabled) : true,
+    voiceLevelUpChannelId: row.voice_level_up_channel_id,
+    voiceLevelUpMessage: row.voice_level_up_message,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -129,8 +135,10 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
           text_cooldown_seconds, text_max_per_cooldown,
           voice_xp_enabled, voice_xp_min, voice_xp_max,
           voice_cooldown_seconds, voice_max_per_cooldown,
-          level_up_notification_enabled, level_up_channel_id, level_up_message, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          text_level_up_notification_enabled, text_level_up_channel_id, text_level_up_message,
+          voice_level_up_notification_enabled, voice_level_up_channel_id, voice_level_up_message,
+          created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          enabled = VALUES(enabled),
          text_xp_enabled = VALUES(text_xp_enabled),
@@ -143,9 +151,12 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
          voice_xp_max = VALUES(voice_xp_max),
          voice_cooldown_seconds = VALUES(voice_cooldown_seconds),
          voice_max_per_cooldown = VALUES(voice_max_per_cooldown),
-         level_up_notification_enabled = VALUES(level_up_notification_enabled),
-         level_up_channel_id = VALUES(level_up_channel_id),
-         level_up_message = VALUES(level_up_message),
+         text_level_up_notification_enabled = VALUES(text_level_up_notification_enabled),
+         text_level_up_channel_id = VALUES(text_level_up_channel_id),
+         text_level_up_message = VALUES(text_level_up_message),
+         voice_level_up_notification_enabled = VALUES(voice_level_up_notification_enabled),
+         voice_level_up_channel_id = VALUES(voice_level_up_channel_id),
+         voice_level_up_message = VALUES(voice_level_up_message),
          updated_at = VALUES(updated_at)`,
         [
           settings.guildId,
@@ -160,9 +171,12 @@ export class XpSettingsRepository implements XpSettingsRepositoryPort {
           settings.voiceXpMax,
           settings.voiceCooldownSeconds,
           settings.voiceMaxPerCooldown,
-          settings.levelUpNotificationEnabled,
-          settings.levelUpChannelId,
-          settings.levelUpMessage,
+          settings.textLevelUpNotificationEnabled,
+          settings.textLevelUpChannelId,
+          settings.textLevelUpMessage,
+          settings.voiceLevelUpNotificationEnabled,
+          settings.voiceLevelUpChannelId,
+          settings.voiceLevelUpMessage,
           settings.createdAt,
           settings.updatedAt,
         ]

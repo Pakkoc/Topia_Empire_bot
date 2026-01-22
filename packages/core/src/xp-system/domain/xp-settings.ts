@@ -21,10 +21,15 @@ export interface XpSettings {
   voiceCooldownSeconds: number;
   voiceMaxPerCooldown: number;
 
-  // 레벨업 알림
-  levelUpNotificationEnabled: boolean;
-  levelUpChannelId: string | null;
-  levelUpMessage: string | null;
+  // 텍스트 레벨업 알림
+  textLevelUpNotificationEnabled: boolean;
+  textLevelUpChannelId: string | null;
+  textLevelUpMessage: string | null;
+
+  // 음성 레벨업 알림
+  voiceLevelUpNotificationEnabled: boolean;
+  voiceLevelUpChannelId: string | null;
+  voiceLevelUpMessage: string | null;
 
   createdAt: Date;
   updatedAt: Date;
@@ -48,9 +53,13 @@ export function createDefaultXpSettings(guildId: string): XpSettings {
     voiceCooldownSeconds: XP_DEFAULTS.VOICE_COOLDOWN_SECONDS,
     voiceMaxPerCooldown: XP_DEFAULTS.VOICE_MAX_PER_COOLDOWN,
 
-    levelUpNotificationEnabled: true,
-    levelUpChannelId: null,
-    levelUpMessage: null,
+    textLevelUpNotificationEnabled: true,
+    textLevelUpChannelId: null,
+    textLevelUpMessage: null,
+
+    voiceLevelUpNotificationEnabled: true,
+    voiceLevelUpChannelId: null,
+    voiceLevelUpMessage: null,
 
     createdAt: now,
     updatedAt: now,

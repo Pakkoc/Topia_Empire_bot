@@ -19,9 +19,12 @@ interface XpSettingsRow extends RowDataPacket {
   voice_xp_max: number;
   voice_cooldown_seconds: number;
   voice_max_per_cooldown: number;
-  level_up_notification_enabled: boolean;
-  level_up_channel_id: string | null;
-  level_up_message: string | null;
+  text_level_up_notification_enabled: boolean;
+  text_level_up_channel_id: string | null;
+  text_level_up_message: string | null;
+  voice_level_up_notification_enabled: boolean;
+  voice_level_up_channel_id: string | null;
+  voice_level_up_message: string | null;
 }
 
 function rowToSettings(row: XpSettingsRow) {
@@ -38,9 +41,12 @@ function rowToSettings(row: XpSettingsRow) {
     voiceXpMax: row.voice_xp_max,
     voiceCooldownSeconds: row.voice_cooldown_seconds,
     voiceMaxPerCooldown: row.voice_max_per_cooldown,
-    levelUpNotificationEnabled: row.level_up_notification_enabled,
-    levelUpChannelId: row.level_up_channel_id,
-    levelUpMessage: row.level_up_message,
+    textLevelUpNotificationEnabled: row.text_level_up_notification_enabled,
+    textLevelUpChannelId: row.text_level_up_channel_id,
+    textLevelUpMessage: row.text_level_up_message,
+    voiceLevelUpNotificationEnabled: row.voice_level_up_notification_enabled,
+    voiceLevelUpChannelId: row.voice_level_up_channel_id,
+    voiceLevelUpMessage: row.voice_level_up_message,
   };
 }
 
@@ -56,9 +62,12 @@ const DEFAULT_SETTINGS = {
   voiceXpMax: 20,
   voiceCooldownSeconds: 60,
   voiceMaxPerCooldown: 1,
-  levelUpNotificationEnabled: true,
-  levelUpChannelId: null,
-  levelUpMessage: null,
+  textLevelUpNotificationEnabled: true,
+  textLevelUpChannelId: null,
+  textLevelUpMessage: null,
+  voiceLevelUpNotificationEnabled: true,
+  voiceLevelUpChannelId: null,
+  voiceLevelUpMessage: null,
 };
 
 export async function GET(
@@ -127,9 +136,12 @@ export async function PATCH(
       voiceXpMax: "voice_xp_max",
       voiceCooldownSeconds: "voice_cooldown_seconds",
       voiceMaxPerCooldown: "voice_max_per_cooldown",
-      levelUpNotificationEnabled: "level_up_notification_enabled",
-      levelUpChannelId: "level_up_channel_id",
-      levelUpMessage: "level_up_message",
+      textLevelUpNotificationEnabled: "text_level_up_notification_enabled",
+      textLevelUpChannelId: "text_level_up_channel_id",
+      textLevelUpMessage: "text_level_up_message",
+      voiceLevelUpNotificationEnabled: "voice_level_up_notification_enabled",
+      voiceLevelUpChannelId: "voice_level_up_channel_id",
+      voiceLevelUpMessage: "voice_level_up_message",
     };
 
     for (const [key, dbField] of Object.entries(fieldMap)) {

@@ -13,7 +13,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   Form,
@@ -30,14 +29,18 @@ import { useEffect } from "react";
 import { Icon } from "@iconify/react";
 
 const notificationFormSchema = z.object({
-  levelUpNotificationEnabled: z.boolean(),
-  levelUpChannelId: z.string().nullable(),
-  levelUpMessage: z.string().nullable(),
+  textLevelUpNotificationEnabled: z.boolean(),
+  textLevelUpChannelId: z.string().nullable(),
+  textLevelUpMessage: z.string().nullable(),
+  voiceLevelUpNotificationEnabled: z.boolean(),
+  voiceLevelUpChannelId: z.string().nullable(),
+  voiceLevelUpMessage: z.string().nullable(),
 });
 
 type NotificationFormValues = z.infer<typeof notificationFormSchema>;
 
-const defaultMessage = `🎉 축하합니다 {user}님! **레벨 {level}**에 도달하셨습니다!`;
+const defaultTextMessage = `🎉 축하합니다 {user}님! **텍스트 레벨 {level}**에 도달하셨습니다!`;
+const defaultVoiceMessage = `🎉 축하합니다 {user}님! **음성 레벨 {level}**에 도달하셨습니다!`;
 
 const placeholders = [
   { name: "{user}", description: "유저 멘션" },
@@ -66,9 +69,12 @@ export default function NotificationSettingsPage() {
 
   // settings에서 channelId를 문자열로 변환 (API에서 숫자로 반환될 수 있음)
   const formValues: NotificationFormValues = {
-    levelUpNotificationEnabled: settings?.levelUpNotificationEnabled ?? true,
-    levelUpChannelId: settings?.levelUpChannelId ? String(settings.levelUpChannelId) : null,
-    levelUpMessage: settings?.levelUpMessage ?? defaultMessage,
+    textLevelUpNotificationEnabled: settings?.textLevelUpNotificationEnabled ?? true,
+    textLevelUpChannelId: settings?.textLevelUpChannelId ? String(settings.textLevelUpChannelId) : null,
+    textLevelUpMessage: settings?.textLevelUpMessage ?? defaultTextMessage,
+    voiceLevelUpNotificationEnabled: settings?.voiceLevelUpNotificationEnabled ?? true,
+    voiceLevelUpChannelId: settings?.voiceLevelUpChannelId ? String(settings.voiceLevelUpChannelId) : null,
+    voiceLevelUpMessage: settings?.voiceLevelUpMessage ?? defaultVoiceMessage,
   };
 
   const form = useForm<NotificationFormValues>({
@@ -86,9 +92,12 @@ export default function NotificationSettingsPage() {
   const onSubmit = async (data: NotificationFormValues) => {
     try {
       await updateSettings.mutateAsync({
-        levelUpNotificationEnabled: data.levelUpNotificationEnabled,
-        levelUpChannelId: data.levelUpChannelId || null,
-        levelUpMessage: data.levelUpMessage || null,
+        textLevelUpNotificationEnabled: data.textLevelUpNotificationEnabled,
+        textLevelUpChannelId: data.textLevelUpChannelId || null,
+        textLevelUpMessage: data.textLevelUpMessage || null,
+        voiceLevelUpNotificationEnabled: data.voiceLevelUpNotificationEnabled,
+        voiceLevelUpChannelId: data.voiceLevelUpChannelId || null,
+        voiceLevelUpMessage: data.voiceLevelUpMessage || null,
       });
       toast({
         title: "설정 저장 완료",
@@ -102,6 +111,76 @@ export default function NotificationSettingsPage() {
       });
     }
   };
+
+  // 채널 선택 컴포넌트
+  const ChannelSelect = ({ field, disabled }: { field: { value: string | null; onChange: (value: string | null) => void }; disabled?: boolean }) => (
+    <Select
+      onValueChange={(value) => field.onChange(value === "__none__" ? null : value)}
+      value={field.value || "__none__"}
+      disabled={disabled}
+    >
+      <FormControl>
+        <SelectTrigger className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
+          {(() => {
+            if (channelsLoading) {
+              return <span className="text-white/40">로딩 중...</span>;
+            }
+            if (!field.value || field.value === "__none__") {
+              return <span className="text-white/40">채널 선택 (선택 안함 = 알림 비활성화)</span>;
+            }
+            const selectedChannel = channels?.find(ch => ch.id === field.value);
+            if (selectedChannel) {
+              return (
+                <span className="!inline-flex items-center gap-2">
+                  {selectedChannel.type === 2 ? (
+                    <Icon icon="solar:volume-loud-linear" className="h-4 w-4 shrink-0 text-green-400" />
+                  ) : selectedChannel.type === 5 ? (
+                    <Icon icon="solar:megaphone-linear" className="h-4 w-4 shrink-0 text-amber-400" />
+                  ) : (
+                    <Icon icon="solar:hashtag-linear" className="h-4 w-4 shrink-0 text-white/40" />
+                  )}
+                  {selectedChannel.name}
+                </span>
+              );
+            }
+            return <span className="text-white/40">채널 로딩 중...</span>;
+          })()}
+        </SelectTrigger>
+      </FormControl>
+      <SelectContent>
+        <SelectItem value="__none__">
+          <span className="text-white/40">알림 비활성화</span>
+        </SelectItem>
+        {channelsLoading ? (
+          <SelectItem value="__loading__" disabled>
+            <Icon icon="solar:spinner-linear" className="mr-2 inline h-4 w-4 animate-spin" />
+            로딩 중...
+          </SelectItem>
+        ) : channels && channels.length > 0 ? (
+          <>
+            {channels.map((channel) => (
+              <SelectItem key={channel.id} value={channel.id}>
+                <span className="flex items-center gap-2">
+                  {channel.type === 2 ? (
+                    <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
+                  ) : channel.type === 5 ? (
+                    <Icon icon="solar:megaphone-linear" className="h-4 w-4 text-amber-400" />
+                  ) : (
+                    <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-white/40" />
+                  )}
+                  {channel.name}
+                </span>
+              </SelectItem>
+            ))}
+          </>
+        ) : (
+          <SelectItem value="__empty__" disabled>
+            채널이 없습니다
+          </SelectItem>
+        )}
+      </SelectContent>
+    </Select>
+  );
 
   // settings와 channels 모두 로드될 때까지 로딩 표시
   if (isLoading || channelsLoading || !settings) {
@@ -130,7 +209,7 @@ export default function NotificationSettingsPage() {
       {/* Page Header */}
       <div className="animate-fade-up">
         <h1 className="text-2xl md:text-3xl font-bold text-white">레벨업 알림</h1>
-        <p className="text-white/50 mt-1">레벨업 시 발송되는 알림을 설정합니다.</p>
+        <p className="text-white/50 mt-1">텍스트/음성 레벨업 시 발송되는 알림을 각각 설정합니다.</p>
       </div>
 
       {/* 안내 박스 */}
@@ -142,206 +221,219 @@ export default function NotificationSettingsPage() {
           <div className="space-y-2">
             <p className="text-sm text-amber-300 font-medium">레벨업 알림 안내</p>
             <ul className="text-sm text-amber-300/70 space-y-1 list-disc list-inside">
-              <li>유저가 레벨업하면 지정된 채널에 축하 메시지가 자동 전송됩니다</li>
+              <li>텍스트 레벨업과 음성 레벨업 알림을 각각 별도로 설정할 수 있습니다</li>
               <li>메시지에 <code className="bg-amber-500/20 px-1 rounded">{'{user}'}</code>, <code className="bg-amber-500/20 px-1 rounded">{'{level}'}</code> 등의 변수를 사용할 수 있습니다</li>
-              <li>채널을 선택하지 않으면 알림이 비활성화됩니다</li>
+              <li>채널을 선택하지 않으면 해당 타입의 알림이 비활성화됩니다</li>
             </ul>
           </div>
         </div>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* 알림 활성화 카드 */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 animate-fade-up">
-            <div className="p-6">
-              <FormField
-                control={form.control}
-                name="levelUpNotificationEnabled"
-                render={({ field }) => (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-                        <Icon icon="solar:bell-bold" className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-white">레벨업 알림</h3>
-                        <p className="text-sm text-white/50">레벨업 시 알림 메시지를 전송합니다</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </div>
-                )}
-              />
-            </div>
-          </div>
-
-          {/* 알림 채널 카드 */}
-          <div className={`bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 animate-fade-up transition-opacity ${!form.watch("levelUpNotificationEnabled") ? "opacity-50 pointer-events-none" : ""}`}>
-            <div className="p-6 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
-                  <Icon icon="solar:hashtag-chat-bold" className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white">알림 채널</h3>
-                  <p className="text-sm text-white/50">레벨업 알림이 전송될 채널을 설정합니다.</p>
-                </div>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* 텍스트 레벨업 알림 섹션 */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                <Icon icon="solar:chat-line-bold" className="w-4 h-4 text-white" />
               </div>
+              <h2 className="text-lg font-semibold text-white">텍스트 레벨업 알림</h2>
             </div>
-            <div className="p-6">
-              <FormField
-                control={form.control}
-                name="levelUpChannelId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white/70">채널</FormLabel>
-                    <Select
-                      onValueChange={(value) => field.onChange(value === "__none__" ? null : value)}
-                      value={field.value || "__none__"}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
-                          {(() => {
-                            if (channelsLoading) {
-                              return <span className="text-white/40">로딩 중...</span>;
-                            }
-                            if (!field.value || field.value === "__none__") {
-                              return <span className="text-white/40">채널 선택 (선택 안함 = 알림 비활성화)</span>;
-                            }
-                            const selectedChannel = channels?.find(ch => ch.id === field.value);
-                            if (selectedChannel) {
-                              return (
-                                <span className="!inline-flex items-center gap-2">
-                                  {selectedChannel.type === 2 ? (
-                                    <Icon icon="solar:volume-loud-linear" className="h-4 w-4 shrink-0 text-green-400" />
-                                  ) : selectedChannel.type === 5 ? (
-                                    <Icon icon="solar:megaphone-linear" className="h-4 w-4 shrink-0 text-amber-400" />
-                                  ) : (
-                                    <Icon icon="solar:hashtag-linear" className="h-4 w-4 shrink-0 text-white/40" />
-                                  )}
-                                  {selectedChannel.name}
-                                </span>
-                              );
-                            }
-                            return <span className="text-white/40">채널 로딩 중...</span>;
-                          })()}
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="__none__">
-                          <span className="text-white/40">알림 비활성화</span>
-                        </SelectItem>
-                        {channelsLoading ? (
-                          <SelectItem value="__loading__" disabled>
-                            <Icon icon="solar:spinner-linear" className="mr-2 inline h-4 w-4 animate-spin" />
-                            로딩 중...
-                          </SelectItem>
-                        ) : channels && channels.length > 0 ? (
-                          <>
-                            {channels.map((channel) => (
-                              <SelectItem key={channel.id} value={channel.id}>
-                                <span className="flex items-center gap-2">
-                                  {channel.type === 2 ? (
-                                    <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
-                                  ) : channel.type === 5 ? (
-                                    <Icon icon="solar:megaphone-linear" className="h-4 w-4 text-amber-400" />
-                                  ) : (
-                                    <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-white/40" />
-                                  )}
-                                  {channel.name}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </>
-                        ) : (
-                          <SelectItem value="__empty__" disabled>
-                            채널이 없습니다
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription className="text-white/40">
-                      비워두면 레벨업 알림이 비활성화됩니다.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
 
-          {/* 알림 메시지 카드 */}
-          <div className={`bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden animate-fade-up transition-opacity ${!form.watch("levelUpNotificationEnabled") ? "opacity-50 pointer-events-none" : ""}`} style={{ animationDelay: '50ms' }}>
-            <div className="p-6 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                  <Icon icon="solar:chat-line-bold" className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white">알림 메시지</h3>
-                  <p className="text-sm text-white/50">레벨업 시 전송될 메시지를 커스텀합니다.</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-6 space-y-6">
-              <FormField
-                control={form.control}
-                name="levelUpMessage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white/70">메시지 템플릿</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder={defaultMessage}
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        className="min-h-24 border-white/10 bg-white/5 hover:bg-white/10 transition-colors resize-none"
+            {/* 텍스트 알림 활성화 카드 */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 animate-fade-up">
+              <div className="p-6">
+                <FormField
+                  control={form.control}
+                  name="textLevelUpNotificationEnabled"
+                  render={({ field }) => (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                          <Icon icon="solar:bell-bold" className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-white">텍스트 레벨업 알림</h3>
+                          <p className="text-sm text-white/50">텍스트 레벨업 시 알림 메시지를 전송합니다</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div>
-                <p className="mb-3 text-sm font-medium text-white/70">사용 가능한 변수</p>
-                <div className="flex flex-wrap gap-2">
-                  {placeholders.map((p) => (
-                    <div
-                      key={p.name}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10 transition-colors"
-                    >
-                      <code className="text-sm text-indigo-400 font-mono">{p.name}</code>
-                      <span className="ml-2 text-sm text-white/40">{p.description}</span>
                     </div>
-                  ))}
-                </div>
+                  )}
+                />
               </div>
+            </div>
 
-              {/* Message Preview */}
-              <div>
-                <p className="mb-3 text-sm font-medium text-white/70">미리보기</p>
-                <div className="relative rounded-xl border border-white/10 bg-black/50 p-4 overflow-hidden">
-                  {/* Discord-like styling */}
-                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-500" />
-                  <p className="text-white/80 pl-3">
-                    {(form.watch("levelUpMessage") ?? defaultMessage)
-                      .replace("{user}", "@사용자")
-                      .replace("{username}", "사용자")
-                      .replace("{level}", "5")
-                      .replace("{xp}", "2,500")
-                      .replace("{server}", "서버 이름")}
-                  </p>
+            {/* 텍스트 알림 채널 & 메시지 카드 */}
+            <div className={`bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden animate-fade-up transition-opacity ${!form.watch("textLevelUpNotificationEnabled") ? "opacity-50 pointer-events-none" : ""}`}>
+              <div className="p-6 border-b border-white/10">
+                <FormField
+                  control={form.control}
+                  name="textLevelUpChannelId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70">알림 채널</FormLabel>
+                      <ChannelSelect field={field} disabled={!form.watch("textLevelUpNotificationEnabled")} />
+                      <FormDescription className="text-white/40">
+                        비워두면 텍스트 레벨업 알림이 비활성화됩니다.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="p-6 space-y-4">
+                <FormField
+                  control={form.control}
+                  name="textLevelUpMessage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70">메시지 템플릿</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder={defaultTextMessage}
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          className="min-h-20 border-white/10 bg-white/5 hover:bg-white/10 transition-colors resize-none"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 미리보기 */}
+                <div>
+                  <p className="mb-2 text-sm font-medium text-white/70">미리보기</p>
+                  <div className="relative rounded-xl border border-white/10 bg-black/50 p-3 overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-cyan-500" />
+                    <p className="text-sm text-white/80 pl-3">
+                      {(form.watch("textLevelUpMessage") ?? defaultTextMessage)
+                        .replace("{user}", "@사용자")
+                        .replace("{username}", "사용자")
+                        .replace("{level}", "5")
+                        .replace("{xp}", "2,500")
+                        .replace("{server}", "서버 이름")}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end animate-fade-up" style={{ animationDelay: '100ms' }}>
+          {/* 음성 레벨업 알림 섹션 */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                <Icon icon="solar:microphone-3-bold" className="w-4 h-4 text-white" />
+              </div>
+              <h2 className="text-lg font-semibold text-white">음성 레벨업 알림</h2>
+            </div>
+
+            {/* 음성 알림 활성화 카드 */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 animate-fade-up">
+              <div className="p-6">
+                <FormField
+                  control={form.control}
+                  name="voiceLevelUpNotificationEnabled"
+                  render={({ field }) => (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                          <Icon icon="solar:bell-bold" className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-white">음성 레벨업 알림</h3>
+                          <p className="text-sm text-white/50">음성 레벨업 시 알림 메시지를 전송합니다</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </div>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* 음성 알림 채널 & 메시지 카드 */}
+            <div className={`bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden animate-fade-up transition-opacity ${!form.watch("voiceLevelUpNotificationEnabled") ? "opacity-50 pointer-events-none" : ""}`}>
+              <div className="p-6 border-b border-white/10">
+                <FormField
+                  control={form.control}
+                  name="voiceLevelUpChannelId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70">알림 채널</FormLabel>
+                      <ChannelSelect field={field} disabled={!form.watch("voiceLevelUpNotificationEnabled")} />
+                      <FormDescription className="text-white/40">
+                        비워두면 음성 레벨업 알림이 비활성화됩니다.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="p-6 space-y-4">
+                <FormField
+                  control={form.control}
+                  name="voiceLevelUpMessage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70">메시지 템플릿</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder={defaultVoiceMessage}
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          className="min-h-20 border-white/10 bg-white/5 hover:bg-white/10 transition-colors resize-none"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 미리보기 */}
+                <div>
+                  <p className="mb-2 text-sm font-medium text-white/70">미리보기</p>
+                  <div className="relative rounded-xl border border-white/10 bg-black/50 p-3 overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-green-500 to-emerald-500" />
+                    <p className="text-sm text-white/80 pl-3">
+                      {(form.watch("voiceLevelUpMessage") ?? defaultVoiceMessage)
+                        .replace("{user}", "@사용자")
+                        .replace("{username}", "사용자")
+                        .replace("{level}", "5")
+                        .replace("{xp}", "2,500")
+                        .replace("{server}", "서버 이름")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 사용 가능한 변수 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 animate-fade-up">
+            <p className="mb-3 text-sm font-medium text-white/70">사용 가능한 변수</p>
+            <div className="flex flex-wrap gap-2">
+              {placeholders.map((p) => (
+                <div
+                  key={p.name}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10 transition-colors"
+                >
+                  <code className="text-sm text-indigo-400 font-mono">{p.name}</code>
+                  <span className="ml-2 text-sm text-white/40">{p.description}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end animate-fade-up">
             <Button
               type="submit"
               disabled={updateSettings.isPending}
