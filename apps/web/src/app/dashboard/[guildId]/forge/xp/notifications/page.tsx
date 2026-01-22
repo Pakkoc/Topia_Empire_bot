@@ -9,11 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Form,
   FormControl,
@@ -25,7 +32,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChanges } from "@/contexts/unsaved-changes-context";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 
 const notificationFormSchema = z.object({
@@ -188,75 +195,87 @@ export default function NotificationSettingsPage() {
     }
   };
 
-  // 채널 선택 컴포넌트
-  const ChannelSelect = ({ field, disabled }: { field: { value: string | null; onChange: (value: string | null) => void }; disabled?: boolean }) => (
-    <Select
-      onValueChange={(value) => field.onChange(value === "__none__" ? null : value)}
-      value={field.value || "__none__"}
-      disabled={disabled}
-    >
-      <FormControl>
-        <SelectTrigger className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
-          {(() => {
-            if (channelsLoading) {
-              return <span className="text-white/40">로딩 중...</span>;
-            }
-            if (!field.value || field.value === "__none__") {
-              return <span className="text-white/40">채널 선택 (선택 안함 = 알림 비활성화)</span>;
-            }
-            const selectedChannel = channels?.find(ch => ch.id === field.value);
-            if (selectedChannel) {
-              return (
-                <span className="!inline-flex items-center gap-2">
-                  {selectedChannel.type === 2 ? (
-                    <Icon icon="solar:volume-loud-linear" className="h-4 w-4 shrink-0 text-green-400" />
-                  ) : selectedChannel.type === 5 ? (
-                    <Icon icon="solar:megaphone-linear" className="h-4 w-4 shrink-0 text-amber-400" />
-                  ) : (
-                    <Icon icon="solar:hashtag-linear" className="h-4 w-4 shrink-0 text-white/40" />
-                  )}
+  // 채널 선택 컴포넌트 (검색 가능한 Combobox)
+  const ChannelSelect = ({ field, disabled }: { field: { value: string | null; onChange: (value: string | null) => void }; disabled?: boolean }) => {
+    const [open, setOpen] = useState(false);
+    const selectedChannel = channels?.find(ch => ch.id === field.value);
+
+    const getChannelIcon = (type: number) => {
+      if (type === 2) {
+        return <Icon icon="solar:volume-loud-linear" className="h-4 w-4 shrink-0 text-green-400" />;
+      } else if (type === 5) {
+        return <Icon icon="solar:megaphone-linear" className="h-4 w-4 shrink-0 text-amber-400" />;
+      }
+      return <Icon icon="solar:hashtag-linear" className="h-4 w-4 shrink-0 text-white/40" />;
+    };
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild disabled={disabled}>
+          <FormControl>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-full justify-between border-white/10 bg-white/5 hover:bg-white/10 transition-colors font-normal"
+              disabled={disabled}
+            >
+              {channelsLoading ? (
+                <span className="text-white/40">로딩 중...</span>
+              ) : selectedChannel ? (
+                <span className="flex items-center gap-2">
+                  {getChannelIcon(selectedChannel.type)}
                   {selectedChannel.name}
                 </span>
-              );
-            }
-            return <span className="text-white/40">채널 로딩 중...</span>;
-          })()}
-        </SelectTrigger>
-      </FormControl>
-      <SelectContent>
-        <SelectItem value="__none__">
-          <span className="text-white/40">알림 비활성화</span>
-        </SelectItem>
-        {channelsLoading ? (
-          <SelectItem value="__loading__" disabled>
-            <Icon icon="solar:spinner-linear" className="mr-2 inline h-4 w-4 animate-spin" />
-            로딩 중...
-          </SelectItem>
-        ) : channels && channels.length > 0 ? (
-          <>
-            {channels.map((channel) => (
-              <SelectItem key={channel.id} value={channel.id}>
-                <span className="flex items-center gap-2">
-                  {channel.type === 2 ? (
-                    <Icon icon="solar:volume-loud-linear" className="h-4 w-4 text-green-400" />
-                  ) : channel.type === 5 ? (
-                    <Icon icon="solar:megaphone-linear" className="h-4 w-4 text-amber-400" />
-                  ) : (
-                    <Icon icon="solar:hashtag-linear" className="h-4 w-4 text-white/40" />
+              ) : (
+                <span className="text-white/40">채널 선택 (선택 안함 = 알림 비활성화)</span>
+              )}
+              <Icon icon="solar:alt-arrow-down-linear" className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </FormControl>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+          <Command>
+            <CommandInput placeholder="채널 검색..." />
+            <CommandList>
+              <CommandEmpty>채널을 찾을 수 없습니다</CommandEmpty>
+              <CommandGroup>
+                <CommandItem
+                  value="__none__"
+                  onSelect={() => {
+                    field.onChange(null);
+                    setOpen(false);
+                  }}
+                >
+                  <Icon icon="solar:close-circle-linear" className="h-4 w-4 shrink-0 text-white/40" />
+                  <span className="text-white/60">알림 비활성화</span>
+                  {!field.value && (
+                    <Icon icon="solar:check-circle-bold" className="ml-auto h-4 w-4 text-indigo-400" />
                   )}
-                  {channel.name}
-                </span>
-              </SelectItem>
-            ))}
-          </>
-        ) : (
-          <SelectItem value="__empty__" disabled>
-            채널이 없습니다
-          </SelectItem>
-        )}
-      </SelectContent>
-    </Select>
-  );
+                </CommandItem>
+                {channels?.map((channel) => (
+                  <CommandItem
+                    key={channel.id}
+                    value={channel.name}
+                    onSelect={() => {
+                      field.onChange(channel.id);
+                      setOpen(false);
+                    }}
+                  >
+                    {getChannelIcon(channel.type)}
+                    {channel.name}
+                    {field.value === channel.id && (
+                      <Icon icon="solar:check-circle-bold" className="ml-auto h-4 w-4 text-indigo-400" />
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
   // settings와 channels 모두 로드될 때까지 로딩 표시
   if (isLoading || channelsLoading || !settings) {
