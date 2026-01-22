@@ -993,7 +993,7 @@ async function handleItemSelection(
           components: [successContainer.toJSON()],
           flags: IS_COMPONENTS_V2,
         });
-        scheduleMessageDelete(interaction, 5000);
+        scheduleMessageDelete(interaction, 180000); // 3분 후 삭제
       }
     });
 
@@ -1249,7 +1249,7 @@ async function handleRoleTicketSelection(
           components: [successContainer.toJSON()],
           flags: IS_COMPONENTS_V2,
         });
-        scheduleMessageDelete(interaction, 5000);
+        scheduleMessageDelete(interaction, 180000); // 3분 후 삭제
       }
     });
 
