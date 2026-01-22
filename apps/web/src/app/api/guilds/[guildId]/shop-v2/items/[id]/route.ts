@@ -172,6 +172,14 @@ export async function PATCH(
           `UPDATE shop_items_v2 SET ${updates.join(", ")} WHERE id = ? AND guild_id = ?`,
           values
         );
+
+        // shop_items_v2.enabled 변경 시 연결된 role_tickets.enabled도 동기화
+        if (validatedData.enabled !== undefined) {
+          await connection.execute(
+            "UPDATE role_tickets SET enabled = ? WHERE shop_item_id = ?",
+            [validatedData.enabled ? 1 : 0, itemId]
+          );
+        }
       }
 
       // Handle role ticket update
