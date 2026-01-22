@@ -209,56 +209,6 @@ export default function StatsPage() {
 
         {/* 차트 그리드 */}
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-          {/* 거래 유형 분포 */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <div className="flex items-center gap-3 mb-4">
-              <Icon icon="solar:chart-2-bold" className="w-5 h-5 text-emerald-400" />
-              <div>
-                <h3 className="font-semibold text-white">거래 유형 분포</h3>
-                <p className="text-xs text-white/40">최근 30일</p>
-              </div>
-            </div>
-            <TransactionDistributionChart
-              data={currencyStats?.distribution ?? []}
-              isLoading={currencyStatsLoading}
-            />
-          </div>
-
-          {/* 지갑 보유량 분포 */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <div className="flex items-center gap-3 mb-4">
-              <Icon icon="solar:wallet-bold" className="w-5 h-5 text-emerald-400" />
-              <div>
-                <h3 className="font-semibold text-white">지갑 보유량 분포</h3>
-                <p className="text-xs text-white/40">토피 기준</p>
-              </div>
-            </div>
-            <WalletDistributionChart
-              data={walletDistribution?.distribution ?? []}
-              top10Percent={walletDistribution?.top10Percent ?? 0}
-              isLoading={walletLoading}
-              currencyName="토피"
-            />
-          </div>
-
-          {/* 국고 추이 */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <div className="flex items-center gap-3 mb-4">
-              <Icon icon="solar:wallet-money-bold" className="w-5 h-5 text-emerald-400" />
-              <div>
-                <h3 className="font-semibold text-white">국고 추이</h3>
-                <p className="text-xs text-white/40">최근 7일</p>
-              </div>
-            </div>
-            <TreasuryTrendChart
-              data={treasuryStats?.dailyTrend ?? []}
-              totalIncome={treasuryStats?.totalIncome ?? 0}
-              totalExpense={treasuryStats?.totalExpense ?? 0}
-              isLoading={treasuryStatsLoading}
-              currencyName="토피"
-            />
-          </div>
-
           {/* 경제 지표 */}
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
             <div className="flex items-center gap-3 mb-4">
@@ -304,6 +254,56 @@ export default function StatsPage() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* 국고 추이 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+            <div className="flex items-center gap-3 mb-4">
+              <Icon icon="solar:wallet-money-bold" className="w-5 h-5 text-emerald-400" />
+              <div>
+                <h3 className="font-semibold text-white">국고 추이</h3>
+                <p className="text-xs text-white/40">최근 7일</p>
+              </div>
+            </div>
+            <TreasuryTrendChart
+              data={treasuryStats?.dailyTrend ?? []}
+              totalIncome={treasuryStats?.totalIncome ?? 0}
+              totalExpense={treasuryStats?.totalExpense ?? 0}
+              isLoading={treasuryStatsLoading}
+              currencyName="토피"
+            />
+          </div>
+
+          {/* 거래 유형 분포 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+            <div className="flex items-center gap-3 mb-4">
+              <Icon icon="solar:chart-2-bold" className="w-5 h-5 text-emerald-400" />
+              <div>
+                <h3 className="font-semibold text-white">거래 유형 분포</h3>
+                <p className="text-xs text-white/40">최근 30일</p>
+              </div>
+            </div>
+            <TransactionDistributionChart
+              data={currencyStats?.distribution ?? []}
+              isLoading={currencyStatsLoading}
+            />
+          </div>
+
+          {/* 지갑 보유량 분포 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+            <div className="flex items-center gap-3 mb-4">
+              <Icon icon="solar:wallet-bold" className="w-5 h-5 text-emerald-400" />
+              <div>
+                <h3 className="font-semibold text-white">지갑 보유량 분포</h3>
+                <p className="text-xs text-white/40">토피 기준</p>
+              </div>
+            </div>
+            <WalletDistributionChart
+              data={walletDistribution?.distribution ?? []}
+              top10Percent={walletDistribution?.top10Percent ?? 0}
+              isLoading={walletLoading}
+              currencyName="토피"
+            />
           </div>
         </div>
       </section>
