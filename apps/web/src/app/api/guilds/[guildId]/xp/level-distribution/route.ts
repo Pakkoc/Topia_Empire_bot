@@ -9,6 +9,46 @@ interface LevelDistributionRow extends RowDataPacket {
   count: number;
 }
 
+interface MaxLevelRow extends RowDataPacket {
+  max_level: number;
+}
+
+// 최대 레벨에 따른 동적 범례 생성
+function getDynamicLevelRanges(maxLevel: number): { min: number; max: number; label: string }[] {
+  const allRanges = [
+    { min: 0, max: 0, label: '0' },
+    { min: 1, max: 5, label: '1-5' },
+    { min: 6, max: 10, label: '6-10' },
+    { min: 11, max: 20, label: '11-20' },
+    { min: 21, max: 30, label: '21-30' },
+    { min: 31, max: 50, label: '31-50' },
+    { min: 51, max: 100, label: '51-100' },
+    { min: 101, max: Infinity, label: '100+' },
+  ];
+
+  // 최대 레벨을 포함하는 구간까지만 사용
+  const ranges: typeof allRanges = [];
+  for (const r of allRanges) {
+    ranges.push(r);
+    if (maxLevel <= r.max) break;
+  }
+  return ranges;
+}
+
+// 동적 범례용 SQL CASE 문 생성
+function buildLevelCaseSQL(ranges: { min: number; max: number; label: string }[], columnName: string): string {
+  const cases = ranges.map(r => {
+    if (r.min === 0 && r.max === 0) {
+      return `WHEN ${columnName} = 0 THEN '${r.label}'`;
+    }
+    if (r.max === Infinity) {
+      return `WHEN ${columnName} >= ${r.min} THEN '${r.label}'`;
+    }
+    return `WHEN ${columnName} BETWEEN ${r.min} AND ${r.max} THEN '${r.label}'`;
+  });
+  return `CASE ${cases.join(' ')} END`;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ guildId: string }> }
@@ -23,58 +63,57 @@ export async function GET(
   try {
     const pool = db();
 
-    // 텍스트 레벨 분포
+    // 1. 최대 레벨 조회 (텍스트/음성 중 큰 값)
+    const [maxResult] = await pool.query<MaxLevelRow[]>(
+      `SELECT GREATEST(
+        COALESCE(MAX(text_level), 0),
+        COALESCE(MAX(voice_level), 0)
+       ) as max_level FROM xp_users WHERE guild_id = ?`,
+      [guildId]
+    );
+    const maxLevel = Number(maxResult[0]?.max_level ?? 0);
+
+    // 2. 최대 레벨 기반 동적 범례 생성
+    const ranges = getDynamicLevelRanges(maxLevel);
+    const rangeLabels = ranges.map(r => r.label);
+    const fieldOrder = rangeLabels.map(l => `'${l}'`).join(', ');
+
+    // 3. 텍스트 레벨 분포
+    const textCaseSQL = buildLevelCaseSQL(ranges, 'text_level');
     const [textLevelStats] = await pool.query<LevelDistributionRow[]>(
       `SELECT
-        CASE
-          WHEN text_level = 0 THEN '0'
-          WHEN text_level BETWEEN 1 AND 5 THEN '1-5'
-          WHEN text_level BETWEEN 6 AND 10 THEN '6-10'
-          WHEN text_level BETWEEN 11 AND 20 THEN '11-20'
-          WHEN text_level BETWEEN 21 AND 30 THEN '21-30'
-          WHEN text_level BETWEEN 31 AND 50 THEN '31-50'
-          ELSE '51+'
-        END as level_range,
+        ${textCaseSQL} as level_range,
         COUNT(*) as count
        FROM xp_users
        WHERE guild_id = ?
        GROUP BY level_range
-       ORDER BY FIELD(level_range, '0', '1-5', '6-10', '11-20', '21-30', '31-50', '51+')`,
+       ORDER BY FIELD(level_range, ${fieldOrder})`,
       [guildId]
     );
 
-    // 음성 레벨 분포
+    // 4. 음성 레벨 분포
+    const voiceCaseSQL = buildLevelCaseSQL(ranges, 'voice_level');
     const [voiceLevelStats] = await pool.query<LevelDistributionRow[]>(
       `SELECT
-        CASE
-          WHEN voice_level = 0 THEN '0'
-          WHEN voice_level BETWEEN 1 AND 5 THEN '1-5'
-          WHEN voice_level BETWEEN 6 AND 10 THEN '6-10'
-          WHEN voice_level BETWEEN 11 AND 20 THEN '11-20'
-          WHEN voice_level BETWEEN 21 AND 30 THEN '21-30'
-          WHEN voice_level BETWEEN 31 AND 50 THEN '31-50'
-          ELSE '51+'
-        END as level_range,
+        ${voiceCaseSQL} as level_range,
         COUNT(*) as count
        FROM xp_users
        WHERE guild_id = ?
        GROUP BY level_range
-       ORDER BY FIELD(level_range, '0', '1-5', '6-10', '11-20', '21-30', '31-50', '51+')`,
+       ORDER BY FIELD(level_range, ${fieldOrder})`,
       [guildId]
     );
-
-    const levelRanges = ['0', '1-5', '6-10', '11-20', '21-30', '31-50', '51+'];
 
     // 텍스트 레벨 분포 맵
     const textMap = new Map(textLevelStats.map(r => [r.level_range, Number(r.count)]));
-    const textDistribution = levelRanges.map(range => ({
+    const textDistribution = rangeLabels.map(range => ({
       range,
       count: textMap.get(range) ?? 0,
     }));
 
     // 음성 레벨 분포 맵
     const voiceMap = new Map(voiceLevelStats.map(r => [r.level_range, Number(r.count)]));
-    const voiceDistribution = levelRanges.map(range => ({
+    const voiceDistribution = rangeLabels.map(range => ({
       range,
       count: voiceMap.get(range) ?? 0,
     }));
