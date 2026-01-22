@@ -50,6 +50,82 @@ const placeholders = [
   { name: "{server}", description: "서버 이름" },
 ];
 
+// 디스코드 마크다운을 HTML로 변환하는 함수
+function parseDiscordMarkdown(text: string): React.ReactNode[] {
+  const result: React.ReactNode[] = [];
+  let remaining = text;
+  let keyIndex = 0;
+
+  while (remaining.length > 0) {
+    // **bold** 패턴 찾기
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    // *italic* 패턴 찾기 (단일 *)
+    const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
+    // __underline__ 패턴 찾기
+    const underlineMatch = remaining.match(/__(.+?)__/);
+    // ~~strikethrough~~ 패턴 찾기
+    const strikeMatch = remaining.match(/~~(.+?)~~/);
+    // `code` 패턴 찾기
+    const codeMatch = remaining.match(/`(.+?)`/);
+
+    // 가장 먼저 나오는 패턴 찾기
+    const matches = [
+      { match: boldMatch, type: 'bold' },
+      { match: italicMatch, type: 'italic' },
+      { match: underlineMatch, type: 'underline' },
+      { match: strikeMatch, type: 'strike' },
+      { match: codeMatch, type: 'code' },
+    ].filter(m => m.match !== null) as { match: RegExpMatchArray; type: string }[];
+
+    if (matches.length === 0) {
+      // 더 이상 패턴이 없으면 나머지 텍스트 추가
+      result.push(remaining);
+      break;
+    }
+
+    // 가장 먼저 나오는 패턴 선택
+    const earliest = matches.reduce((prev, curr) =>
+      (curr.match.index ?? 0) < (prev.match.index ?? 0) ? curr : prev
+    );
+
+    const matchIndex = earliest.match.index ?? 0;
+    const matchedText = earliest.match[1];
+    const fullMatch = earliest.match[0];
+
+    // 패턴 전의 텍스트 추가
+    if (matchIndex > 0) {
+      result.push(remaining.slice(0, matchIndex));
+    }
+
+    // 패턴에 따라 스타일 적용
+    switch (earliest.type) {
+      case 'bold':
+        result.push(<strong key={keyIndex++} className="font-bold">{matchedText}</strong>);
+        break;
+      case 'italic':
+        result.push(<em key={keyIndex++} className="italic">{matchedText}</em>);
+        break;
+      case 'underline':
+        result.push(<span key={keyIndex++} className="underline">{matchedText}</span>);
+        break;
+      case 'strike':
+        result.push(<span key={keyIndex++} className="line-through">{matchedText}</span>);
+        break;
+      case 'code':
+        result.push(
+          <code key={keyIndex++} className="bg-black/50 px-1 py-0.5 rounded text-[#eb459e] font-mono text-[0.875em]">
+            {matchedText}
+          </code>
+        );
+        break;
+    }
+
+    remaining = remaining.slice(matchIndex + fullMatch.length);
+  }
+
+  return result;
+}
+
 export default function NotificationSettingsPage() {
   const params = useParams();
   const guildId = params["guildId"] as string;
@@ -308,15 +384,17 @@ export default function NotificationSettingsPage() {
                 {/* 미리보기 */}
                 <div>
                   <p className="mb-2 text-sm font-medium text-white/70">미리보기</p>
-                  <div className="relative rounded-xl border border-white/10 bg-black/50 p-3 overflow-hidden">
+                  <div className="relative rounded-xl border border-white/10 bg-[#313338] p-3 overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-cyan-500" />
-                    <p className="text-sm text-white/80 pl-3">
-                      {(form.watch("textLevelUpMessage") ?? defaultTextMessage)
-                        .replace("{user}", "@사용자")
-                        .replace("{username}", "사용자")
-                        .replace("{level}", "5")
-                        .replace("{xp}", "2,500")
-                        .replace("{server}", "서버 이름")}
+                    <p className="text-sm text-[#dbdee1] pl-3">
+                      {parseDiscordMarkdown(
+                        (form.watch("textLevelUpMessage") ?? defaultTextMessage)
+                          .replace("{user}", "@사용자")
+                          .replace("{username}", "사용자")
+                          .replace("{level}", "5")
+                          .replace("{xp}", "2,500")
+                          .replace("{server}", "서버 이름")
+                      )}
                     </p>
                   </div>
                 </div>
@@ -401,15 +479,17 @@ export default function NotificationSettingsPage() {
                 {/* 미리보기 */}
                 <div>
                   <p className="mb-2 text-sm font-medium text-white/70">미리보기</p>
-                  <div className="relative rounded-xl border border-white/10 bg-black/50 p-3 overflow-hidden">
+                  <div className="relative rounded-xl border border-white/10 bg-[#313338] p-3 overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-green-500 to-emerald-500" />
-                    <p className="text-sm text-white/80 pl-3">
-                      {(form.watch("voiceLevelUpMessage") ?? defaultVoiceMessage)
-                        .replace("{user}", "@사용자")
-                        .replace("{username}", "사용자")
-                        .replace("{level}", "5")
-                        .replace("{xp}", "2,500")
-                        .replace("{server}", "서버 이름")}
+                    <p className="text-sm text-[#dbdee1] pl-3">
+                      {parseDiscordMarkdown(
+                        (form.watch("voiceLevelUpMessage") ?? defaultVoiceMessage)
+                          .replace("{user}", "@사용자")
+                          .replace("{username}", "사용자")
+                          .replace("{level}", "5")
+                          .replace("{xp}", "2,500")
+                          .replace("{server}", "서버 이름")
+                      )}
                     </p>
                   </div>
                 </div>
