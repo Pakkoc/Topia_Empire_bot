@@ -106,9 +106,8 @@ export function MemberTrendChart({
             <ComposedChart data={data} margin={{ top: 10, right: 40, left: 40, bottom: 0 }}>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.2)"
-                horizontal={true}
-                vertical={true}
+                stroke="rgba(255,255,255,0.15)"
+                syncWithTicks={true}
               />
               <XAxis
                 dataKey="label"
