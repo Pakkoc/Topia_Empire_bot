@@ -205,11 +205,11 @@
 @layer base {
   .dark {
     /* Background: Deep navy-charcoal (not pure black) */
-    --background: 224 71% 4%;
+    --background: 223 39% 7%;
     --foreground: 210 40% 98%;
 
     /* Card: Elevated surface */
-    --card: 224 71% 6%;
+    --card: 223 39% 10%;
     --card-foreground: 210 40% 98%;
 
     /* Popover */

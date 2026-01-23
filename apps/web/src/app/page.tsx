@@ -40,7 +40,7 @@ const stats = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-black overflow-hidden">
+    <main className="min-h-screen overflow-hidden">
       {/* Aurora Background Effect */}
       <div className="fixed inset-0 pointer-events-none">
         <div

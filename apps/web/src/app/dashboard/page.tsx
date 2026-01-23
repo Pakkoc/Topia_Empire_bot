@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const { data: guilds, isLoading, error } = useGuilds();
 
   return (
-    <main className="min-h-screen bg-black overflow-hidden">
+    <main className="min-h-screen overflow-hidden">
       {/* Aurora Background Effect */}
       <div className="fixed inset-0 pointer-events-none">
         <div
@@ -39,7 +39,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Header */}
-      <header className="relative z-10 border-b border-white/5 bg-black/40 backdrop-blur-xl">
+      <header className="relative z-10 border-b border-white/5 bg-card/40 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 lg:px-12 py-4">
           <Link href="/" className="flex items-center">
             <Image src="/logo/main.png" alt="Nexus" width={140} height={48} className="h-12 w-auto" />

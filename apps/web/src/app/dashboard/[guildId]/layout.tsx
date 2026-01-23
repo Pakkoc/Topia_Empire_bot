@@ -26,7 +26,7 @@ export default function GuildDashboardLayout({
 
   return (
     <UnsavedChangesProvider>
-      <div className="flex h-screen flex-col bg-black overflow-hidden">
+      <div className="flex h-screen flex-col overflow-hidden">
         {/* Aurora Background Effect */}
         <div className="fixed inset-0 pointer-events-none">
           <div
