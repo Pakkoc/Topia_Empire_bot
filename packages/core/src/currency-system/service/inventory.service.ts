@@ -306,9 +306,10 @@ export class InventoryService {
 
   /**
    * 만료된 아이템의 역할 회수 처리 (스케줄러용)
+   * fixedRoleId도 null로 설정해야 다음 스케줄러 실행 시 중복 처리되지 않음
    */
   async markItemExpired(itemId: bigint): Promise<Result<void, CurrencyError>> {
-    const result = await this.shopRepo.updateCurrentRole(itemId, null, null, null);
+    const result = await this.shopRepo.updateCurrentRole(itemId, null, null, null, null);
     if (!result.success) {
       return { success: false, error: { type: 'REPOSITORY_ERROR', cause: result.error } };
     }
